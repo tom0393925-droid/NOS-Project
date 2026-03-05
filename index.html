@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>IM NOS Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-gray-100">
+
+<div class="card p-0 overflow-hidden relative min-h-screen flex flex-col">
+    <div class="p-6 pb-4 bg-white border-b border-gray-200">
+        <div class="header-top flex justify-between items-center m-0">
+            <h1 class="main-title text-2xl font-black text-gray-800 tracking-tight">IM NOS Analysis</h1>
+            <button onclick="toggleSetupView()" id="btnToggleSetup" class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold transition-all shadow-md flex items-center gap-2 border border-blue-500">
+                ⬅️ Back to Dashboard
+            </button>
+        </div>
+    </div>
+
+    <div id="setupView" class="flex-grow bg-slate-50 p-8">
+        <div class="max-w-6xl mx-auto space-y-8">
+            <div class="text-center mb-6">
+                <h2 class="text-3xl font-black text-slate-800">Database Setup & Management</h2>
+                <p class="text-gray-500 mt-2 font-medium">Follow the steps below to load, update, and save your database.</p>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500 border-y border-r border-gray-200">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                    <div>
+                        <h3 class="font-bold text-blue-800 text-lg flex items-center gap-2">Step 1: Load Database</h3>
+                        <p class="text-sm text-gray-600 mt-1">Please load the latest JSON database file.</p>
+                    </div>
+                    <label class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold cursor-pointer transition-colors shadow-md flex items-center gap-2 whitespace-nowrap">
+                        📂 Load JSON Data
+                        <input type="file" accept=".json" class="hidden" onchange="importSaveData(event)">
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4 py-4">
+                <div class="h-px bg-gray-300 flex-grow"></div>
+                <span class="text-sm font-bold text-gray-400 tracking-widest uppercase">Data Updater Workflow</span>
+                <div class="h-px bg-gray-300 flex-grow"></div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col">
+                    <h3 class="font-bold text-gray-800 text-lg mb-1">Step 2-A: Append NOS Data</h3>
+                    <p class="text-xs text-gray-500 mb-4">Loaded Weeks: <span id="uiWeekCount" class="font-black text-blue-600 text-lg">0</span></p>
+                    <label class="file-slot block mb-4 flex-grow flex flex-col justify-center items-center" id="slotWeek">
+                        <div class="font-bold text-gray-700 text-sm mb-2">📥 Select NOS Excel</div>
+                        <div class="file-name text-gray-500 text-xs bg-gray-100 px-3 py-1 rounded" id="nameWeek">No file selected</div>
+                        <input type="file" id="fileWeek" accept=".xlsx, .xls" class="hidden" onchange="updateSingleSlot()">
+                    </label>
+                    <button class="w-full bg-green-600 hover:bg-green-700 text-white border-none py-3 font-bold rounded-lg transition-colors shadow-md" id="analyzeBtn" onclick="runAnalysis()">Run Analysis & Append</button>
+                    <div id="loading" class="hidden text-center font-bold text-green-600 mt-3">Processing...</div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col">
+                    <h3 class="font-bold text-gray-800 text-lg mb-1">Step 2-B: Append Invoice Data</h3>
+                    <p class="text-xs text-gray-500 mb-4">Loaded Weeks: <span id="uiInvoiceWeekCount" class="font-black text-purple-600 text-lg">0</span></p>
+                    <label class="file-slot block mb-4 flex-grow flex flex-col justify-center items-center" id="slotInvoiceWeek">
+                        <div class="font-bold text-gray-700 text-sm mb-2">📥 Select Invoice Excel</div>
+                        <div class="file-name text-gray-500 text-xs bg-gray-100 px-3 py-1 rounded" id="nameInvoiceWeek">No file selected</div>
+                        <input type="file" id="fileInvoice" accept=".xlsx, .xls" class="hidden" onchange="updateInvoiceSlot()">
+                    </label>
+                    <button class="w-full bg-purple-600 hover:bg-purple-700 text-white border-none py-3 font-bold rounded-lg transition-colors shadow-md" id="analyzeInvoiceBtn" onclick="runInvoiceAnalysis()">Extract Pick Frequency</button>
+                    <div id="loadingInvoice" class="hidden text-center font-bold text-purple-600 mt-3">Processing...</div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col">
+                    <div class="flex justify-between items-center mb-3">
+                        <h3 class="font-bold text-gray-800 text-sm">📁 NOS File History</h3>
+                        <button onclick="clearAllData()" class="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded font-bold transition-colors border border-red-200 shadow-sm">🗑 Reset All</button>
+                    </div>
+                    <p class="text-xs text-gray-500 mb-3">* Ensure chronological order.</p>
+                    <div class="flex-grow overflow-y-auto bg-slate-50 border border-gray-200 rounded-lg p-2 custom-scrollbar h-32">
+                        <ul id="fileHistoryList" class="space-y-1"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                <div class="flex justify-between items-end mb-4 border-b pb-3">
+                    <div>
+                        <h3 class="font-bold text-gray-800 text-lg">Step 3: Update SKU Master</h3>
+                    </div>
+                    <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
+                        <span class="text-xs font-bold text-gray-600">⚡ Bulk Update:</span>
+                        <label class="bg-white hover:bg-gray-100 text-gray-800 px-3 py-1 rounded text-xs font-bold cursor-pointer border border-gray-300 shadow-sm transition-colors">
+                            Select File <input type="file" accept=".xlsx, .xls" class="hidden" onchange="handleTcExcelUpload(event)">
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="flex flex-wrap gap-3 mb-6 items-center bg-yellow-50 p-4 rounded-lg border border-yellow-200" id="masterInputArea">
+                    <div class="flex flex-col flex-grow min-w-[120px]">
+                        <span class="text-[10px] font-bold text-yellow-700 ml-1 mb-1">SKU Code</span>
+                        <input type="text" id="mCode" placeholder="Code" class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none font-bold disabled:bg-gray-200" oninput="autoFillMasterForm()">
+                    </div>
+                    <div class="flex flex-col flex-grow min-w-[200px]">
+                        <span class="text-[10px] font-bold text-yellow-700 ml-1 mb-1">Item Name</span>
+                        <input type="text" id="mName" placeholder="Item Name" class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none">
+                    </div>
+                    <div class="flex flex-col w-20">
+                        <span class="text-[10px] font-bold text-yellow-700 ml-1 mb-1">TC ($)</span>
+                        <input type="number" id="mTc" placeholder="0.00" step="0.01" class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none">
+                    </div>
+                    <div class="flex flex-col w-20">
+                        <span class="text-[10px] font-bold text-yellow-700 ml-1 mb-1">Sell ($)</span>
+                        <input type="number" id="mPrice" placeholder="0.00" step="0.01" class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none">
+                    </div>
+                    <div class="flex flex-col w-16">
+                        <span class="text-[10px] font-bold text-yellow-700 ml-1 mb-1">UoM</span>
+                        <input type="text" id="mUom" placeholder="UoM" class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none">
+                    </div>
+                    <div class="flex flex-col w-24">
+                        <span class="text-[10px] font-bold text-red-600 ml-1 mb-1">Safety</span>
+                        <input type="number" id="mSafety" placeholder="0" class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none font-bold text-red-600">
+                    </div>
+                    <div class="flex flex-col w-24">
+                        <span class="text-[10px] font-bold text-yellow-700 ml-1 mb-1">Temp</span>
+                        <select id="mStorage" class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none bg-white">
+                            <option value="Dry">Dry</option><option value="Chill">Chill</option><option value="Frozen">Frozen</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end h-full pt-5">
+                        <label class="flex items-center text-sm font-bold text-blue-800 cursor-pointer bg-white px-3 py-2 rounded border border-blue-200 shadow-sm hover:bg-blue-50 transition-colors">
+                            <input type="checkbox" id="mFF" class="mr-2 h-4 w-4"> 🐟 FF
+                        </label>
+                    </div>
+                    <div class="flex items-end h-full pt-5 gap-2">
+                        <button onclick="saveSingleMaster()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-lg font-bold shadow-md transition-colors whitespace-nowrap" id="btnMasterUpdate">➕ Update</button>
+                        <button onclick="resetMasterForm()" class="bg-gray-200 hover:bg-gray-300 text-gray-600 px-3 py-2 rounded-lg font-bold transition-colors shadow-sm hidden" id="btnMasterReset">Cancel</button>
+                    </div>
+                    <div id="masterStatus" class="w-full text-xs text-green-600 font-bold mt-1"></div>
+                </div>
+                
+                <div class="mb-4">
+                    <input type="text" id="masterTableSearch" placeholder="Search by SKU Code or Item Name in Master List..." 
+                           class="w-full p-3 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-400 outline-none shadow-inner"
+                           oninput="renderMasterList()">
+                </div>
+
+                <div class="max-h-60 overflow-y-auto border border-gray-200 rounded-lg custom-scrollbar">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead class="bg-slate-100 sticky top-0 shadow-sm text-gray-700 z-10">
+                            <tr><th class="p-3">Code</th><th class="p-3">Item Name</th><th class="p-3">Temp</th><th class="p-3">TC Price</th><th class="p-3">Sell Price</th><th class="p-3">UoM</th><th class="p-3 text-red-600">Safety</th><th class="p-3">Flags</th><th class="p-3 text-center">Action</th></tr>
+                        </thead>
+                        <tbody id="masterListBody" class="divide-y divide-gray-100 bg-white"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="bg-indigo-50 p-6 rounded-xl shadow-sm border border-indigo-200 text-center">
+                <h3 class="font-bold text-indigo-900 text-lg mb-2">Final Step: Save & Export Database</h3>
+                <button onclick="exportSaveData()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-lg font-black transition-colors shadow-lg flex items-center gap-2 mx-auto text-lg">
+                    💾 Export JSON Database
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="dashboardView" class="hidden flex-grow flex flex-col bg-white">
+        <div class="tab-container mx-6 mt-6 mb-0 rounded-t-xl bg-slate-800 shadow-inner flex">
+            <button class="tab-button active flex-1 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors" onclick="switchTab('nosTab', this)">📦 NOS Meeting List</button>
+            <button class="tab-button flex-1 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors" onclick="switchTab('analyticsTab', this)">📊 Analytics & Order Planning</button>
+        </div>
+
+        <div class="bg-gray-100 flex-grow">
+            <div id="nosTab" class="tab-content active nos-wrapper px-6 pb-6 pt-4">
+                <div id="resultsArea" style="display:none;">
+                    <h3 class="mb-4 pb-2 border-b-2 border-gray-300 flex justify-between items-center">
+                        <span class="text-xl font-black text-gray-800">Action List</span>
+                        <button onclick="exportTableToExcel('meeting_table', 'NOS_Meeting_List')" class="bg-green-600 hover:bg-green-700 text-white border-none py-2 px-4 rounded font-bold cursor-pointer text-sm shadow-md transition-colors">
+                            Export to Excel
+                        </button>
+                    </h3>
+                    <div class="table-container shadow-sm bg-white">
+                        <table class="data-table" id="meeting_table">
+                            <thead>
+                                <tr><th class="sticky-col-0">No.</th><th class="sticky-col-1">Code</th><th class="sticky-col-2">Item Name</th><th>UoM</th><th>Expiry Date (Lot)</th><th>Latest Qty</th><th>Latest Wk Sale</th><th>Avg Sale (3m)</th><th>TC Price</th><th>Total Amount</th><th>Next Action (Last)</th><th>Next Action (During)</th><th>Results (from CL)</th></tr>
+                            </thead>
+                            <tbody id="tableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+                <div id="nosPlaceholder" class="text-center py-20 text-gray-400 font-bold text-lg">
+                    Please load the JSON database in the <a href="#" onclick="toggleSetupView(); return false;" class="text-blue-500 underline">⚙️ Data Setup</a> tab first.
+                </div>
+            </div>
+
+            <div id="analyticsTab" class="tab-content px-6 pb-6 pt-4">
+                <div id="analyticsPlaceholder" class="text-center py-20 text-gray-400 font-bold text-lg">
+                    Please load the JSON database first.
+                </div>
+                
+                <div id="analyticsContent" style="display:none;" class="space-y-6">
+                    <div class="bg-purple-50 border border-purple-200 rounded-xl p-6 shadow-sm">
+                        <h3 class="font-bold text-purple-900 text-lg mb-3">🚢 Next / 2nd Next Container Arrival Schedule</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="bg-white p-5 rounded-lg border border-purple-100 shadow-sm">
+                                <h4 class="text-base font-bold text-gray-800 mb-4 border-b pb-2">📦 Dry / Chill</h4>
+                                <div class="flex flex-col gap-4">
+                                    <label class="text-sm font-bold text-gray-600 flex items-center justify-between"><span>1️⃣ Next Arrival:</span><input type="date" id="dryNextDate" class="border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 outline-none shadow-sm" onchange="saveDatesAndRender()"></label>
+                                    <label class="text-sm font-bold text-gray-600 flex items-center justify-between"><span>2️⃣ 2nd Next Arrival:</span><input type="date" id="dryNext2Date" class="border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 outline-none shadow-sm" onchange="saveDatesAndRender()"></label>
+                                </div>
+                            </div>
+                            <div class="bg-white p-5 rounded-lg border border-blue-100 shadow-sm">
+                                <h4 class="text-base font-bold text-blue-800 mb-4 border-b pb-2">❄️ Frozen</h4>
+                                <div class="flex flex-col gap-4">
+                                    <label class="text-sm font-bold text-gray-600 flex items-center justify-between"><span>1️⃣ Next Arrival:</span><input type="date" id="frozenNextDate" class="border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 outline-none shadow-sm" onchange="saveDatesAndRender()"></label>
+                                    <label class="text-sm font-bold text-gray-600 flex items-center justify-between"><span>2️⃣ 2nd Next Arrival:</span><input type="date" id="frozenNext2Date" class="border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 outline-none shadow-sm" onchange="saveDatesAndRender()"></label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500"><h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider">Normal Stock Value (TC)</h3><p class="text-4xl font-black text-slate-800 mt-2" id="kpiTotalValue">$0</p></div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-red-500"><h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider">Waste Risk Amount</h3><p class="text-4xl font-black text-red-600 mt-2" id="kpiWasteRisk">$0</p></div>
+                        <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-purple-500"><h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider">Total Managed SKUs</h3><p class="text-4xl font-black text-purple-600 mt-2" id="kpiTotalSkus">0</p></div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <h3 class="font-black text-gray-800 text-xl mb-5 border-b-2 border-gray-100 pb-3">🔍 SKU Detailed Analysis & Future Prediction</h3>
+                        <div class="relative mb-6">
+                            <input type="text" id="skuSearchInput" placeholder="Search SKU Code or Item Name..." class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none text-lg" oninput="handleSearchInput()">
+                            <ul id="searchSuggestList" class="hidden absolute z-20 w-full bg-white border border-gray-200 shadow-xl rounded-lg mt-1 max-h-60 overflow-y-auto custom-scrollbar divide-y divide-gray-100"></ul>
+                        </div>
+                        
+                        <div id="skuDetailArea" style="display:none;" class="mt-4 p-6 bg-slate-50 rounded-xl border border-gray-200 shadow-inner">
+                            <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-9 gap-4 mb-6">
+                                <div class="col-span-1"><p class="text-xs font-bold text-gray-400 uppercase">Code</p><p class="font-black text-xl text-indigo-700" id="skuDetailCode">-</p></div>
+                                <div class="col-span-1 md:col-span-2 lg:col-span-2"><p class="text-xs font-bold text-gray-400 uppercase">Item Name</p><p class="font-bold text-lg text-gray-800 truncate" id="skuDetailName">-</p></div>
+                                <div class="col-span-1"><p class="text-xs font-bold text-gray-400 uppercase">Temp</p><p class="font-bold mt-1" id="skuDetailTemp">-</p></div>
+                                <div class="col-span-1"><p class="text-xs font-bold text-gray-400 uppercase">UoM</p><p class="font-black text-xl text-gray-700" id="skuDetailUom">-</p></div>
+                                <div class="col-span-1"><p class="text-xs font-bold text-gray-400 uppercase">Safety</p><p class="font-black text-xl text-red-600" id="skuDetailSafety">0</p></div>
+                                <div class="col-span-1"><p class="text-xs font-bold text-gray-400 uppercase">Current Qty</p><p class="font-black text-2xl text-green-600" id="skuDetailQty">0</p></div>
+                                <div class="col-span-1 md:col-span-2"><p class="text-xs font-bold text-gray-400 uppercase">Total Value</p><p class="font-black text-2xl text-gray-800" id="skuDetailTotalAmount">$0</p></div>
+                            </div>
+                            
+                            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-8">
+                                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col justify-center relative overflow-hidden">
+                                    <p class="text-xs text-gray-500 font-bold mb-1 uppercase">WOS</p>
+                                    <div class="flex items-baseline gap-2 mt-1"><p id="skuDetailWos" class="font-black text-4xl">-</p><p id="skuDetailAvg" class="text-sm text-gray-500 font-bold">-</p></div>
+                                </div>
+                                <div class="bg-white p-4 rounded-xl border border-blue-100 shadow-sm flex flex-col justify-center">
+                                    <p class="text-xs text-blue-600 font-bold mb-2 uppercase">🚢 Predicted Balances</p>
+                                    <div class="flex justify-between items-center text-sm border-b border-gray-100 pb-1 mb-1"><span class="text-gray-600 font-bold">Next:</span><span id="predNextQty" class="font-black text-gray-800">-</span></div>
+                                    <div class="flex justify-between items-center text-sm"><span class="text-gray-600 font-bold">2nd Next:</span><span id="predNext2Qty" class="font-black text-gray-800">-</span></div>
+                                </div>
+                                <div class="lg:col-span-2 bg-white p-4 rounded-xl border-2 border-purple-100 shadow-sm flex flex-col justify-center">
+                                    <p class="text-xs text-purple-600 font-bold mb-2 uppercase">📦 Order Judgment</p>
+                                    <div id="skuDetailOrderPredict" class="mt-1">-</div>
+                                </div>
+                            </div>
+
+                            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-3 mt-4 border-t border-gray-200 pt-6 gap-4">
+                                <div class="flex items-center gap-4">
+                                    <h4 class="font-black text-gray-800 text-lg">📊 Future Trend Simulation</h4>
+                                    <select id="chartPeriod" class="border border-gray-300 rounded px-3 py-1.5 text-xs font-bold text-gray-600 outline-none focus:ring-2 shadow-sm" onchange="updateChartPeriod()">
+                                        <option value="12">Zoom: Last 12 Weeks</option>
+                                        <option value="24">Zoom: Last 24 Weeks</option>
+                                        <option value="all" selected>Zoom: All Time</option>
+                                    </select>
+                                </div>
+                                <div class="flex items-center justify-center gap-4 bg-white px-5 py-2 rounded-full shadow-sm border border-gray-200">
+                                    <div class="flex items-center gap-1"><div class="w-4 h-4 bg-blue-100 border border-blue-500 rounded"></div><span class="text-[11px] text-gray-700 font-bold">Sales</span></div>
+                                    <div class="flex items-center gap-1"><div class="w-4 h-4 bg-green-100 border border-green-500 rounded"></div><span class="text-[11px] text-gray-700 font-bold">Inventory</span></div>
+                                    <div class="flex items-center gap-1 pl-2 border-l border-gray-300"><div class="w-4 h-0 border-t-2 border-dashed border-yellow-500"></div><span class="text-[11px] text-gray-700 font-bold">Prediction</span></div>
+                                    <div class="flex items-center gap-1 pl-2 border-l border-gray-300"><div class="w-4 h-0 border-t-2 border-dashed border-red-500"></div><span class="text-[11px] text-red-600 font-bold">Safety Stock</span></div>
+                                </div>
+                            </div>
+
+                            <div class="flex w-full h-[350px] border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden relative">
+                                <div class="w-16 flex-shrink-0 bg-slate-50 border-r border-gray-200 relative z-10"><div class="h-full flex flex-col justify-between items-end pr-3 text-[11px] font-mono text-gray-500 font-bold pt-10 pb-[50px]"><span id="yLeftMax">-</span><span id="yLeftMid">-</span><span id="yLeftMin">0</span></div></div>
+                                <div id="chartScrollWrapper" class="flex-grow h-full overflow-x-auto overflow-y-hidden custom-scrollbar bg-white relative z-0">
+                                    <div id="chartContainer" class="h-full min-w-full"><canvas id="skuChart"></canvas></div>
+                                </div>
+                                <div class="w-16 flex-shrink-0 bg-slate-50 border-l border-gray-200 relative z-10"><div class="h-full flex flex-col justify-between items-start pl-3 text-[11px] font-mono text-gray-500 font-bold pt-10 pb-[50px]"><span id="yRightMax">-</span><span id="yRightMid">-</span><span id="yRightMin">0</span></div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                        <div class="lg:col-span-2 bg-white p-0 rounded-xl shadow-sm border-t-4 border-t-purple-500 border border-gray-200 overflow-hidden">
+                            <div class="p-6 pb-4 border-b border-gray-100 bg-purple-50/30">
+                                <h3 class="font-black text-purple-900 text-xl">⚠️ Order Action Required List</h3>
+                                <p class="text-sm text-purple-700 mt-1 font-medium">Items that will fall below their Safety Stock before expected arrival dates.</p>
+                            </div>
+                            <div class="overflow-y-auto max-h-[300px] custom-scrollbar">
+                                <table class="w-full text-left whitespace-nowrap"><thead class="bg-white sticky top-0 shadow-sm text-gray-500 text-xs uppercase tracking-wider z-10"><tr><th class="p-4 pl-6 font-bold">Code</th><th class="p-4 font-bold">Item Name</th><th class="p-4 text-center font-bold">Safety</th><th class="p-4 text-right font-bold">Qty</th><th class="p-4 text-center font-bold">Predicted Status</th></tr></thead><tbody id="orderAlertTableBody" class="divide-y divide-gray-100 text-sm"></tbody></table>
+                            </div>
+                        </div>
+
+                        <div class="lg:col-span-1 bg-white p-0 rounded-xl shadow-sm border-t-4 border-t-red-500 border border-gray-200 overflow-hidden flex flex-col">
+                            <div class="p-6 pb-4 border-b border-gray-100 bg-red-50/30">
+                                <h3 class="font-black text-red-900 text-xl">🚨 Waste Risk</h3>
+                                <p class="text-sm text-red-700 mt-1 font-medium">Expired or Damaged/FF items.</p>
+                            </div>
+                            <div class="overflow-y-auto max-h-[300px] custom-scrollbar flex-grow">
+                                <table class="w-full text-left whitespace-nowrap text-sm"><thead class="bg-white sticky top-0 shadow-sm text-gray-500 text-xs uppercase tracking-wider"><tr><th class="p-4 font-bold">Code</th><th class="p-4 text-center font-bold">Status</th><th class="p-4 text-right font-bold pr-6">Qty</th></tr></thead><tbody id="analyticsAlertTableBody" class="divide-y divide-gray-100"></tbody></table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                        <div class="mb-4 border-b border-gray-100 pb-4">
+                            <h3 class="font-black text-gray-800 text-xl">💰 Financial ABC Analysis</h3>
+                            <p class="text-sm text-gray-500 font-medium">Ranked by Current Stock Value ($)</p>
+                        </div>
+                        <div class="h-64 relative flex justify-center items-center mb-6">
+                            <canvas id="abcChart"></canvas>
+                        </div>
+                        
+                        <div class="flex w-full mb-0 rounded-t-lg overflow-hidden border border-gray-200 border-b-0">
+                            <button id="btnAbcA" onclick="renderAbcList('A')" class="btn-abc flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent">A Rank (<span id="cntAbcA">0</span> SKUs)</button>
+                            <button id="btnAbcB" onclick="renderAbcList('B')" class="btn-abc flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent">B Rank (<span id="cntAbcB">0</span> SKUs)</button>
+                            <button id="btnAbcC" onclick="renderAbcList('C')" class="btn-abc flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent">C Rank (<span id="cntAbcC">0</span> SKUs)</button>
+                        </div>
+                        
+                        <div class="overflow-y-auto max-h-[300px] border border-gray-200 rounded-b-lg custom-scrollbar">
+                            <table class="w-full text-left whitespace-nowrap text-sm">
+                                <thead class="bg-slate-50 sticky top-0 shadow-sm text-gray-600 text-xs uppercase tracking-wider z-10">
+                                    <tr><th class="p-3 pl-4">Code</th><th class="p-3">Name</th><th class="p-3 text-right">TC</th><th class="p-3 text-right">Qty</th><th class="p-3 text-right">Value</th><th class="p-3 text-right">Cum. %</th><th class="p-3 text-center">Rank</th></tr>
+                                </thead>
+                                <tbody id="abcListBody" class="divide-y divide-gray-100 bg-white"></tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-t-indigo-500 border border-gray-200 mt-6">
+                        <div class="mb-4 border-b border-gray-100 pb-4">
+                            <h3 class="font-black text-indigo-900 text-xl">🏃‍♂️ Picking Frequency ABC Analysis</h3>
+                            <p class="text-sm text-indigo-700 font-medium">Ranked by Invoice Hit Counts (Order Lines)</p>
+                        </div>
+                        
+                        <div id="hitAbcPlaceholder" class="text-center py-10 text-gray-400 font-bold">Please append Invoice Data in Step 2-B to view Picking Frequency analysis.</div>
+                        
+                        <div id="hitAbcContent" style="display:none;">
+                            <div class="h-64 relative flex justify-center items-center mb-6">
+                                <canvas id="hitAbcChart"></canvas>
+                            </div>
+                            
+                            <div class="flex w-full mb-0 rounded-t-lg overflow-hidden border border-gray-200 border-b-0">
+                                <button id="btnHitAbcA" onclick="renderHitAbcList('A')" class="btn-hit-abc flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent">A Rank (<span id="cntHitAbcA">0</span> SKUs)</button>
+                                <button id="btnHitAbcB" onclick="renderHitAbcList('B')" class="btn-hit-abc flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent">B Rank (<span id="cntHitAbcB">0</span> SKUs)</button>
+                                <button id="btnHitAbcC" onclick="renderHitAbcList('C')" class="btn-hit-abc flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent">C Rank (<span id="cntHitAbcC">0</span> SKUs)</button>
+                            </div>
+                            
+                            <div class="overflow-y-auto max-h-[300px] border border-gray-200 rounded-b-lg custom-scrollbar">
+                                <table class="w-full text-left whitespace-nowrap text-sm">
+                                    <thead class="bg-slate-50 sticky top-0 shadow-sm text-gray-600 text-xs uppercase tracking-wider z-10">
+                                        <tr><th class="p-3 pl-4">Code</th><th class="p-3">Name</th><th class="p-3 text-right">Total Hits</th><th class="p-3 text-right">Total Qty Sold</th><th class="p-3 text-right">Cum. %</th><th class="p-3 text-center">Rank</th></tr>
+                                    </thead>
+                                    <tbody id="hitAbcListBody" class="divide-y divide-gray-100 bg-white"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-800 p-6 rounded-xl shadow-lg border-t-4 border-t-pink-500 mt-6" id="crossAnalysisSection" style="display:none;">
+                        <div class="mb-6 border-b border-slate-600 pb-4">
+                            <h3 class="font-black text-white text-2xl">⚔️ Cross ABC Analysis (9-Box Matrix)</h3>
+                            <p class="text-sm text-slate-400 font-medium mt-1">Click a segment to reveal the SKU list. Use this for warehouse slotting optimization.</p>
+                        </div>
+                        
+                        <div class="flex flex-col md:flex-row gap-8">
+                            <div class="flex-shrink-0">
+                                <div class="flex items-center justify-center mb-2">
+                                    <span class="text-xs font-bold text-slate-300 uppercase tracking-widest">Picking Frequency (Hits)</span>
+                                </div>
+                                <div class="flex">
+                                    <div class="flex flex-col justify-center items-center mr-2 w-6">
+                                        <span class="text-xs font-bold text-slate-300 uppercase tracking-widest" style="writing-mode: vertical-rl; text-orientation: mixed;">Financial Value ($)</span>
+                                    </div>
+                                    <div class="grid grid-cols-4 gap-1 w-[320px]">
+                                        <div></div>
+                                        <div class="text-center font-bold text-indigo-400 text-sm py-2">A (High)</div>
+                                        <div class="text-center font-bold text-indigo-400 text-sm py-2">B (Med)</div>
+                                        <div class="text-center font-bold text-indigo-400 text-sm py-2">C (Low)</div>
+                                        
+                                        <div class="flex items-center justify-end pr-2 font-bold text-green-400 text-sm">A (High)</div>
+                                        <div onclick="showCrossList('A', 'A')" class="cursor-pointer bg-emerald-500 hover:bg-emerald-400 rounded-lg p-3 text-center transition-all shadow-inner group relative">
+                                            <p class="text-white font-black text-xl group-hover:scale-110 transition-transform" id="cell_AA">0</p>
+                                        </div>
+                                        <div onclick="showCrossList('A', 'B')" class="cursor-pointer bg-lime-500 hover:bg-lime-400 rounded-lg p-3 text-center transition-all shadow-inner group relative">
+                                            <p class="text-white font-black text-xl group-hover:scale-110 transition-transform" id="cell_AB">0</p>
+                                        </div>
+                                        <div onclick="showCrossList('A', 'C')" class="cursor-pointer bg-yellow-500 hover:bg-yellow-400 rounded-lg p-3 text-center transition-all shadow-inner group relative">
+                                            <p class="text-white font-black text-xl group-hover:scale-110 transition-transform" id="cell_AC">0</p>
+                                        </div>
+
+                                        <div class="flex items-center justify-end pr-2 font-bold text-green-400 text-sm">B (Med)</div>
+                                        <div onclick="showCrossList('B', 'A')" class="cursor-pointer bg-orange-400 hover:bg-orange-300 rounded-lg p-3 text-center transition-all shadow-inner group relative">
+                                            <p class="text-white font-black text-xl group-hover:scale-110 transition-transform" id="cell_BA">0</p>
+                                        </div>
+                                        <div onclick="showCrossList('B', 'B')" class="cursor-pointer bg-slate-500 hover:bg-slate-400 rounded-lg p-3 text-center transition-all shadow-inner group relative">
+                                            <p class="text-white font-black text-xl group-hover:scale-110 transition-transform" id="cell_BB">0</p>
+                                        </div>
+                                        <div onclick="showCrossList('B', 'C')" class="cursor-pointer bg-slate-500 hover:bg-slate-400 rounded-lg p-3 text-center transition-all shadow-inner group relative">
+                                            <p class="text-white font-black text-xl group-hover:scale-110 transition-transform" id="cell_BC">0</p>
+                                        </div>
+
+                                        <div class="flex items-center justify-end pr-2 font-bold text-green-400 text-sm">C (Low)</div>
+                                        <div onclick="showCrossList('C', 'A')" class="cursor-pointer bg-red-500 hover:bg-red-400 rounded-lg p-3 text-center transition-all shadow-inner group relative">
+                                            <p class="text-white font-black text-xl group-hover:scale-110 transition-transform" id="cell_CA">0</p>
+                                        </div>
+                                        <div onclick="showCrossList('C', 'B')" class="cursor-pointer bg-slate-500 hover:bg-slate-400 rounded-lg p-3 text-center transition-all shadow-inner group relative">
+                                            <p class="text-white font-black text-xl group-hover:scale-110 transition-transform" id="cell_CB">0</p>
+                                        </div>
+                                        <div onclick="showCrossList('C', 'C')" class="cursor-pointer bg-slate-700 hover:bg-slate-600 rounded-lg p-3 text-center transition-all shadow-inner group relative border border-slate-600">
+                                            <p class="text-slate-300 font-black text-xl group-hover:scale-110 transition-transform" id="cell_CC">0</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex-grow flex flex-col">
+                                <div class="bg-slate-700 rounded-t-lg px-4 py-3 border-b border-slate-600 flex justify-between items-center">
+                                    <h4 class="text-white font-bold" id="crossListTitle">Select a segment</h4>
+                                    <span class="text-xs font-bold px-2 py-1 rounded bg-slate-800 text-slate-300" id="crossListDesc">--</span>
+                                </div>
+                                <div class="bg-slate-50 rounded-b-lg overflow-y-auto max-h-[300px] border border-slate-300 custom-scrollbar">
+                                    <table class="w-full text-left whitespace-nowrap text-sm">
+                                        <thead class="bg-slate-200 sticky top-0 shadow-sm text-slate-600 text-xs uppercase tracking-wider z-10">
+                                            <tr><th class="p-3 pl-4">Code</th><th class="p-3">Name</th><th class="p-3 text-center">Value Rank</th><th class="p-3 text-center">Hit Rank</th></tr>
+                                        </thead>
+                                        <tbody id="crossListBody" class="divide-y divide-gray-200 bg-white">
+                                            <tr><td colspan="4" class="p-6 text-center text-gray-400 font-bold">Click a colored box on the left to view SKUs.</td></tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="js/state.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/excel.js"></script>
+<script src="js/chart.js"></script>
+<script src="js/ui_master.js"></script>
+<script src="js/ui_analytics.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

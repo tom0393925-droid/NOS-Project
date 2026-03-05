@@ -1,0 +1,4 @@
+# .gitignore (無視リスト)
+*.xlsx
+*.xls
+*.json

@@ -1,0 +1,280 @@
+// ==========================================
+// js/ui.js: Main NOS List and Detail Views
+// ==========================================
+
+function renderActionList() {
+    const tbody = document.getElementById('tableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = '';
+    if (document.getElementById('resultsArea')) document.getElementById('resultsArea').style.display = 'block';
+
+    if (loadedWeeks === 0 || Object.keys(historyData).length === 0) {
+        tbody.innerHTML = `<tr><td colspan="13" class="text-center py-10 text-gray-500 font-bold">No Data Available. Please append Excel data or load a valid JSON file.</td></tr>`;
+        if (typeof updateAnalyticsUI === "function") updateAnalyticsUI();
+        return;
+    }
+
+    const sections = {
+        1: { title: "1. New Arrival", color: "sec-1", skus: [] },
+        2: { title: "2. No Sale 1m (Expiry < 3m)", color: "sec-2", skus: [] },
+        3: { title: "3. Have sale in 1m (Slow to clear)", color: "sec-3", skus: [] },
+        4: { title: "4. No Sale 1m (Expiry > 3m, over $500)", color: "sec-4", skus: [] },
+        5: { title: "5. No Sale 1m (No Expiry Date)", color: "sec-5", skus: [] },
+        6: { title: "6. Return & Damage, and FF Item", color: "sec-6", skus: [] },
+        7: { title: "7. Expired Item", color: "sec-7", skus: [] }
+    };
+
+    const today = new Date();
+    const threeMonths = new Date(today); threeMonths.setMonth(today.getMonth() + 3);
+    let skuGroups = {};
+
+    for (const key in historyData) {
+        const item = historyData[key];
+        const latestQty = item.qtys.length > 0 ? (item.qtys[item.qtys.length - 1] || 0) : 0;
+        
+        if (latestQty <= 0 && (!item.expiry || item.expiry > today)) continue; 
+
+        const latestSales = item.sales.length > 0 ? (item.sales[item.sales.length - 1] || 0) : 0;
+        
+        let past4WSalesSum = 0; const checkWeeks4 = Math.min(4, loadedWeeks);
+        for(let i = loadedWeeks - checkWeeks4; i < loadedWeeks; i++) past4WSalesSum += (item.sales[i] || 0);
+
+        let past12WSalesSum = 0; const checkWeeks12 = Math.min(12, loadedWeeks);
+        for(let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) past12WSalesSum += (item.sales[i] || 0);
+        const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
+
+        let isNewArrival = true;
+        for(let i = 0; i < loadedWeeks - 1; i++) { if (item.qtys[i] > 0) { isNewArrival = false; break; } }
+
+        const master = skuMaster[item.code] || { tc: 0, uom: "N/A", isFF: false };
+        const totalAmount = master.tc * latestQty;
+
+        let secId = 0;
+        if (item.isDamaged || master.isFF) secId = 6;
+        else if (item.expiry && item.expiry < today) secId = 7;
+        else if (isNewArrival) secId = 1;
+        else {
+            if (past4WSalesSum === 0) {
+                if (!item.expiry) secId = 5; else if (item.expiry <= threeMonths) secId = 2; else if (totalAmount >= 500) secId = 4;
+            } else {
+                if (item.expiry) {
+                    const weeksToExpiry = (item.expiry - today) / (1000 * 60 * 60 * 24 * 7);
+                    const weeksToClear = past12WAvg > 0 ? (latestQty / past12WAvg) : 999;
+                    if (weeksToClear > weeksToExpiry) secId = 3; 
+                }
+            }
+        }
+
+        if (secId !== 0) {
+            if (!skuGroups[item.code]) skuGroups[item.code] = [];
+            skuGroups[item.code].push({ ...item, latestQty, latestSales, past12WAvg, totalAmount, tc: master.tc, uom: master.uom, secId, uniqueKey: key });
+        }
+    }
+
+    const sevOrder = { 6:1, 7:2, 2:3, 3:4, 4:5, 5:6, 1:7 }; 
+
+    Object.keys(skuGroups).sort().forEach(code => {
+        const lots = skuGroups[code];
+        let topSec = -1; let minSev = 99;
+
+        lots.forEach(lot => { const sev = sevOrder[lot.secId]; if (sev < minSev) { minSev = sev; topSec = lot.secId; } });
+
+        if (topSec !== -1) {
+            lots.sort((a, b) => { if (!a.expiry) return 1; if (!b.expiry) return -1; return a.expiry - b.expiry; });
+            sections[topSec].skus.push({ code: code, lots: lots });
+        }
+    });
+
+    const fragment = document.createDocumentFragment();
+
+    [1, 2, 3, 4, 5, 6, 7].forEach(secId => {
+        const sec = sections[secId];
+        if (sec.skus.length > 0) {
+            const headerTr = document.createElement('tr');
+            headerTr.innerHTML = `<td colspan="3" class="sec-header ${sec.color}">${sec.title} : ${sec.skus.length} SKUs</td><td colspan="10" class="sec-header ${sec.color} sec-header-bg"></td>`;
+            fragment.appendChild(headerTr);
+
+            let skuIndex = 1;
+            sec.skus.forEach(skuObj => {
+                skuObj.lots.forEach((item, idx) => {
+                    const isFirst = (idx === 0);
+                    const tr = document.createElement('tr');
+                    if (isFirst) tr.className = "row-first";
+                    
+                    const m1 = `m1_${item.uniqueKey}`; const m2 = `m2_${item.uniqueKey}`; const m3 = `m3_${item.uniqueKey}`;
+                    let origBadge = ''; if (item.secId !== secId) origBadge = `<br><span class="bg-gray-200 text-gray-700 px-1 py-0.5 rounded" style="font-size:9px;">[${item.secId}]</span>`;
+                    const dispName = getSkuName(item.code);
+
+                    tr.innerHTML = `
+                        <td class="sticky-col-0">${isFirst ? `<b>${skuIndex}</b>` : ''}</td>
+                        <td class="sticky-col-1">${isFirst ? item.code : ''}</td>
+                        <td class="sticky-col-2">${isFirst ? `<b>${dispName}</b>` : ''}</td>
+                        <td>${isFirst ? item.uom : ''}</td>
+                        <td style="background:#fffcf0;"><b>${item.expiryStr}</b>${origBadge}</td>
+                        <td class="val-num" style="font-weight:bold; font-size:14px;">${item.latestQty.toLocaleString()}</td>
+                        <td class="val-num">${item.latestSales.toLocaleString()}</td>
+                        <td class="val-num">${item.past12WAvg.toLocaleString(undefined, {minimumFractionDigits: 1, maximumFractionDigits: 1})}</td>
+                        <td class="val-num">${isFirst ? `$${item.tc.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}` : ''}</td>
+                        <td class="val-num" style="color:var(--danger); font-weight:bold;">$${Math.round(item.totalAmount).toLocaleString()}</td>
+                        <td class="memo-cell" contenteditable="true" onblur="currentMemos['${m1}'] = this.innerText">${currentMemos[m1] || ''}</td>
+                        <td class="memo-cell" contenteditable="true" onblur="currentMemos['${m2}'] = this.innerText">${currentMemos[m2] || ''}</td>
+                        <td class="memo-cell" contenteditable="true" onblur="currentMemos['${m3}'] = this.innerText">${currentMemos[m3] || ''}</td>
+                    `;
+                    fragment.appendChild(tr);
+                });
+                skuIndex++;
+            });
+        }
+    });
+    tbody.appendChild(fragment);
+    if (typeof updateAnalyticsUI === "function") updateAnalyticsUI();
+}
+
+function handleSearchInput() {
+    try {
+        const inputEl = document.getElementById('skuSearchInput');
+        const suggestList = document.getElementById('searchSuggestList');
+        if (!inputEl || !suggestList) return;
+
+        const query = inputEl.value.trim().toLowerCase();
+        if (!query) { suggestList.classList.add('hidden'); return; }
+
+        let matches = []; let seenCodes = new Set();
+
+        for (const key in historyData) {
+            const item = historyData[key];
+            if (!item || !item.code) continue;
+            if (seenCodes.has(item.code)) continue;
+
+            const safeCode = String(item.code).toLowerCase();
+            const dispName = getSkuName(item.code);
+            const safeName = dispName ? String(dispName).toLowerCase() : "";
+
+            if (safeCode.includes(query) || safeName.includes(query)) {
+                matches.push({...item, name: dispName});
+                seenCodes.add(item.code);
+            }
+        }
+
+        if (matches.length === 0) {
+            suggestList.innerHTML = '<li class="p-3 text-red-500 text-sm font-bold">No matching products found</li>';
+            suggestList.classList.remove('hidden');
+        } else {
+            let html = '';
+            matches.slice(0, 10).forEach(m => {
+                const safeCodeForClick = String(m.code).replace(/'/g, "\\'").replace(/"/g, "&quot;");
+                const dispName = m.name ? String(m.name).replace(/</g, "&lt;").replace(/>/g, "&gt;") : "No Name";
+                html += `<li class="p-3 hover:bg-blue-50 cursor-pointer border-b border-gray-100 last:border-0" onclick="renderSKUDetails('${safeCodeForClick}')"><span class="font-bold text-indigo-600">${m.code}</span> <span class="text-sm text-gray-700 ml-2">${dispName}</span></li>`;
+            });
+            suggestList.innerHTML = html;
+            suggestList.classList.remove('hidden');
+        }
+    } catch (e) { console.error("Search Logic Error:", e); }
+}
+
+function renderSKUDetails(selectedCode) {
+    if (document.getElementById('searchSuggestList')) document.getElementById('searchSuggestList').classList.add('hidden');
+    if (document.getElementById('skuSearchInput')) document.getElementById('skuSearchInput').value = selectedCode;
+    currentSelectedSKU = selectedCode; 
+
+    let targetLots = []; let allTimeSalesSum = 0; let grandTotalSales = 0;
+    for (const key in historyData) {
+        const h = historyData[key];
+        const sSum = h.sales.reduce((a, b) => a + b, 0);
+        grandTotalSales += sSum;
+        if (h.code === selectedCode) { targetLots.push(h); allTimeSalesSum += sSum; }
+    }
+    
+    if (targetLots.length === 0) return;
+
+    let latestQty = 0;
+    for (const key in historyData) {
+        if (historyData[key].code === selectedCode) latestQty += (historyData[key].qtys[loadedWeeks - 1] || 0);
+    }
+
+    const masterData = skuMaster[selectedCode] || { name: targetLots[0].name, tc: 0, uom: "N/A", storageType: "Dry", safetyStock: 0 };
+    const safetyStock = masterData.safetyStock || 0;
+    const latestTotalAmount = masterData.tc * latestQty;
+    const dispName = getSkuName(selectedCode);
+    const uomText = masterData.uom || "-";
+    
+    setSafeText('skuDetailCode', targetLots[0].code);
+    setSafeText('skuDetailName', dispName);
+    setSafeText('skuDetailTc', `$${masterData.tc.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
+    setSafeText('skuDetailUom', uomText);
+    
+    const tempEl = document.getElementById('skuDetailTemp');
+    if (tempEl) {
+        let stBadge = '';
+        const stType = masterData.storageType || 'Dry';
+        if (stType === 'Dry') stBadge = '<span class="bg-yellow-50 text-yellow-700 px-2 py-0.5 rounded border border-yellow-200">Dry</span>';
+        if (stType === 'Chill') stBadge = '<span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded border border-blue-200">Chill</span>';
+        if (stType === 'Frozen') stBadge = '<span class="bg-cyan-50 text-cyan-700 px-2 py-0.5 rounded border border-cyan-200">Frozen</span>';
+        tempEl.innerHTML = stBadge;
+    }
+
+    setSafeText('skuDetailQty', latestQty.toLocaleString());
+    setSafeText('skuDetailTotalAmount', `$${Math.round(latestTotalAmount).toLocaleString()}`); 
+    setSafeText('skuDetailSafety', safetyStock.toLocaleString());
+
+    let past12WSalesSum = 0; const checkWeeks12 = Math.min(12, loadedWeeks);
+    for (let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
+        let weeklySum = 0; targetLots.forEach(lot => { weeklySum += (lot.sales[i] || 0); });
+        past12WSalesSum += weeklySum;
+    }
+    const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
+
+    const wos = past12WAvg > 0 ? (latestQty / past12WAvg) : (latestQty === 0 ? 0 : 999);
+    let wosColor = wos > 12 ? "text-red-500" : (wos > 8 ? "text-yellow-600" : "text-green-600");
+    if (wos === 999) wosColor = "text-gray-400";
+    
+    setSafeText('skuDetailWos', wos === 999 ? "∞" : wos.toFixed(1) + " Wks");
+    const wosEl = document.getElementById('skuDetailWos');
+    if (wosEl) wosEl.className = `font-black text-4xl ${wosColor}`;
+    setSafeText('skuDetailAvg', `(Recent Avg: ${past12WAvg.toFixed(1)} pcs/wk)`);
+
+    const predictEl = document.getElementById('skuDetailOrderPredict');
+    if (predictEl) {
+        const stType = masterData.storageType || 'Dry';
+        let targetNext = "", targetNext2 = "";
+        
+        if (stType === 'Frozen') { targetNext = globalFrozenNext; targetNext2 = globalFrozenNext2; } 
+        else { targetNext = globalDryNext; targetNext2 = globalDryNext2; }
+
+        if (!targetNext || !targetNext2) {
+            setSafeText('predNextQty', '-'); setSafeText('predNext2Qty', '-');
+            predictEl.innerHTML = `<span class="text-xs text-gray-400">* Please set the Next / 2nd Next arrival dates for ${stType} in the calendar above.</span>`;
+        } else {
+            const dNext = new Date(targetNext); const dNext2 = new Date(targetNext2);
+            const baseDate = getLatestDataDate();
+            const diffWkNext = (dNext - baseDate) / (1000 * 60 * 60 * 24 * 7);
+            const diffWkNext2 = (dNext2 - baseDate) / (1000 * 60 * 60 * 24 * 7);
+
+            if (diffWkNext <= 0 || diffWkNext2 <= 0) {
+                setSafeText('predNextQty', 'Error'); setSafeText('predNext2Qty', 'Error');
+                predictEl.innerHTML = `<span class="text-xs text-red-400 font-bold">Date Setting Error (Past date selected)</span>`;
+            } else {
+                const stockNext = latestQty - (past12WAvg * diffWkNext);
+                const stockNext2 = latestQty - (past12WAvg * diffWkNext2);
+
+                setSafeText('predNextQty', Math.max(0, Math.round(stockNext)).toLocaleString() + ' ' + uomText);
+                setSafeText('predNext2Qty', Math.max(0, Math.round(stockNext2)).toLocaleString() + ' ' + uomText);
+
+                let html = `<div class="flex gap-4 mt-1">`;
+                if (stockNext < safetyStock) {
+                    html += `<div class="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded w-full"><span class="text-xl">🚨</span><div><p class="text-xs font-bold text-red-700">Urgent: Below Safety Stock (${safetyStock}) before ${targetNext}</p><p class="text-[10px] text-red-600">Short by <span class="font-bold text-sm">${Math.ceil(safetyStock - stockNext)}</span> ${uomText}</p></div></div>`;
+                } else if (stockNext2 < safetyStock) {
+                    html += `<div class="flex items-center gap-2 bg-yellow-50 border border-yellow-200 px-3 py-1.5 rounded w-full"><span class="text-xl">📦</span><div><p class="text-xs font-bold text-yellow-800">Order Now: Will fall below Safety Stock (${safetyStock}) before ${targetNext2}</p><p class="text-[10px] text-yellow-700">Short by <span class="font-bold text-sm">${Math.ceil(safetyStock - stockNext2)}</span> ${uomText}</p></div></div>`;
+                } else {
+                    html += `<div class="flex items-center gap-2 bg-green-50 border border-green-200 px-3 py-1.5 rounded w-full"><span class="text-xl">✅</span><div><p class="text-xs font-bold text-green-700">Safe: No order needed</p><p class="text-[10px] text-green-600">Remains above safety line until 2nd Next Arrival (${targetNext2})</p></div></div>`;
+                }
+                html += `</div>`;
+                predictEl.innerHTML = html;
+            }
+        }
+    }
+
+    if (document.getElementById('skuDetailArea')) document.getElementById('skuDetailArea').style.display = 'block';
+    if (typeof updateChartPeriod === "function") updateChartPeriod();
+}
