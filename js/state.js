@@ -8,9 +8,9 @@ let invoiceHistoryData = {}; // NEW: Picking Frequency (Hits) Data
 let currentMemos = {}; 
 
 let loadedWeeks = 0;
-let loadedFiles = []; 
-let loadedInvoiceWeeks = 0; // NEW
-let loadedInvoiceFiles = []; // NEW
+let loadedInvoiceWeeks = 0;
+let loadedFiles = [];
+let loadedInvoiceFiles = [];
 
 let myAbcChart = null;
 let myHitAbcChart = null; // NEW
@@ -68,8 +68,12 @@ function importSaveData(event) {
                 if (historyData[key].expiry) historyData[key].expiry = new Date(historyData[key].expiry);
             }
             
-            if(document.getElementById('uiWeekCount')) document.getElementById('uiWeekCount').innerText = loadedWeeks;
+           if(document.getElementById('uiWeekCount')) document.getElementById('uiWeekCount').innerText = loadedWeeks;
             if(document.getElementById('uiInvoiceWeekCount')) document.getElementById('uiInvoiceWeekCount').innerText = loadedInvoiceWeeks;
+            
+            // UIにファイル履歴リストを描画する関数を呼び出す
+            updateHistoryListUI();
+            updateInvoiceHistoryListUI();
             
             if (typeof renderMasterList === "function") renderMasterList();
             if (typeof renderActionList === "function") renderActionList();
@@ -109,15 +113,164 @@ function exportSaveData() {
 }
 
 function clearAllData() {
-    if (!confirm("Are you sure you want to reset all history data (NOS and Invoice)?")) return;
+    if (!confirm("Are you sure you want to reset ALL NOS data?")) return;
     historyData = {}; 
-    invoiceHistoryData = {};
     loadedWeeks = 0; 
     loadedFiles = [];
+    
+    updateHistoryListUI();
+    if (typeof renderActionList === "function") renderActionList();
+    alert("NOS data cleared.");
+}
+
+// Invoice専用のリセット機能
+function clearInvoiceData() {
+    if (!confirm("Are you sure you want to reset ALL Invoice data?")) return;
+    invoiceHistoryData = {};
     loadedInvoiceWeeks = 0;
     loadedInvoiceFiles = [];
     
-    if(document.getElementById('uiWeekCount')) document.getElementById('uiWeekCount').innerText = loadedWeeks;
-    if(document.getElementById('uiInvoiceWeekCount')) document.getElementById('uiInvoiceWeekCount').innerText = loadedInvoiceWeeks;
-    if (typeof renderActionList === "function") renderActionList();
+    updateInvoiceHistoryListUI();
+    if (typeof updateAnalyticsUI === "function") updateAnalyticsUI();
+    alert("Invoice data cleared.");
+}
+
+// ==========================================
+// File History Management (UI & Data Sync)
+// ==========================================
+
+function updateHistoryListUI() {
+    const list = document.getElementById('fileHistoryList');
+    if (list) {
+        list.innerHTML = '';
+        loadedFiles.forEach((file, i) => {
+            const li = document.createElement('li');
+            li.className = "flex justify-between items-center text-xs border-b border-gray-100 py-2 last:border-0 hover:bg-slate-50 transition-colors px-2";
+            li.innerHTML = `
+                <span class="truncate pr-2 text-gray-700" title="${file}">
+                    <span class="font-black text-blue-600">Wk ${i+1}:</span> ${file}
+                </span>
+                <div class="flex gap-1 flex-shrink-0">
+                    <button onclick="moveFileUp(${i})" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs transition-colors shadow-sm font-bold" ${i === 0 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''}>▲</button>
+                    <button onclick="moveFileDown(${i})" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs transition-colors shadow-sm font-bold" ${i === loadedFiles.length - 1 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''}>▼</button>
+                    <button onclick="deleteFile(${i})" class="bg-red-50 hover:bg-red-100 text-red-500 px-2 py-1 rounded text-xs transition-colors shadow-sm font-bold">✕</button>
+                </div>
+            `;
+            list.appendChild(li);
+        });
+    }
+    const countEl = document.getElementById('uiWeekCount');
+    if (countEl) countEl.innerText = loadedWeeks;
+}
+
+function moveFileUp(index) {
+    if (index <= 0) return;
+    [loadedFiles[index - 1], loadedFiles[index]] = [loadedFiles[index], loadedFiles[index - 1]];
+    for (let key in historyData) {
+        if (historyData[key].qtys) {
+            let temp = historyData[key].qtys[index - 1];
+            historyData[key].qtys[index - 1] = historyData[key].qtys[index];
+            historyData[key].qtys[index] = temp;
+        }
+    }
+    updateHistoryListUI();
+    if (typeof renderActionList === 'function') renderActionList();
+}
+
+function moveFileDown(index) {
+    if (index >= loadedFiles.length - 1) return;
+    [loadedFiles[index], loadedFiles[index + 1]] = [loadedFiles[index + 1], loadedFiles[index]];
+    for (let key in historyData) {
+        if (historyData[key].qtys) {
+            let temp = historyData[key].qtys[index];
+            historyData[key].qtys[index] = historyData[key].qtys[index + 1];
+            historyData[key].qtys[index + 1] = temp;
+        }
+    }
+    updateHistoryListUI();
+    if (typeof renderActionList === 'function') renderActionList();
+}
+
+function deleteFile(index) {
+    if (!confirm(`Delete Wk ${index + 1}: ${loadedFiles[index]}?`)) return;
+    loadedFiles.splice(index, 1);
+    loadedWeeks--;
+    for (let key in historyData) {
+        if (historyData[key].qtys) {
+            historyData[key].qtys.splice(index, 1);
+        }
+    }
+    updateHistoryListUI();
+    if (typeof renderActionList === 'function') renderActionList();
+}
+
+// ------------------------------------------
+// Invoice History Management
+// ------------------------------------------
+
+function updateInvoiceHistoryListUI() {
+    const list = document.getElementById('invoiceHistoryList');
+    if (list) {
+        list.innerHTML = '';
+        if (typeof loadedInvoiceFiles !== 'undefined') {
+            loadedInvoiceFiles.forEach((file, i) => {
+                const li = document.createElement('li');
+                li.className = "flex justify-between items-center text-xs border-b border-gray-100 py-2 last:border-0 hover:bg-slate-50 transition-colors px-2";
+                li.innerHTML = `
+                    <span class="truncate pr-2 text-gray-700" title="${file}">
+                        <span class="font-black text-blue-600">Wk ${i+1}:</span> ${file}
+                    </span>
+                    <div class="flex gap-1 flex-shrink-0">
+                        <button onclick="moveInvoiceFileUp(${i})" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs transition-colors shadow-sm font-bold" ${i === 0 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''}>▲</button>
+                        <button onclick="moveInvoiceFileDown(${i})" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs transition-colors shadow-sm font-bold" ${i === loadedInvoiceFiles.length - 1 ? 'disabled style="opacity:0.4; cursor:not-allowed;"' : ''}>▼</button>
+                        <button onclick="deleteInvoiceFile(${i})" class="bg-red-50 hover:bg-red-100 text-red-500 px-2 py-1 rounded text-xs transition-colors shadow-sm font-bold">✕</button>
+                    </div>
+                `;
+                list.appendChild(li);
+            });
+        }
+    }
+    const countEl = document.getElementById('uiInvoiceWeekCount');
+    if (countEl) countEl.innerText = loadedInvoiceWeeks;
+}
+
+function moveInvoiceFileUp(index) {
+    if (index <= 0) return;
+    [loadedInvoiceFiles[index - 1], loadedInvoiceFiles[index]] = [loadedInvoiceFiles[index], loadedInvoiceFiles[index - 1]];
+    for (let key in invoiceHistoryData) {
+        if (invoiceHistoryData[key].hits) {
+            let temp = invoiceHistoryData[key].hits[index - 1];
+            invoiceHistoryData[key].hits[index - 1] = invoiceHistoryData[key].hits[index];
+            invoiceHistoryData[key].hits[index] = temp;
+        }
+    }
+    updateInvoiceHistoryListUI();
+    if (typeof updateAnalyticsUI === 'function') updateAnalyticsUI();
+}
+
+function moveInvoiceFileDown(index) {
+    if (index >= loadedInvoiceFiles.length - 1) return;
+    [loadedInvoiceFiles[index], loadedInvoiceFiles[index + 1]] = [loadedInvoiceFiles[index + 1], loadedInvoiceFiles[index]];
+    for (let key in invoiceHistoryData) {
+        if (invoiceHistoryData[key].hits) {
+            let temp = invoiceHistoryData[key].hits[index];
+            invoiceHistoryData[key].hits[index] = invoiceHistoryData[key].hits[index + 1];
+            invoiceHistoryData[key].hits[index + 1] = temp;
+        }
+    }
+    updateInvoiceHistoryListUI();
+    if (typeof updateAnalyticsUI === 'function') updateAnalyticsUI();
+}
+
+function deleteInvoiceFile(index) {
+    if (!confirm(`Delete Wk ${index + 1}: ${loadedInvoiceFiles[index]}?`)) return;
+    loadedInvoiceFiles.splice(index, 1);
+    loadedInvoiceWeeks--;
+    for (let key in invoiceHistoryData) {
+        if (invoiceHistoryData[key].hits) {
+            invoiceHistoryData[key].hits.splice(index, 1);
+        }
+    }
+    updateInvoiceHistoryListUI();
+    if (typeof updateAnalyticsUI === 'function') updateAnalyticsUI();
 }
