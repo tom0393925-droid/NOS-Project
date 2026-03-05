@@ -268,11 +268,14 @@
                 <button
                     class="tab-button active flex-1 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
                     onclick="switchTab('nosTab', this)">📦 NOS Meeting List</button>
-                <button
-                    class="tab-button flex-1 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
-                    onclick="switchTab('analyticsTab', this); updateAnalyticsUI();">📊 Analytics & Order
-                    Planning</button>
-            </div>
+               <button
+                    class="tab-button flex-1 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
+                    onclick="switchTab('analyticsTab', this); updateAnalyticsUI();">📊 Analytics & Order
+                    Planning</button>
+                <button
+                    class="tab-button flex-1 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
+                    onclick="switchTab('mapTab', this)">🗺️ Warehouse Map</button>
+            </div>
 
             <div class="bg-gray-100 flex-grow">
                 <div id="nosTab" class="tab-content active nos-wrapper px-6 pb-6 pt-4">
@@ -764,28 +767,83 @@
                                             <tbody id="crossListBody" class="divide-y divide-gray-200 bg-white">
                                                 <tr>
                                                     <td colspan="4" class="p-6 text-center text-gray-400 font-bold">
-                                                        Click a colored box on the left to view SKUs.</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                                                        Click a colored box on the left to view SKUs.</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="mapTab" class="tab-content px-6 pb-6 pt-6" style="display: none;">
+                    <div class="mb-4 flex justify-between items-end">
+                        <div>
+                            <h2 class="text-2xl font-black text-slate-800">Warehouse Heatmap (Picking Frequency)</h2>
+                            <p class="text-sm text-gray-600 font-bold mt-1">Based on hand-drawn blueprint. Click a rack to see SKUs.</p>
+                        </div>
+                        <div class="flex gap-4 text-xs font-bold bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
+                            <div class="flex items-center gap-1"><div class="w-4 h-4 bg-red-200 border border-red-600 rounded"></div> High (A)</div>
+                            <div class="flex items-center gap-1"><div class="w-4 h-4 bg-yellow-200 border border-yellow-600 rounded"></div> Mid (B)</div>
+                            <div class="flex items-center gap-1"><div class="w-4 h-4 bg-blue-200 border border-blue-600 rounded"></div> Low (C)</div>
+                        </div>
+                    </div>
+
+                    <div class="relative bg-white border-4 border-slate-700 rounded-xl w-full max-w-5xl mx-auto h-[500px] shadow-lg overflow-hidden" id="warehouse-map">
+                        <div class="absolute top-0 bottom-0 right-[25%] border-r-[6px] border-slate-700"></div>
+
+                        <div id="rack-P" class="rack-box rack-h" style="top: 10%; left: 5%;">P</div>
+                        <div id="rack-O" class="rack-box rack-h" style="top: 10%; left: 22%;">O</div>
+                        <div id="rack-N" class="rack-box rack-h" style="top: 10%; left: 39%;">N</div>
+                        <div id="rack-M" class="rack-box rack-h" style="top: 10%; left: 56%;">M</div>
+
+                        <div id="rack-A" class="rack-box rack-v" style="bottom: 10%; left: 5%;">A</div>
+                        <div id="rack-B" class="rack-box rack-v" style="bottom: 10%; left: 12%;">B</div>
+                        <div id="rack-C" class="rack-box rack-v" style="bottom: 10%; left: 25%;">C</div>
+                        <div id="rack-D" class="rack-box rack-v" style="bottom: 10%; left: 32%;">D</div>
+                        <div id="rack-E" class="rack-box rack-v" style="bottom: 10%; left: 45%;">E</div>
+                        <div id="rack-F" class="rack-box rack-v" style="bottom: 10%; left: 52%;">F</div>
+                        <div id="rack-G" class="rack-box rack-v" style="bottom: 10%; left: 65%;">G</div>
+                        <div id="rack-H" class="rack-box rack-v" style="bottom: 10%; left: 72%;">H</div>
+
+                        <div id="rack-J" class="rack-box rack-s" style="top: 10%; right: 18%;">J</div>
+                        <div id="rack-K" class="rack-box rack-s" style="top: 25%; right: 18%;">K</div>
+                        <div id="rack-L" class="rack-box rack-s" style="top: 40%; right: 18%;">L</div>
+                        <div id="rack-I" class="rack-box rack-v" style="top: 10%; right: 5%;">I</div>
+                        <div class="rack-box rack-v" style="top: 35%; right: 5%; color:#94a3b8; border-style:dashed;"></div>
+                        <div class="absolute text-slate-500 font-bold" style="bottom: 24%; right: 5%;">Picking Space</div>
+                        <div id="rack-PS-A" class="rack-box rack-area" style="bottom: 10%; right: 5%;">PS-A</div>
+                    </div>
+
+                    <div id="rackDetailArea" class="mt-6 bg-white p-6 rounded-xl border border-gray-200 shadow-sm" style="display: none;">
+                        <div class="flex justify-between items-end border-b border-gray-100 pb-3 mb-4">
+                            <h3 id="rackDetailTitle" class="text-xl font-black text-slate-800">Location Details</h3>
+                        </div>
+                        <div class="overflow-y-auto max-h-[250px] custom-scrollbar border border-gray-200 rounded-lg">
+                            <table class="w-full text-left whitespace-nowrap text-sm">
+                                <thead class="bg-slate-50 sticky top-0 shadow-sm text-gray-500 text-xs font-bold uppercase z-10">
+                                    <tr><th class="p-4 pl-6">Code</th><th class="p-4">Item Name</th><th class="p-4 text-right">Pick Hits</th><th class="p-4 text-center">Freq. Rank</th></tr>
+                                </thead>
+                                <tbody id="rackDetailBody" class="divide-y divide-gray-100 bg-white"></tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
-            </div>
-        </div>
-    </div>
 
-    <script src="js/state.js?v=10"></script>
-    <script src="js/utils.js?v=10"></script>
-    <script src="js/excel.js?v=10"></script>
-    <script src="js/chart.js?v=10"></script>
-    <script src="js/ui_master.js?v=10"></script>
-    <script src="js/ui_analytics.js?v=10"></script>
-    <script src="js/ui.js?v=10"></script>
-    <script src="js/main.js?v=10"></script>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/state.js?v=11"></script>
+    <script src="js/utils.js?v=11"></script>
+    <script src="js/excel.js?v=11"></script>
+    <script src="js/chart.js?v=11"></script>
+    <script src="js/ui_master.js?v=11"></script>
+    <script src="js/ui_analytics.js?v=11"></script>
+    <script src="js/ui_map.js?v=11"></script>     <script src="js/ui.js?v=11"></script>
+    <script src="js/main.js?v=11"></script>
 </body>
 
 </html>

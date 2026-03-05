@@ -92,3 +92,41 @@ h1.main-title { border-left: 6px solid var(--primary); padding-left: 15px; margi
 .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { background: #94a3b8; border-radius: 4px; border: 2px solid #f1f5f9; }
 .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #64748b; }
+
+/* ==========================================
+   Warehouse Map Rack Styles (追加分)
+   ========================================== */
+.rack-box {
+    position: absolute;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 900;
+    font-size: 1rem;
+    color: #334155;
+    background-color: #f8fafc;
+    border: 2px solid #cbd5e1;
+    border-radius: 0.375rem;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 1px 2px 0 rgba(0,0,0,0.05);
+}
+
+.rack-box:hover {
+    transform: scale(1.05);
+    z-index: 10;
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+}
+
+/* 棚のサイズ指定 */
+.rack-h { width: 15%; height: 10%; } /* 横長の棚 (M, N, O, P) */
+.rack-v { width: 5%; height: 28%; }  /* 縦長の棚 (A~H, I) */
+.rack-s { width: 10%; height: 10%; } /* 小さい棚 (J, K, L) */
+
+/* ピッキングスペースの枠線 */
+.rack-area { 
+    width: 15%; 
+    height: 12%; 
+    background-color: #f1f5f9; 
+    border: 2px dashed #94a3b8; 
+    color: #64748b;
+}
