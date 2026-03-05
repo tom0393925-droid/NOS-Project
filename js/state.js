@@ -36,6 +36,21 @@ const regionalHolidays = [
     { start: '2026/02/16', end: '2026/02/20', name: 'Chinese New Year', color: 'rgba(239, 68, 68, 0.15)' }
 ];
 
+// ★ デモ用データのLocation自動補完機能（ランダム付与）
+function assignRandomLocationsIfMissing() {
+    if (typeof skuMaster === 'undefined') return;
+    const racks = ['A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','PS-A'];
+    let updated = false;
+    for (const code in skuMaster) {
+        if (!skuMaster[code].location || skuMaster[code].location === '-') {
+            const randomRack = racks[Math.floor(Math.random() * racks.length)];
+            skuMaster[code].location = randomRack;
+            updated = true;
+        }
+    }
+    return updated;
+}
+
 function importSaveData(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -43,11 +58,17 @@ function importSaveData(event) {
     reader.onload = function(e) {
         try {
             const importedData = JSON.parse(e.target.result);
-            skuMaster = importedData.skuMaster || {};
-            historyData = importedData.historyData || {};
-            invoiceHistoryData = importedData.invoiceHistoryData || {}; // LOAD
-            currentMemos = importedData.memos || {};
             
+            skuMaster = importedData.skuMaster || {};
+            
+            // ★ JSONを読み込んだ直後にLocationを自動で割り振る
+            assignRandomLocationsIfMissing();
+
+            // ★ 新旧どちらのデータ名（database, invoiceDatabase等）でも確実に読み込む安全装置
+            historyData = importedData.historyData || importedData.database || importedData.nosData || {};
+            invoiceHistoryData = importedData.invoiceHistoryData || importedData.invoiceDatabase || {}; 
+            
+            currentMemos = importedData.memos || {};
             loadedWeeks = importedData.loadedWeeks || 0;
             loadedFiles = importedData.loadedFiles || Array(loadedWeeks).fill("Unknown File");
             

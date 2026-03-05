@@ -42,6 +42,7 @@ function checkDashboardVisibility() {
     }
 }
 
+// ★ 軽量化の要：見ているタブだけを処理する（遅延レンダリング）
 function switchTab(tabId, btnElement) {
     document.querySelectorAll('.tab-content').forEach(c => { c.classList.remove('active'); c.style.display = 'none'; });
     document.querySelectorAll('.tab-button').forEach(b => {
@@ -56,6 +57,15 @@ function switchTab(tabId, btnElement) {
         btnElement.classList.add('active');
         btnElement.classList.replace('text-slate-300', 'text-white');
         btnElement.classList.replace('bg-transparent', 'bg-slate-700');
+    }
+
+    // ★ アクティブになったタブの機能だけを呼び出す（裏での無駄な全計算をストップ）
+    if (tabId === 'nosTab' && typeof renderActionList === 'function') {
+        renderActionList();
+    } else if (tabId === 'analyticsTab' && typeof updateAnalyticsUI === 'function') {
+        updateAnalyticsUI();
+    } else if (tabId === 'mapTab' && typeof renderWarehouseMap === 'function') {
+        renderWarehouseMap();
     }
 }
 
