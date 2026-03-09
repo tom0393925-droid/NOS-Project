@@ -26,10 +26,11 @@ function updateAnalyticsUI() {
                         <button onclick="moveFileDown(${index})" class="p-1 bg-gray-200 hover:bg-gray-300 rounded text-gray-600 shadow-sm" ${downDisabled}>▼</button>
                         <button onclick="deleteFile(${index})" class="p-1 bg-red-100 hover:bg-red-200 rounded text-red-600 ml-1 shadow-sm">✖</button>
                     </div>`;
-                historyList.appendChild(li);
-            });
-            historyList.parentElement.scrollTop = historyList.parentElement.scrollHeight;
-        }
+               historyList.appendChild(li);
+        });
+        // ★ 勝手に一番下までスクロールする「余計なお世話」を無効化
+        // historyList.parentElement.scrollTop = historyList.parentElement.scrollHeight;
+    }
     }
 
     let skuTotalsMap = {};
@@ -152,7 +153,8 @@ function updateAnalyticsUI() {
         let hitTotalsMap = {};
         for (const key in invoiceHistoryData) {
             const item = invoiceHistoryData[key];
-            const totalHits = item.hits.reduce((a, b) => a + b, 0);
+            const hitsArray = invoiceHistoryData[key].hits || [];
+            const totalHits = hitsArray.reduce((a, b) => a + b, 0);
             const totalSalesQty = item.qtys.reduce((a, b) => a + b, 0);
             
             if (totalHits > 0) {

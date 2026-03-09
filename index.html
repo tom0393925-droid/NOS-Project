@@ -149,9 +149,9 @@
                                 oninput="autoFillMasterForm()">
                         </div>
                         <div class="flex flex-col flex-grow min-w-[200px]">
-                            <span class="text-[10px] font-bold text-yellow-700 ml-1 mb-1">Item Name</span>
+                            <span class="text-[10px] font-bold text-blue-600 ml-1 mb-1">Item Name</span>
                             <input type="text" id="mName" placeholder="Item Name"
-                                class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none">
+                                class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-blue-400 outline-none">
                         </div>
 
                         <div class="flex flex-col w-24">
@@ -190,12 +190,17 @@
                                 class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none">
                         </div>
                         <div class="flex flex-col w-16">
-                            <span class="text-[10px] font-bold text-yellow-700 ml-1 mb-1">UoM</span>
-                            <input type="text" id="mUom" placeholder="UoM"
-                                class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none">
-                        </div>
-                        <div class="flex flex-col w-24">
-                            <span class="text-[10px] font-bold text-red-600 ml-1 mb-1">Safety</span>
+                                    <span class="text-[10px] font-bold text-yellow-700 ml-1 mb-1">UoM</span>
+                                    <input type="text" id="mUom" placeholder="UoM"
+                                        class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none">
+                                </div>
+                                <div class="flex flex-col w-20">
+                                    <span class="text-[10px] font-bold text-green-700 ml-1 mb-1">Weight(kg)</span>
+                                    <input type="number" id="mWeight" placeholder="0.0" step="0.1"
+                                        class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-green-400 outline-none">
+                                </div>
+                                <div class="flex flex-col w-24">
+                                    <span class="text-[10px] font-bold text-red-600 ml-1 mb-1">Safety</span>
                             <input type="number" id="mSafety" placeholder="0"
                                 class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none font-bold text-red-600">
                         </div>
@@ -241,8 +246,9 @@
                                     <th class="p-3 text-blue-600">Loc</th>
                                     <th class="p-3">Temp</th>
                                     <th class="p-3">TC Price</th>
-                                    <th class="p-3">Sell Price</th>
+                                   <th class="p-3">Sell Price</th>
                                     <th class="p-3">UoM</th>
+                                    <th class="p-3 text-green-700">Weight</th>
                                     <th class="p-3 text-red-600">Safety</th>
                                     <th class="p-3">Flags</th>
                                     <th class="p-3 text-center">Action</th>
@@ -784,10 +790,117 @@
                             <h2 class="text-2xl font-black text-slate-800">Warehouse Heatmap (Picking Frequency)</h2>
                             <p class="text-sm text-gray-600 font-bold mt-1">Based on hand-drawn blueprint. Click a rack to see SKUs.</p>
                         </div>
-                        <div class="flex gap-4 text-xs font-bold bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
+                       <div class="flex gap-4 text-xs font-bold bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
                             <div class="flex items-center gap-1"><div class="w-4 h-4 bg-red-200 border border-red-600 rounded"></div> High (A)</div>
                             <div class="flex items-center gap-1"><div class="w-4 h-4 bg-yellow-200 border border-yellow-600 rounded"></div> Mid (B)</div>
                             <div class="flex items-center gap-1"><div class="w-4 h-4 bg-blue-200 border border-blue-600 rounded"></div> Low (C)</div>
+                        </div>
+                    </div>
+
+                    <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-6 flex flex-col md:flex-row justify-between items-center shadow-sm gap-4">
+                        <div>
+                            <h3 class="font-black text-indigo-900 text-lg">⚡ Picking Efficiency Optimization</h3>
+                            <p class="text-xs text-indigo-700 font-bold">Cost = Hits × Distance × Weight Load (Over 10kg=1.5x, Over 20kg=2.0x)</p>
+                        </div>
+                        <div class="flex gap-4 text-center">
+                            <div class="bg-white px-4 py-2 rounded shadow-sm border border-gray-200 min-w-[120px]">
+                                <p class="text-[10px] font-bold text-gray-500 uppercase">Current Cost</p>
+                                <p class="text-xl font-black text-slate-700" id="optCurrentCost">-</p>
+                            </div>
+                            <div class="bg-white px-4 py-2 rounded shadow-sm border border-indigo-200 min-w-[120px]">
+                                <p class="text-[10px] font-bold text-indigo-500 uppercase">Optimized Cost</p>
+                                <p class="text-xl font-black text-indigo-600" id="optBestCost">-</p>
+                            </div>
+                            <div class="bg-emerald-500 px-4 py-2 rounded shadow-sm border border-emerald-600 text-white min-w-[120px]">
+                                <p class="text-[10px] font-bold uppercase text-emerald-100">Efficiency Gain</p>
+                                <p class="text-xl font-black" id="optImprovement">-</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="relocationPlanArea" class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6" style="display: none;">
+                        <div class="flex justify-between items-end border-b border-gray-100 pb-3 mb-4">
+                            <div>
+                                <h3 class="text-xl font-black text-slate-800">📋 Relocation Action Plan (Zone Transfer)</h3>
+                                <p class="text-xs text-gray-500 font-bold mt-1">Recommended zone transfers to reduce picking cost. "Premium" is near PS-A.</p>
+                            </div>
+                        </div>
+                        <div class="overflow-y-auto max-h-[300px] custom-scrollbar border border-gray-200 rounded-lg">
+                            <table class="w-full text-left whitespace-nowrap text-sm">
+                                <thead class="bg-slate-50 sticky top-0 shadow-sm text-gray-500 text-xs font-bold uppercase z-10">
+                                    <tr>
+                                        <th class="p-3 pl-6">Code</th>
+                                        <th class="p-3">Item Name</th>
+                                        <th class="p-3 text-center">Weight</th>
+                                        <th class="p-3 text-right">Pick Hits</th>
+                                        <th class="p-3 text-center text-red-500 bg-gray-100">Current Zone</th>
+                                        <th class="p-3 text-center text-emerald-600 bg-indigo-50">Target Zone</th>
+                                        <th class="p-3 text-right text-indigo-600">Cost Reduction</th>
+                                    </tr>
+                                </thead>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div id="simulatorArea" class="bg-slate-800 p-6 rounded-xl shadow-lg mb-6" style="display: none;">
+                        <div class="border-b border-slate-600 pb-4 mb-6">
+                            <h3 class="font-black text-white text-2xl">🧪 Interactive Relocation Simulator</h3>
+                            <p class="text-sm text-slate-400 font-medium mt-1">Test moving items to different racks manually and see the real-time impact on your picking cost.</p>
+                        </div>
+
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                            <div class="bg-slate-700 p-4 rounded-lg border border-slate-600">
+                                <p class="text-[10px] font-bold text-slate-400 uppercase">Original Cost (Current)</p>
+                                <p class="text-2xl font-black text-white" id="simOriginalCost">-</p>
+                            </div>
+                            <div class="bg-slate-700 p-4 rounded-lg border border-slate-600">
+                                <p class="text-[10px] font-bold text-blue-400 uppercase">Simulated Cost (Test)</p>
+                                <p class="text-2xl font-black text-blue-400" id="simNewCost">-</p>
+                            </div>
+                            <div class="bg-emerald-600 p-4 rounded-lg border border-emerald-500 shadow-inner text-white">
+                                <p class="text-[10px] font-bold uppercase text-emerald-100">Simulated Efficiency Gain</p>
+                                <p class="text-2xl font-black" id="simGain">-</p>
+                            </div>
+                        </div>
+
+                        <div class="flex flex-wrap gap-8 items-end bg-slate-700 p-6 rounded-xl border border-slate-600 mb-6 shadow-sm">
+                            <div class="flex flex-col flex-grow max-w-[450px] relative">
+                                <span class="text-[11px] font-bold text-slate-300 ml-1 mb-1 tracking-wide">1. Search SKU to Move</span>
+                                <input type="text" id="simSkuInput" placeholder="Type SKU Code or Name..." class="p-3.5 border border-slate-500 bg-slate-800 text-white rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-bold w-full transition-shadow" oninput="filterSimSku()" onfocus="filterSimSku()" autocomplete="off">
+                                <input type="hidden" id="simSkuSelect">
+                                <ul id="simSkuDropdown" class="hidden absolute top-full left-0 mt-2 w-full bg-slate-700 border border-slate-500 shadow-2xl rounded-lg max-h-60 overflow-y-auto z-[100] text-slate-200 text-sm custom-scrollbar divide-y divide-slate-600"></ul>
+                            </div>
+                            <div class="flex flex-col w-56">
+                                <span class="text-[11px] font-bold text-slate-300 ml-1 mb-1 tracking-wide">2. Target Rack</span>
+                                <select id="simRackSelect" class="p-3.5 border border-slate-500 bg-slate-800 text-white rounded-lg text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent font-bold custom-scrollbar transition-shadow"></select>
+                            </div>
+                            <button onclick="addSimulationMove()" class="bg-blue-600 hover:bg-blue-500 text-white font-black py-3.5 px-8 rounded-lg shadow-md transition-transform hover:scale-105 h-[50px] flex items-center gap-2">
+                                ➕ Test Move
+                            </button>
+                        </div>
+
+                        <div class="overflow-y-auto max-h-[250px] custom-scrollbar border border-slate-600 rounded-lg bg-slate-900">
+                            <table class="w-full text-left whitespace-nowrap text-sm">
+                                <thead class="bg-slate-950 sticky top-0 shadow-sm text-slate-400 text-xs font-bold uppercase z-10 border-b border-slate-700">
+                                    <tr>
+                                        <th class="p-4 pl-6">Code & Name</th>
+                                        <th class="p-4 text-center">Current</th>
+                                        <th class="p-4 text-center">Target</th>
+                                        <th class="p-4 text-right">Cost Impact</th>
+                                        <th class="p-4 text-center">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="simMoveListBody" class="divide-y divide-slate-800 text-slate-300">
+                                    <tr><td colspan="5" class="p-6 text-center text-slate-500 font-bold">No pending moves. Select an item above to test.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="mt-6 flex justify-end">
+                            <button onclick="applySimulatedMoves()" class="bg-emerald-500 hover:bg-emerald-400 text-white font-black py-3 px-8 rounded-lg shadow-lg transition-transform hover:scale-105 flex items-center gap-2 border border-emerald-400">
+                                💾 Apply Test Moves to Master Data
+                            </button>
                         </div>
                     </div>
 
@@ -824,7 +937,14 @@
                         <div class="overflow-y-auto max-h-[250px] custom-scrollbar border border-gray-200 rounded-lg">
                             <table class="w-full text-left whitespace-nowrap text-sm">
                                 <thead class="bg-slate-50 sticky top-0 shadow-sm text-gray-500 text-xs font-bold uppercase z-10">
-                                    <tr><th class="p-4 pl-6">Code</th><th class="p-4">Item Name</th><th class="p-4 text-right">Pick Hits</th><th class="p-4 text-center">Freq. Rank</th></tr>
+                                    <tr>
+                                        <th class="p-4 pl-6">Code</th>
+                                        <th class="p-4">Item Name</th>
+                                        <th class="p-4 text-right">Weight</th>
+                                        <th class="p-4 text-right">Pick Hits</th>
+                                        <th class="p-4 text-right text-indigo-600">Cost Score</th>
+                                        <th class="p-4 text-center">Freq. Rank</th>
+                                    </tr>
                                 </thead>
                                 <tbody id="rackDetailBody" class="divide-y divide-gray-100 bg-white"></tbody>
                             </table>

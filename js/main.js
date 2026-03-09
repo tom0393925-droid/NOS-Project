@@ -116,9 +116,24 @@ document.addEventListener('click', function(event) {
     }
 });
 
+// ★ 根本治療：ブラウザのおせっかいな「スクロール位置の記憶」を完全に無効化する
+if ('scrollRestoration' in history) {
+    history.scrollRestoration = 'manual';
+}
+
 window.onload = function() {
+    // HTMLのパズルズレを自動修復
+    const dashBg = document.querySelector('.bg-gray-100.flex-grow');
+    const mapTab = document.getElementById('mapTab');
+    if (dashBg && mapTab) {
+        dashBg.appendChild(mapTab);
+    }
+
     if (typeof renderMasterList === "function") renderMasterList();
     const firstTabBtn = document.querySelector('.tab-button');
     if(firstTabBtn) switchTab('nosTab', firstTabBtn);
-    checkDashboardVisibility();
+    if(typeof checkDashboardVisibility === "function") checkDashboardVisibility();
+    
+    // 画面が描画されると同時に、静かに一番上をセットする（ガクッとならない）
+    window.scrollTo(0, 0);
 };
