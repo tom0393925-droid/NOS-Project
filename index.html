@@ -31,13 +31,36 @@
                         database.</p>
                 </div>
 
-                <div
+                <!-- ☁️ Google Sheets 直接読込 -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-emerald-500 border-y border-r border-gray-200">
+                    <div class="mb-4">
+                        <h3 class="font-bold text-emerald-800 text-lg flex items-center gap-2">
+                            ☁️ Load from Google Sheets
+                            <span class="text-xs font-normal bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Recommended</span>
+                        </h3>
+                        <p class="text-sm text-gray-500 mt-1">スプレッドシートから直接読み込みます。Sheet ID と API Key を入力してください。</p>
+                    </div>
+                    <div class="flex flex-col sm:flex-row gap-3 mb-3">
+                        <input type="text" id="sheetsSheetId" placeholder="Spreadsheet ID"
+                            class="flex-grow p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 outline-none font-mono"
+                            title="スプレッドシートURLの /d/ と /edit の間の文字列">
+                        <input type="password" id="sheetsApiKey" placeholder="Google API Key"
+                            class="flex-grow p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 outline-none font-mono">
+                        <button id="loadSheetsBtn" onclick="SheetsAPI.loadAll()"
+                            class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-bold transition-colors shadow-md whitespace-nowrap">
+                            🔄 Load from Google Sheets
+                        </button>
+                    </div>
+                    <p id="sheetsLoadStatus" class="text-sm mt-1 font-medium text-gray-400"></p>
+                </div>
+
+                <!-- Step 1: JSON 読込（バックアップ / オフライン用） -->
+                                <div
                     class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500 border-y border-r border-gray-200">
                     <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                         <div>
-                            <h3 class="font-bold text-blue-800 text-lg flex items-center gap-2">Step 1: Load Database
-                            </h3>
-                            <p class="text-sm text-gray-600 mt-1">Please load the latest JSON database file.</p>
+                            <h3 class="font-bold text-blue-800 text-lg flex items-center gap-2">Step 1: Load Database <span class="text-xs font-normal bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full">Backup / Offline</span></h3>
+                            <p class="text-sm text-gray-600 mt-1">JSONデータベースファイルを読み込みます（バックアップ・オフライン用）。</p>
                         </div>
                         <label
                             class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold cursor-pointer transition-colors shadow-md flex items-center gap-2 whitespace-nowrap">
@@ -773,28 +796,23 @@
                                             <tbody id="crossListBody" class="divide-y divide-gray-200 bg-white">
                                                 <tr>
                                                     <td colspan="4" class="p-6 text-center text-gray-400 font-bold">
-                                                        Click a colored box on the left to view SKUs.</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                                                        Click a colored box on the left to view SKUs.</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                         </div>
+                     </div>
+                 </div>
 
                 <div id="mapTab" class="tab-content px-6 pb-6 pt-6" style="display: none;">
-                    <div class="mb-4 flex justify-between items-end">
+                    <div class="mb-4">
                         <div>
                             <h2 class="text-2xl font-black text-slate-800">Warehouse Heatmap (Picking Frequency)</h2>
                             <p class="text-sm text-gray-600 font-bold mt-1">Based on hand-drawn blueprint. Click a rack to see SKUs.</p>
-                        </div>
-                       <div class="flex gap-4 text-xs font-bold bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
-                            <div class="flex items-center gap-1"><div class="w-4 h-4 bg-red-200 border border-red-600 rounded"></div> High (A)</div>
-                            <div class="flex items-center gap-1"><div class="w-4 h-4 bg-yellow-200 border border-yellow-600 rounded"></div> Mid (B)</div>
-                            <div class="flex items-center gap-1"><div class="w-4 h-4 bg-blue-200 border border-blue-600 rounded"></div> Low (C)</div>
-                        </div>
+                         </div>
                     </div>
 
                     <div class="bg-indigo-50 border border-indigo-200 rounded-xl p-4 mb-6 flex flex-col md:flex-row justify-between items-center shadow-sm gap-4">
@@ -904,6 +922,14 @@
                         </div>
                     </div>
 
+                    <div class="w-full max-w-5xl mx-auto flex justify-end mb-2">
+                        <div class="flex gap-4 text-xs font-bold bg-white px-4 py-2 rounded-lg shadow-sm border border-gray-200">
+                            <div class="flex items-center gap-1"><div class="w-4 h-4 bg-red-200 border border-red-600 rounded"></div> High (A)</div>
+                            <div class="flex items-center gap-1"><div class="w-4 h-4 bg-yellow-200 border border-yellow-600 rounded"></div> Mid (B)</div>
+                            <div class="flex items-center gap-1"><div class="w-4 h-4 bg-blue-200 border border-blue-600 rounded"></div> Low (C)</div>
+                        </div>
+                    </div>
+
                     <div class="relative bg-white border-4 border-slate-700 rounded-xl w-full max-w-5xl mx-auto h-[500px] shadow-lg overflow-hidden" id="warehouse-map">
                         <div class="absolute top-0 bottom-0 right-[25%] border-r-[6px] border-slate-700"></div>
 
@@ -962,7 +988,9 @@
     <script src="js/chart.js?v=11"></script>
     <script src="js/ui_master.js?v=11"></script>
     <script src="js/ui_analytics.js?v=11"></script>
-    <script src="js/ui_map.js?v=11"></script>     <script src="js/ui.js?v=11"></script>
+    <script src="js/ui_map.js?v=11"></script>
+    <script src="js/ui.js?v=11"></script>
+    <script src="js/sheets-api.js?v=1"></script>
     <script src="js/main.js?v=11"></script>
 </body>
 
