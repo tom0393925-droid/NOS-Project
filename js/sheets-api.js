@@ -136,6 +136,7 @@ const SheetsAPI = {
     const idx = h => headers.indexOf(h);
     const iDate = idx('Date'), iCode = idx('Code'), iExpiry = idx('ExpiryDate');
     const iSales = idx('TotalSales'), iEndQty = idx('EndingQty');
+    const iName = idx('Name'), iUom = idx('UoM');
 
     // 日付 → (code+expiry) → {endQty, sales} のマップを構築
     // groups["CODE||expiry"]["2026-03-10"] = { endQty, sales }
@@ -154,7 +155,14 @@ const SheetsAPI = {
 
       const expiry = row[iExpiry] ? String(row[iExpiry]).trim() : '';
       const groupKey = code + '||' + expiry;
-      if (!groups[groupKey]) groups[groupKey] = { code, expiry, byDate: {} };
+      if (!groups[groupKey]) {
+        groups[groupKey] = {
+          code, expiry,
+          name: String(row[iName] || '').trim(),
+          uom:  String(row[iUom]  || '').trim(),
+          byDate: {},
+        };
+      }
 
       const endQty = parseFloat(row[iEndQty]) || 0;
       const sales  = parseFloat(row[iSales])  || 0;
@@ -195,7 +203,16 @@ const SheetsAPI = {
 
       const expiryDate = group.expiry ? new Date(group.expiry) : null;
       const histKey = group.code + '_' + (group.expiry || 'noexpiry');
-      historyData[histKey] = { code: group.code, qtys, sales, expiry: expiryDate };
+      historyData[histKey] = {
+        code: group.code,
+        name: group.name,
+        uom:  group.uom,
+        expiry: expiryDate,
+        expiryStr: group.expiry || 'No Date',
+        isDamaged: false,
+        qtys,
+        sales,
+      };
     }
 
     const weekLabels = weekKeys.map(wk => 'W/' + wk);
