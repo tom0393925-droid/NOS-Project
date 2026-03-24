@@ -215,8 +215,9 @@ const SheetsAPI = {
     const headers = rows[0].map(h => String(h).trim());
     const idx = h => headers.indexOf(h);
     const iDate = idx('Date'), iCode = idx('Code');
+    const iPickQty = idx('PickQty');
 
-    // code → { weekKey: count }
+    // code → { weekKey: { hits, qty } }
     const hitMap = {};
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
@@ -227,16 +228,20 @@ const SheetsAPI = {
       const dateStr = this._toDateStr(rawDate);
       if (!dateStr) continue;
       const wk = this._weekKey(dateStr);
+      const pickQty = parseFloat(row[iPickQty]) || 1;
 
       if (!hitMap[code]) hitMap[code] = {};
-      hitMap[code][wk] = (hitMap[code][wk] || 0) + 1;
+      if (!hitMap[code][wk]) hitMap[code][wk] = { hits: 0, qty: 0 };
+      hitMap[code][wk].hits += 1;
+      hitMap[code][wk].qty  += pickQty;
     }
 
     const result = {};
     for (const [code, wkCounts] of Object.entries(hitMap)) {
       result[code] = {
         code,
-        hits: weekKeys.map(wk => wkCounts[wk] || 0),
+        hits: weekKeys.map(wk => wkCounts[wk] ? wkCounts[wk].hits : 0),
+        qtys: weekKeys.map(wk => wkCounts[wk] ? wkCounts[wk].qty  : 0),
       };
     }
     return result;
