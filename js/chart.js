@@ -131,12 +131,23 @@ function updateChartPeriod() {
     if (tNext2) {
         const baseDate = getLatestDataDate();
         const diffDays = (new Date(tNext2) - baseDate) / 86400000;
-        let extendWeeks = Math.ceil(diffDays / 7) + 1; 
+        let extendWeeks = Math.ceil(diffDays / 7) + 1;
         if (extendWeeks > 0 && extendWeeks <= 78) {
-            for(let i=1; i<=extendWeeks; i++) {
-                let d = new Date(baseDate); d.setDate(d.getDate() + (i * 7));
-                extendedLabels.push(`${d.getFullYear().toString().slice(-2)}/${('0'+(d.getMonth()+1)).slice(-2)}/${('0'+d.getDate()).slice(-2)}`);
-                predictionData.push(Math.max(0, latestQty - (past12WAvg * i))); 
+            const skuShipments = (window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [];
+            let runningQty = latestQty;
+            for (let i = 1; i <= extendWeeks; i++) {
+                const wStart = new Date(baseDate); wStart.setDate(baseDate.getDate() + ((i - 1) * 7));
+                const wEnd   = new Date(baseDate); wEnd.setDate(baseDate.getDate() + (i * 7));
+                // 発注済み分を加算（未入荷のみ）
+                skuShipments.forEach(s => {
+                    if (s.status === 'arrived') return;
+                    const sd = new Date(s.arrivalDate);
+                    if (sd > wStart && sd <= wEnd) runningQty += s.orderQty;
+                });
+                // 週平均販売分を減算
+                runningQty = Math.max(0, runningQty - past12WAvg);
+                extendedLabels.push(`${wEnd.getFullYear().toString().slice(-2)}/${('0'+(wEnd.getMonth()+1)).slice(-2)}/${('0'+wEnd.getDate()).slice(-2)}`);
+                predictionData.push(runningQty);
             }
         }
     }
