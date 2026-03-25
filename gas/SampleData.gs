@@ -28,16 +28,16 @@ function setupSkuMaster() {
   sheet.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#e8f0fe');
 
   const data = [
-    ['SKU-001','Soy Sauce 1L','P','Dry',2.5,4,'btl',1,50,3,false],
-    ['SKU-002','Mayonnaise 500g','O','Chill',3.0,5,'pcs',0.5,30,3,false],
-    ['SKU-003','Cooking Oil 5L','M','Dry',8.0,12,'btl',5,20,5,false],
-    ['SKU-004','Frozen Udon 5pcs','B','Frozen',4.5,7,'pck',0.6,40,7,false],
-    ['SKU-005','Curry Roux 200g','N','Dry',2.0,3.5,'box',0.2,25,3,false],
-    ['SKU-006','Miso Paste 500g','K','Chill',3.5,6,'tub',0.5,20,5,false],
-    ['SKU-007','All-Purpose Flour 1kg','L','Dry',1.2,2,'bag',1,30,3,false],
-    ['SKU-008','Jasmine Rice 5kg','A','Dry',5.0,8,'bag',5,15,7,false],
-    ['SKU-009','Canned Tuna 185g','J','Dry',1.5,2.8,'can',0.2,20,3,false],
-    ['SKU-010','Wasabi Paste 43g','P','Dry',2.8,5,'tub',0.05,15,3,true],
+    ['SKU-001','Soy Sauce 1L','P','Dry',2.5,4,'btl',1,0,3,false],
+    ['SKU-002','Mayonnaise 500g','O','Chill',3.0,5,'pcs',0.5,0,3,false],
+    ['SKU-003','Cooking Oil 5L','M','Dry',8.0,12,'btl',5,0,5,false],
+    ['SKU-004','Frozen Udon 5pcs','B','Frozen',4.5,7,'pck',0.6,0,7,false],
+    ['SKU-005','Curry Roux 200g','N','Dry',2.0,3.5,'box',0.2,0,3,false],
+    ['SKU-006','Miso Paste 500g','K','Chill',3.5,6,'tub',0.5,0,5,false],
+    ['SKU-007','All-Purpose Flour 1kg','L','Dry',1.2,2,'bag',1,0,3,false],
+    ['SKU-008','Jasmine Rice 5kg','A','Dry',5.0,8,'bag',5,0,7,false],
+    ['SKU-009','Canned Tuna 185g','J','Dry',1.5,2.8,'can',0.2,0,3,false],
+    ['SKU-010','Wasabi Paste 43g','P','Dry',2.8,5,'tub',0.05,0,3,true],
   ];
   sheet.getRange(2, 1, data.length, headers.length).setValues(data);
   Logger.log('sku_master セットアップ完了 (' + data.length + ' SKU)');
