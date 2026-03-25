@@ -28,10 +28,11 @@ const SheetsAPI = {
     try {
       status.textContent = 'Fetching sheets...';
 
-      const [masterRows, salesRows, invoiceRows] = await Promise.all([
+      const [masterRows, salesRows, invoiceRows, shipmentRows] = await Promise.all([
         this._fetchSheet(sheetId, apiKey, 'sku_master'),
         this._fetchSheet(sheetId, apiKey, 'daily_sales'),
         this._fetchSheet(sheetId, apiKey, 'invoice_detail'),
+        this._fetchSheet(sheetId, apiKey, 'shipment_orders').catch(() => []),
       ]);
 
       // --- sku_master → skuMaster ---
@@ -47,6 +48,9 @@ const SheetsAPI = {
 
       // --- invoice_detail → invoiceHistoryData (weekly) ---
       invoiceHistoryData = this._convertInvoiceDetail(invoiceRows, salesResult.weekKeys);
+
+      // --- shipment_orders → window.shipmentOrders ---
+      window.shipmentOrders = this._convertShipmentOrders(shipmentRows);
       loadedInvoiceWeeks = salesResult.weekCount;
       loadedInvoiceFiles = salesResult.weekLabels.map(w => 'Invoice ' + w);
 
@@ -290,6 +294,29 @@ const SheetsAPI = {
     const diff = day === 0 ? -6 : 1 - day; // 月曜日へのオフセット
     d.setDate(d.getDate() + diff);
     return d.toISOString().split('T')[0];
+  },
+
+  // ==========================================
+  // Private: shipment_orders → window.shipmentOrders
+  // { "SKU-001": [{ arrivalDate, orderQty, status }, ...], ... }
+  // ==========================================
+
+  _convertShipmentOrders(rows) {
+    if (!rows || rows.length < 2) return {};
+    const headers = rows[0].map(h => String(h).trim());
+    const idx = h => headers.indexOf(h);
+    const result = {};
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const code = String(row[idx('Code')] || '').trim();
+      if (!code) continue;
+      const arrivalDate = String(row[idx('ArrivalDate')] || '').trim();
+      const orderQty = parseFloat(row[idx('OrderQty')]) || 0;
+      const status = String(row[idx('Status')] || 'pending').trim().toLowerCase();
+      if (!result[code]) result[code] = [];
+      result[code].push({ arrivalDate, orderQty, status });
+    }
+    return result;
   },
 
   _parseBool(val) {
