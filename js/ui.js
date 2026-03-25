@@ -290,3 +290,76 @@ function renderSKUDetails(selectedCode) {
     if (document.getElementById('skuDetailArea')) document.getElementById('skuDetailArea').style.display = 'block';
     if (typeof updateChartPeriod === "function") updateChartPeriod();
 }
+
+// ★ 軽量更新：発注量変更時にチャートを再描画せずに予測残高だけ更新する
+function refreshPredictedBalances() {
+    if (!currentSelectedSKU) return;
+    const selectedCode = currentSelectedSKU;
+    const masterData = skuMaster[selectedCode] || {};
+    const stType = masterData.storageType || 'Dry';
+    const safetyStock = masterData.safetyStock || 0;
+    const uomText = masterData.uom || '-';
+
+    const targetLots = Object.values(historyData).filter(h => h.code === selectedCode);
+    if (targetLots.length === 0) return;
+
+    let latestQty = 0;
+    targetLots.forEach(lot => { latestQty += (lot.qtys[loadedWeeks - 1] || 0); });
+
+    let past12WSalesSum = 0;
+    const checkWeeks12 = Math.min(12, loadedWeeks);
+    for (let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
+        let weeklySum = 0;
+        targetLots.forEach(lot => { weeklySum += (lot.sales[i] || 0); });
+        past12WSalesSum += weeklySum;
+    }
+    const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
+
+    let targetNext = '', targetNext2 = '';
+    if (stType === 'Frozen') { targetNext = globalFrozenNext; targetNext2 = globalFrozenNext2; }
+    else { targetNext = globalDryNext; targetNext2 = globalDryNext2; }
+
+    const predictEl = document.getElementById('skuDetailOrderPredict');
+
+    if (!targetNext || !targetNext2) {
+        setSafeText('predNextQty', '-');
+        setSafeText('predNext2Qty', '-');
+        if (predictEl) predictEl.innerHTML = `<span class="text-xs text-gray-400">* Please set the Next / 2nd Next arrival dates for ${stType} in the calendar above.</span>`;
+        return;
+    }
+
+    const dNext = new Date(targetNext);
+    const dNext2 = new Date(targetNext2);
+    const baseDate = getLatestDataDate();
+    const diffWkNext  = (dNext  - baseDate) / (1000 * 60 * 60 * 24 * 7);
+    const diffWkNext2 = (dNext2 - baseDate) / (1000 * 60 * 60 * 24 * 7);
+
+    if (diffWkNext <= 0 || diffWkNext2 <= 0) {
+        setSafeText('predNextQty', 'Error');
+        setSafeText('predNext2Qty', 'Error');
+        if (predictEl) predictEl.innerHTML = `<span class="text-xs text-red-400 font-bold">Date Setting Error (Past date selected)</span>`;
+        return;
+    }
+
+    const skuShipments = (window.shipmentOrders && window.shipmentOrders[selectedCode]) || [];
+    const shipNext  = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext).reduce((a, s) => a + s.orderQty, 0);
+    const shipNext2 = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext2).reduce((a, s) => a + s.orderQty, 0);
+    const stockNext  = latestQty - (past12WAvg * diffWkNext)  + shipNext;
+    const stockNext2 = latestQty - (past12WAvg * diffWkNext2) + shipNext + shipNext2;
+
+    setSafeText('predNextQty',  Math.max(0, Math.round(stockNext)).toLocaleString()  + ' ' + uomText);
+    setSafeText('predNext2Qty', Math.max(0, Math.round(stockNext2)).toLocaleString() + ' ' + uomText);
+
+    if (predictEl) {
+        let html = `<div class="flex gap-4 mt-1">`;
+        if (stockNext < safetyStock) {
+            html += `<div class="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded w-full"><span class="text-xl">🚨</span><div><p class="text-xs font-bold text-red-700">Urgent: Below Safety Stock (${safetyStock}) before ${targetNext}</p><p class="text-[10px] text-red-600">Short by <span class="font-bold text-sm">${Math.ceil(safetyStock - stockNext)}</span> ${uomText}</p></div></div>`;
+        } else if (stockNext2 < safetyStock) {
+            html += `<div class="flex items-center gap-2 bg-yellow-50 border border-yellow-200 px-3 py-1.5 rounded w-full"><span class="text-xl">📦</span><div><p class="text-xs font-bold text-yellow-800">Order Now: Will fall below Safety Stock (${safetyStock}) before ${targetNext2}</p><p class="text-[10px] text-yellow-700">Short by <span class="font-bold text-sm">${Math.ceil(safetyStock - stockNext2)}</span> ${uomText}</p></div></div>`;
+        } else {
+            html += `<div class="flex items-center gap-2 bg-green-50 border border-green-200 px-3 py-1.5 rounded w-full"><span class="text-xl">✅</span><div><p class="text-xs font-bold text-green-700">Safe: No order needed</p><p class="text-[10px] text-green-600">Remains above safety line until 2nd Next Arrival (${targetNext2})</p></div></div>`;
+        }
+        html += `</div>`;
+        predictEl.innerHTML = html;
+    }
+}
