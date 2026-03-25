@@ -242,6 +242,15 @@ function renderSKUDetails(selectedCode) {
         if (stType === 'Frozen') { targetNext = globalFrozenNext; targetNext2 = globalFrozenNext2; } 
         else { targetNext = globalDryNext; targetNext2 = globalDryNext2; }
 
+        // 発注量入力欄を現在の shipmentOrders から復元
+        const skuShipments = (window.shipmentOrders && window.shipmentOrders[selectedCode]) || [];
+        const loadedNextQty  = skuShipments.find(s => s.status !== 'arrived' && s.arrivalDate === targetNext)?.orderQty  || 0;
+        const loadedNext2Qty = skuShipments.find(s => s.status !== 'arrived' && s.arrivalDate === targetNext2)?.orderQty || 0;
+        const nextInput  = document.getElementById('shipOrderNextQty');
+        const next2Input = document.getElementById('shipOrderNext2Qty');
+        if (nextInput)  nextInput.value  = loadedNextQty  || '';
+        if (next2Input) next2Input.value = loadedNext2Qty || '';
+
         if (!targetNext || !targetNext2) {
             setSafeText('predNextQty', '-'); setSafeText('predNext2Qty', '-');
             predictEl.innerHTML = `<span class="text-xs text-gray-400">* Please set the Next / 2nd Next arrival dates for ${stType} in the calendar above.</span>`;
@@ -255,8 +264,11 @@ function renderSKUDetails(selectedCode) {
                 setSafeText('predNextQty', 'Error'); setSafeText('predNext2Qty', 'Error');
                 predictEl.innerHTML = `<span class="text-xs text-red-400 font-bold">Date Setting Error (Past date selected)</span>`;
             } else {
-                const stockNext = latestQty - (past12WAvg * diffWkNext);
-                const stockNext2 = latestQty - (past12WAvg * diffWkNext2);
+                // 発注量を考慮した予測在庫
+                const shipNext  = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext).reduce((a, s) => a + s.orderQty, 0);
+                const shipNext2 = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext2).reduce((a, s) => a + s.orderQty, 0);
+                const stockNext  = latestQty - (past12WAvg * diffWkNext)  + shipNext;
+                const stockNext2 = latestQty - (past12WAvg * diffWkNext2) + shipNext + shipNext2;
 
                 setSafeText('predNextQty', Math.max(0, Math.round(stockNext)).toLocaleString() + ' ' + uomText);
                 setSafeText('predNext2Qty', Math.max(0, Math.round(stockNext2)).toLocaleString() + ' ' + uomText);
