@@ -19,8 +19,10 @@ let currentSelectedSKU = null;
 
 let globalDryNext = "";
 let globalDryNext2 = "";
+let globalDryNext3 = "";
 let globalFrozenNext = "";
 let globalFrozenNext2 = "";
+let globalFrozenNext3 = "";
 
 window.abcRanks = {}; 
 window.abcList = [];  
@@ -77,13 +79,17 @@ function importSaveData(event) {
             
             globalDryNext = importedData.globalDryNext || "";
             globalDryNext2 = importedData.globalDryNext2 || "";
+            globalDryNext3 = importedData.globalDryNext3 || "";
             globalFrozenNext = importedData.globalFrozenNext || "";
             globalFrozenNext2 = importedData.globalFrozenNext2 || "";
-            
-            if(document.getElementById('dryNextDate')) document.getElementById('dryNextDate').value = globalDryNext;
-            if(document.getElementById('dryNext2Date')) document.getElementById('dryNext2Date').value = globalDryNext2;
+            globalFrozenNext3 = importedData.globalFrozenNext3 || "";
+
+            if(document.getElementById('dryNextDate'))    document.getElementById('dryNextDate').value    = globalDryNext;
+            if(document.getElementById('dryNext2Date'))   document.getElementById('dryNext2Date').value   = globalDryNext2;
+            if(document.getElementById('dryNext3Date'))   document.getElementById('dryNext3Date').value   = globalDryNext3;
             if(document.getElementById('frozenNextDate')) document.getElementById('frozenNextDate').value = globalFrozenNext;
-            if(document.getElementById('frozenNext2Date')) document.getElementById('frozenNext2Date').value = globalFrozenNext2;
+            if(document.getElementById('frozenNext2Date'))document.getElementById('frozenNext2Date').value= globalFrozenNext2;
+            if(document.getElementById('frozenNext3Date'))document.getElementById('frozenNext3Date').value= globalFrozenNext3;
 
             for (const key in historyData) {
                 if (historyData[key].expiry) historyData[key].expiry = new Date(historyData[key].expiry);
@@ -120,9 +126,11 @@ function exportSaveData() {
         loadedInvoiceFiles: loadedInvoiceFiles, // SAVE
         memos: currentMemos, 
         globalDryNext: globalDryNext,
-        globalDryNext2: globalDryNext2, 
-        globalFrozenNext: globalFrozenNext, 
-        globalFrozenNext2: globalFrozenNext2
+        globalDryNext2: globalDryNext2,
+        globalDryNext3: globalDryNext3,
+        globalFrozenNext: globalFrozenNext,
+        globalFrozenNext2: globalFrozenNext2,
+        globalFrozenNext3: globalFrozenNext3
     };
     const jsonString = JSON.stringify(dataToSave, null, 2);
     const blob = new Blob([jsonString], { type: "application/json" });

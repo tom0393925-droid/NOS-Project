@@ -119,7 +119,9 @@ function updateShipmentOrder(slot, value) {
     const stType = masterData.storageType || 'Dry';
     const arrivalDate = slot === 'next'
         ? (stType === 'Frozen' ? globalFrozenNext  : globalDryNext)
-        : (stType === 'Frozen' ? globalFrozenNext2 : globalDryNext2);
+        : slot === 'next2'
+        ? (stType === 'Frozen' ? globalFrozenNext2 : globalDryNext2)
+        : (stType === 'Frozen' ? globalFrozenNext3 : globalDryNext3);
     if (!arrivalDate) return;
 
     if (!window.shipmentOrders) window.shipmentOrders = {};
@@ -142,13 +144,17 @@ function updateShipmentOrder(slot, value) {
 function saveDatesAndRender() {
     globalDryNext    = document.getElementById('dryNextDate')?.value    || '';
     globalDryNext2   = document.getElementById('dryNext2Date')?.value   || '';
+    globalDryNext3   = document.getElementById('dryNext3Date')?.value   || '';
     globalFrozenNext = document.getElementById('frozenNextDate')?.value || '';
     globalFrozenNext2= document.getElementById('frozenNext2Date')?.value|| '';
+    globalFrozenNext3= document.getElementById('frozenNext3Date')?.value|| '';
 
     localStorage.setItem('nos_dryNext',     globalDryNext);
     localStorage.setItem('nos_dryNext2',    globalDryNext2);
+    localStorage.setItem('nos_dryNext3',    globalDryNext3);
     localStorage.setItem('nos_frozenNext',  globalFrozenNext);
     localStorage.setItem('nos_frozenNext2', globalFrozenNext2);
+    localStorage.setItem('nos_frozenNext3', globalFrozenNext3);
 
     if (currentSelectedSKU && typeof renderSKUDetails === 'function') {
         renderSKUDetails(currentSelectedSKU);
@@ -158,13 +164,17 @@ function saveDatesAndRender() {
 function restoreContainerDates() {
     globalDryNext     = localStorage.getItem('nos_dryNext')     || '';
     globalDryNext2    = localStorage.getItem('nos_dryNext2')    || '';
+    globalDryNext3    = localStorage.getItem('nos_dryNext3')    || '';
     globalFrozenNext  = localStorage.getItem('nos_frozenNext')  || '';
     globalFrozenNext2 = localStorage.getItem('nos_frozenNext2') || '';
+    globalFrozenNext3 = localStorage.getItem('nos_frozenNext3') || '';
 
     if (document.getElementById('dryNextDate'))    document.getElementById('dryNextDate').value    = globalDryNext;
     if (document.getElementById('dryNext2Date'))   document.getElementById('dryNext2Date').value   = globalDryNext2;
+    if (document.getElementById('dryNext3Date'))   document.getElementById('dryNext3Date').value   = globalDryNext3;
     if (document.getElementById('frozenNextDate')) document.getElementById('frozenNextDate').value = globalFrozenNext;
     if (document.getElementById('frozenNext2Date'))document.getElementById('frozenNext2Date').value= globalFrozenNext2;
+    if (document.getElementById('frozenNext3Date'))document.getElementById('frozenNext3Date').value= globalFrozenNext3;
 }
 
 document.addEventListener('click', function(event) {
