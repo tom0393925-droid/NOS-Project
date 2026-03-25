@@ -130,7 +130,9 @@ function updateShipmentOrder(slot, value) {
     if (existing) { existing.orderQty = qty; }
     else { orders.push({ arrivalDate, orderQty: qty, status: 'pending' }); }
 
-    if (typeof renderSKUDetails === 'function') renderSKUDetails(currentSelectedSKU);
+    // チャートと残高テキストのみ軽量更新（フォーカスを奪わない）
+    if (typeof updateChartPeriod === 'function') updateChartPeriod();
+    if (typeof refreshPredictedBalances === 'function') refreshPredictedBalances();
 }
 
 // ==========================================
