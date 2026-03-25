@@ -140,7 +140,7 @@ function insertSampleSalesData() {
     { code:'SKU-010', name:'Wasabi Paste 43g',      loc:'P', uom:'tub', expiry:'2026-07-31', baseSales:1,  beginQty:30  },
   ];
 
-  for (let d = 29; d >= 0; d--) {
+  for (let d = 83; d >= 0; d--) {
     const date = new Date(today);
     date.setDate(today.getDate() - d);
     const dateStr = Utilities.formatDate(date, tz, 'yyyy-MM-dd');
@@ -198,7 +198,7 @@ function insertSampleInvoiceData() {
   };
 
   let invNum = 10001;
-  for (let d = 29; d >= 0; d--) {
+  for (let d = 83; d >= 0; d--) {
     const date = new Date(today);
     date.setDate(today.getDate() - d);
     if (date.getDay() === 0) continue; // 日曜はなし

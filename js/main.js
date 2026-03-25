@@ -108,6 +108,38 @@ function updateInvoiceSlot() {
     }
 }
 
+// ==========================================
+// Container Arrival Dates: save / restore
+// ==========================================
+
+function saveDatesAndRender() {
+    globalDryNext    = document.getElementById('dryNextDate')?.value    || '';
+    globalDryNext2   = document.getElementById('dryNext2Date')?.value   || '';
+    globalFrozenNext = document.getElementById('frozenNextDate')?.value || '';
+    globalFrozenNext2= document.getElementById('frozenNext2Date')?.value|| '';
+
+    localStorage.setItem('nos_dryNext',     globalDryNext);
+    localStorage.setItem('nos_dryNext2',    globalDryNext2);
+    localStorage.setItem('nos_frozenNext',  globalFrozenNext);
+    localStorage.setItem('nos_frozenNext2', globalFrozenNext2);
+
+    if (currentSelectedSKU && typeof renderSKUDetails === 'function') {
+        renderSKUDetails(currentSelectedSKU);
+    }
+}
+
+function restoreContainerDates() {
+    globalDryNext     = localStorage.getItem('nos_dryNext')     || '';
+    globalDryNext2    = localStorage.getItem('nos_dryNext2')    || '';
+    globalFrozenNext  = localStorage.getItem('nos_frozenNext')  || '';
+    globalFrozenNext2 = localStorage.getItem('nos_frozenNext2') || '';
+
+    if (document.getElementById('dryNextDate'))    document.getElementById('dryNextDate').value    = globalDryNext;
+    if (document.getElementById('dryNext2Date'))   document.getElementById('dryNext2Date').value   = globalDryNext2;
+    if (document.getElementById('frozenNextDate')) document.getElementById('frozenNextDate').value = globalFrozenNext;
+    if (document.getElementById('frozenNext2Date'))document.getElementById('frozenNext2Date').value= globalFrozenNext2;
+}
+
 document.addEventListener('click', function(event) {
     const input = document.getElementById('skuSearchInput');
     const suggestList = document.getElementById('searchSuggestList');
@@ -129,6 +161,7 @@ window.onload = function() {
         dashBg.appendChild(mapTab);
     }
 
+    restoreContainerDates();
     if (typeof renderMasterList === "function") renderMasterList();
     const firstTabBtn = document.querySelector('.tab-button');
     if(firstTabBtn) switchTab('nosTab', firstTabBtn);
