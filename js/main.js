@@ -109,6 +109,31 @@ function updateInvoiceSlot() {
 }
 
 // ==========================================
+// Shipment Order: on-site edit (in-memory only)
+// ==========================================
+
+function updateShipmentOrder(slot, value) {
+    if (!currentSelectedSKU) return;
+    const qty = parseInt(value) || 0;
+    const masterData = skuMaster[currentSelectedSKU] || {};
+    const stType = masterData.storageType || 'Dry';
+    const arrivalDate = slot === 'next'
+        ? (stType === 'Frozen' ? globalFrozenNext  : globalDryNext)
+        : (stType === 'Frozen' ? globalFrozenNext2 : globalDryNext2);
+    if (!arrivalDate) return;
+
+    if (!window.shipmentOrders) window.shipmentOrders = {};
+    if (!window.shipmentOrders[currentSelectedSKU]) window.shipmentOrders[currentSelectedSKU] = [];
+
+    const orders = window.shipmentOrders[currentSelectedSKU];
+    const existing = orders.find(s => s.arrivalDate === arrivalDate);
+    if (existing) { existing.orderQty = qty; }
+    else { orders.push({ arrivalDate, orderQty: qty, status: 'pending' }); }
+
+    if (typeof renderSKUDetails === 'function') renderSKUDetails(currentSelectedSKU);
+}
+
+// ==========================================
 // Container Arrival Dates: save / restore
 // ==========================================
 
