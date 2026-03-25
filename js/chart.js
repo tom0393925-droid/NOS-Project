@@ -81,8 +81,9 @@ const futureLinesPlugin = {
             }
         };
 
-        drawVerticalLine(options.tNext, 'Next', 'rgba(147, 51, 234, 0.8)');
+        drawVerticalLine(options.tNext,  'Next',     'rgba(147, 51, 234, 0.8)');
         drawVerticalLine(options.tNext2, '2nd Next', 'rgba(37, 99, 235, 0.8)');
+        drawVerticalLine(options.tNext3, '3rd Next', 'rgba(234, 88, 12, 0.8)');
     }
 };
 
@@ -125,12 +126,15 @@ function updateChartPeriod() {
     const stType = masterData.storageType || 'Dry';
     const safetyStock = masterData.safetyStock || 0;
 
-    let tNext = (stType === 'Frozen') ? globalFrozenNext : globalDryNext;
+    let tNext  = (stType === 'Frozen') ? globalFrozenNext  : globalDryNext;
     let tNext2 = (stType === 'Frozen') ? globalFrozenNext2 : globalDryNext2;
+    let tNext3 = (stType === 'Frozen') ? globalFrozenNext3 : globalDryNext3;
 
-    if (tNext2) {
+    // グラフは設定されている中で一番遠い日付まで伸ばす
+    const tFarthest = tNext3 || tNext2;
+    if (tFarthest) {
         const baseDate = getLatestDataDate();
-        const diffDays = (new Date(tNext2) - baseDate) / 86400000;
+        const diffDays = (new Date(tFarthest) - baseDate) / 86400000;
         let extendWeeks = Math.ceil(diffDays / 7) + 1;
         if (extendWeeks > 0 && extendWeeks <= 78) {
             const skuShipments = (window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [];
@@ -193,7 +197,7 @@ function updateChartPeriod() {
             interaction: { mode: 'index', intersect: false },
             plugins: { 
                 legend: { display: false },
-                futureLines: { safetyStock: safetyStock, tNext: tNext, tNext2: tNext2 }
+                futureLines: { safetyStock: safetyStock, tNext: tNext, tNext2: tNext2, tNext3: tNext3 }
             },
             scales: {
                 x: { ticks: { maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 50 } }, 
