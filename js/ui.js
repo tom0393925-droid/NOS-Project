@@ -194,16 +194,26 @@ function renderSKUDetails(selectedCode) {
     }
 
     const masterData = skuMaster[selectedCode] || { name: targetLots[0].name, tc: 0, uom: "N/A", storageType: "Dry", safetyStock: 0 };
-    const safetyStock = masterData.safetyStock || 0;
     const latestTotalAmount = masterData.tc * latestQty;
     const dispName = getSkuName(selectedCode);
     const uomText = masterData.uom || "-";
-    
+
+    // past12WAvg を先に計算してデフォルトの安全在庫（2ヶ月 = 8週分）に使う
+    let past12WSalesSum = 0; const checkWeeks12 = Math.min(12, loadedWeeks);
+    for (let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
+        let weeklySum = 0; targetLots.forEach(lot => { weeklySum += (lot.sales[i] || 0); });
+        past12WSalesSum += weeklySum;
+    }
+    const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
+
+    // SafetyStock未設定 (0 or 未入力) の場合は週平均×8週（約2ヶ月）をデフォルトとする
+    const safetyStock = masterData.safetyStock || Math.round(past12WAvg * 8);
+
     setSafeText('skuDetailCode', targetLots[0].code);
     setSafeText('skuDetailName', dispName);
     setSafeText('skuDetailTc', `$${masterData.tc.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`);
     setSafeText('skuDetailUom', uomText);
-    
+
     const tempEl = document.getElementById('skuDetailTemp');
     if (tempEl) {
         let stBadge = '';
@@ -215,15 +225,8 @@ function renderSKUDetails(selectedCode) {
     }
 
     setSafeText('skuDetailQty', latestQty.toLocaleString());
-    setSafeText('skuDetailTotalAmount', `$${Math.round(latestTotalAmount).toLocaleString()}`); 
+    setSafeText('skuDetailTotalAmount', `$${Math.round(latestTotalAmount).toLocaleString()}`);
     setSafeText('skuDetailSafety', safetyStock.toLocaleString());
-
-    let past12WSalesSum = 0; const checkWeeks12 = Math.min(12, loadedWeeks);
-    for (let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
-        let weeklySum = 0; targetLots.forEach(lot => { weeklySum += (lot.sales[i] || 0); });
-        past12WSalesSum += weeklySum;
-    }
-    const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
 
     const wos = past12WAvg > 0 ? (latestQty / past12WAvg) : (latestQty === 0 ? 0 : 999);
     let wosColor = wos > 12 ? "text-red-500" : (wos > 8 ? "text-yellow-600" : "text-green-600");
@@ -310,7 +313,6 @@ function refreshPredictedBalances() {
     const selectedCode = currentSelectedSKU;
     const masterData = skuMaster[selectedCode] || {};
     const stType = masterData.storageType || 'Dry';
-    const safetyStock = masterData.safetyStock || 0;
     const uomText = masterData.uom || '-';
 
     const targetLots = Object.values(historyData).filter(h => h.code === selectedCode);
@@ -327,6 +329,9 @@ function refreshPredictedBalances() {
         past12WSalesSum += weeklySum;
     }
     const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
+
+    // SafetyStock未設定 (0 or 未入力) の場合は週平均×8週（約2ヶ月）をデフォルトとする
+    const safetyStock = masterData.safetyStock || Math.round(past12WAvg * 8);
 
     let targetNext = '', targetNext2 = '';
     if (stType === 'Frozen') { targetNext = globalFrozenNext; targetNext2 = globalFrozenNext2; }
