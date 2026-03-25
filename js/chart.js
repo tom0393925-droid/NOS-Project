@@ -132,7 +132,7 @@ function updateChartPeriod() {
         const baseDate = getLatestDataDate();
         const diffDays = (new Date(tNext2) - baseDate) / 86400000;
         let extendWeeks = Math.ceil(diffDays / 7) + 1; 
-        if (extendWeeks > 0 && extendWeeks <= 24) {
+        if (extendWeeks > 0 && extendWeeks <= 78) {
             for(let i=1; i<=extendWeeks; i++) {
                 let d = new Date(baseDate); d.setDate(d.getDate() + (i * 7));
                 extendedLabels.push(`${d.getFullYear().toString().slice(-2)}/${('0'+(d.getMonth()+1)).slice(-2)}/${('0'+d.getDate()).slice(-2)}`);
