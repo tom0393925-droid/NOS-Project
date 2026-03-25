@@ -108,9 +108,13 @@ function updateChartPeriod() {
     const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
 
     let extendedLabels = loadedFiles.map((filename, i) => {
+        // Sheets API format: "W/2026-03-24"
+        const isoMatch = filename.match(/(\d{4})-(\d{2})-(\d{2})/);
+        if (isoMatch) return `${isoMatch[1].slice(-2)}/${isoMatch[2]}/${isoMatch[3]}`;
+        // Old Excel filename format: "YYMMDD"
         const match = filename.match(/(\d{6})/);
         if (match) return `20${match[0].slice(0,2)}/${match[0].slice(2,4)}/${match[0].slice(4,6)}`;
-        return `Wk ${i + 1}`; 
+        return `Wk ${i + 1}`;
     });
 
     let predictionData = new Array(loadedWeeks).fill(null);
