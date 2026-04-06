@@ -312,6 +312,13 @@ function renderHitAbcList(targetRank) {
 // ==========================================
 function renderCrossAnalysis() {
     const crossSection = document.getElementById('crossAnalysisSection');
+    // crossAnalysisSection は mapTab にのみ表示する
+    const mapTab = document.getElementById('mapTab');
+    const isMapActive = mapTab && mapTab.style.display !== 'none';
+    if (!isMapActive) {
+        if(crossSection) crossSection.style.display = 'none';
+        return;
+    }
     if (loadedWeeks === 0 || loadedInvoiceWeeks === 0 || !window.abcRanks || !window.hitAbcRanks) {
         if(crossSection) crossSection.style.display = 'none';
         return;
