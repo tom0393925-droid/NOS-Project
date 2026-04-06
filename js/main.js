@@ -66,6 +66,7 @@ function switchTab(tabId, btnElement) {
         updateAnalyticsUI();
     } else if (tabId === 'mapTab' && typeof renderWarehouseMap === 'function') {
         renderWarehouseMap();
+        if (typeof updateAnalyticsUI === 'function') updateAnalyticsUI(); // ABC analysis is now in map tab
     }
 }
 
