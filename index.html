@@ -567,53 +567,30 @@
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                            <div
-                                class="lg:col-span-2 bg-white p-0 rounded-xl shadow-sm border-t-4 border-t-purple-500 border border-gray-200 overflow-hidden">
-                                <div class="p-6 pb-4 border-b border-gray-100 bg-purple-50/30">
-                                    <h3 class="font-black text-purple-900 text-xl">⚠️ Order Action Required List</h3>
-                                    <p class="text-sm text-purple-700 mt-1 font-medium">Items that will fall below their
-                                        Safety Stock before expected arrival dates.</p>
-                                </div>
-                                <div class="overflow-y-auto max-h-[300px] custom-scrollbar">
-                                    <table class="w-full text-left whitespace-nowrap">
-                                        <thead
-                                            class="bg-white sticky top-0 shadow-sm text-gray-500 text-xs uppercase tracking-wider z-10">
-                                            <tr>
-                                                <th class="p-4 pl-6 font-bold">Code</th>
-                                                <th class="p-4 font-bold">Item Name</th>
-                                                <th class="p-4 text-center font-bold">Safety</th>
-                                                <th class="p-4 text-right font-bold">Qty</th>
-                                                <th class="p-4 text-center font-bold">Predicted Status</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="orderAlertTableBody" class="divide-y divide-gray-100 text-sm">
-                                        </tbody>
-                                    </table>
-                                </div>
+                        <div class="bg-white p-0 rounded-xl shadow-sm border-t-4 border-t-purple-500 border border-gray-200 overflow-hidden">
+                            <div class="p-6 pb-4 border-b border-gray-100 bg-purple-50/30">
+                                <h3 class="font-black text-purple-900 text-xl">⚠️ Order Action Required List</h3>
+                                <p class="text-sm text-purple-700 mt-1 font-medium">Items that will fall below their
+                                    Safety Stock before expected arrival dates.</p>
                             </div>
-
-                            <div
-                                class="lg:col-span-1 bg-white p-0 rounded-xl shadow-sm border-t-4 border-t-red-500 border border-gray-200 overflow-hidden flex flex-col">
-                                <div class="p-6 pb-4 border-b border-gray-100 bg-red-50/30">
-                                    <h3 class="font-black text-red-900 text-xl">🚨 Waste Risk</h3>
-                                    <p class="text-sm text-red-700 mt-1 font-medium">Expired or Damaged/FF items.</p>
-                                </div>
-                                <div class="overflow-y-auto max-h-[300px] custom-scrollbar flex-grow">
-                                    <table class="w-full text-left whitespace-nowrap text-sm">
-                                        <thead
-                                            class="bg-white sticky top-0 shadow-sm text-gray-500 text-xs uppercase tracking-wider">
-                                            <tr>
-                                                <th class="p-4 font-bold">Code</th>
-                                                <th class="p-4 text-center font-bold">Status</th>
-                                                <th class="p-4 text-right font-bold pr-6">Qty</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="analyticsAlertTableBody" class="divide-y divide-gray-100"></tbody>
-                                    </table>
-                                </div>
+                            <div class="overflow-y-auto max-h-[400px] custom-scrollbar">
+                                <table class="w-full text-left whitespace-nowrap">
+                                    <thead
+                                        class="bg-white sticky top-0 shadow-sm text-gray-500 text-xs uppercase tracking-wider z-10">
+                                        <tr>
+                                            <th class="p-4 pl-6 font-bold">Code</th>
+                                            <th class="p-4 font-bold">Item Name</th>
+                                            <th class="p-4 text-center font-bold">Safety</th>
+                                            <th class="p-4 text-right font-bold">Qty</th>
+                                            <th class="p-4 text-center font-bold">Predicted Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="orderAlertTableBody" class="divide-y divide-gray-100 text-sm">
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
+                        <tbody id="analyticsAlertTableBody" class="hidden"></tbody>
                      </div>
                  </div>
 
