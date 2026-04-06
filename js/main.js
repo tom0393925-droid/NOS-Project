@@ -66,7 +66,15 @@ function switchTab(tabId, btnElement) {
         updateAnalyticsUI();
     } else if (tabId === 'mapTab' && typeof renderWarehouseMap === 'function') {
         renderWarehouseMap();
-        if (typeof updateAnalyticsUI === 'function') updateAnalyticsUI(); // ABC analysis is now in map tab
+        if (typeof updateAnalyticsUI === 'function') updateAnalyticsUI();
+    }
+
+    // ★ crossAnalysisSection と simulatorArea は mapTab のみで表示
+    const _cross = document.getElementById('crossAnalysisSection');
+    const _sim   = document.getElementById('simulatorArea');
+    if (tabId !== 'mapTab') {
+        if (_cross) _cross.style.display = 'none';
+        if (_sim)   _sim.style.display   = 'none';
     }
 }
 
