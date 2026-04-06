@@ -615,107 +615,6 @@
                             </div>
                         </div>
 
-                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                            <div class="mb-4 border-b border-gray-100 pb-4">
-                                <h3 class="font-black text-gray-800 text-xl">💰 Financial ABC Analysis</h3>
-                                <p class="text-sm text-gray-500 font-medium">Ranked by Current Stock Value ($)</p>
-                            </div>
-                            <div class="h-64 relative flex justify-center items-center mb-6">
-                                <canvas id="abcChart"></canvas>
-                            </div>
-
-                            <div
-                                class="flex w-full mb-0 rounded-t-lg overflow-hidden border border-gray-200 border-b-0 mt-4">
-                                <button id="btnAbcA" onclick="renderAbcList('A')"
-                                    class="btn-abc flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent">A
-                                    Rank (<span id="cntAbcA">0</span> SKUs)</button>
-                                <button id="btnAbcB" onclick="renderAbcList('B')"
-                                    class="btn-abc flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent">B
-                                    Rank (<span id="cntAbcB">0</span> SKUs)</button>
-                                <button id="btnAbcC" onclick="renderAbcList('C')"
-                                    class="btn-abc flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent">C
-                                    Rank (<span id="cntAbcC">0</span> SKUs)</button>
-                            </div>
-
-                            <div
-                                class="overflow-y-auto max-h-[300px] border border-gray-200 rounded-b-lg custom-scrollbar">
-                                <table class="w-full text-left whitespace-nowrap text-sm">
-                                    <thead
-                                        class="bg-slate-50 sticky top-0 shadow-sm text-gray-600 text-xs uppercase tracking-wider z-10">
-                                        <tr>
-                                            <th class="p-3 pl-4">Code</th>
-                                            <th class="p-3">Name</th>
-                                            <th class="p-3 text-right">TC</th>
-                                            <th class="p-3 text-right">Qty</th>
-                                            <th class="p-3 text-right">Value</th>
-                                            <th class="p-3 text-right">Cum. %</th>
-                                            <th class="p-3 text-center">Rank</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="abcListBody" class="divide-y divide-gray-100 bg-white"></tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <div
-                            class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-t-indigo-500 border border-gray-200 mt-6">
-                            <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
-                                <div>
-                                    <h3 class="font-black text-indigo-900 text-xl flex items-center gap-3">
-                                        🏃‍♂️ Picking Frequency ABC Analysis
-                                        <select id="hitPeriodSelect" onchange="updateAnalyticsUI()"
-                                            class="ml-2 text-xs border border-gray-300 rounded px-2 py-1 bg-white font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-400">
-                                            <option value="all">All Time</option>
-                                            <option value="12">Last 12 Weeks</option>
-                                            <option value="4">Last 4 Weeks</option>
-                                        </select>
-                                    </h3>
-                                    <p class="text-sm text-indigo-700 font-medium">Ranked by Invoice Hit Counts (Order
-                                        Lines)</p>
-                                </div>
-                            </div>
-
-                            <div id="hitAbcPlaceholder" class="text-center py-10 text-gray-400 font-bold">Please append
-                                Invoice Data in Step 2-B to view Picking Frequency analysis.</div>
-
-                            <div id="hitAbcContent" style="display:none;">
-                                <div class="h-64 relative flex justify-center items-center mb-6">
-                                    <canvas id="hitAbcChart"></canvas>
-                                </div>
-
-                                <div
-                                    class="flex w-full mb-0 rounded-t-lg overflow-hidden border border-gray-200 border-b-0 mt-4">
-                                    <button id="btnHitAbcA" onclick="renderHitAbcList('A')"
-                                        class="btn-hit-abc flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent">A
-                                        Rank (<span id="cntHitAbcA">0</span> SKUs)</button>
-                                    <button id="btnHitAbcB" onclick="renderHitAbcList('B')"
-                                        class="btn-hit-abc flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent">B
-                                        Rank (<span id="cntHitAbcB">0</span> SKUs)</button>
-                                    <button id="btnHitAbcC" onclick="renderHitAbcList('C')"
-                                        class="btn-hit-abc flex-1 py-3 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent">C
-                                        Rank (<span id="cntHitAbcC">0</span> SKUs)</button>
-                                </div>
-
-                                <div
-                                    class="overflow-y-auto max-h-[300px] border border-gray-200 rounded-b-lg custom-scrollbar">
-                                    <table class="w-full text-left whitespace-nowrap text-sm">
-                                        <thead
-                                            class="bg-slate-50 sticky top-0 shadow-sm text-gray-600 text-xs uppercase tracking-wider z-10">
-                                            <tr>
-                                                <th class="p-3 pl-4">Code</th>
-                                                <th class="p-3">Name</th>
-                                                <th class="p-3 text-right">Hits (Selected Period)</th>
-                                                <th class="p-3 text-right">Qty (Selected Period)</th>
-                                                <th class="p-3 text-right">Cum. %</th>
-                                                <th class="p-3 text-center">Rank</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="hitAbcListBody" class="divide-y divide-gray-100 bg-white"></tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-
                         <div class="bg-slate-800 p-6 rounded-xl shadow-lg border-t-4 border-t-pink-500 mt-6"
                             id="crossAnalysisSection" style="display:none;">
                             <div class="mb-6 border-b border-slate-600 pb-4">
@@ -1007,22 +906,98 @@
                             </table>
                         </div>
                     </div>
+
+                    <!-- ABC Analysis (moved from Analytics tab) -->
+                    <div class="mt-6 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
+                            <div class="mb-4 border-b border-gray-100 pb-4">
+                                <h3 class="font-black text-gray-800 text-xl">💰 Financial ABC Analysis</h3>
+                                <p class="text-sm text-gray-500 font-medium">Ranked by Current Stock Value ($)</p>
+                            </div>
+                            <div class="h-48 relative flex justify-center items-center mb-4">
+                                <canvas id="abcChart"></canvas>
+                            </div>
+                            <div class="flex w-full mb-0 rounded-t-lg overflow-hidden border border-gray-200 border-b-0">
+                                <button id="btnAbcA" onclick="renderAbcList('A')" class="btn-abc flex-1 py-2 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent text-sm">A Rank (<span id="cntAbcA">0</span>)</button>
+                                <button id="btnAbcB" onclick="renderAbcList('B')" class="btn-abc flex-1 py-2 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent text-sm">B Rank (<span id="cntAbcB">0</span>)</button>
+                                <button id="btnAbcC" onclick="renderAbcList('C')" class="btn-abc flex-1 py-2 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent text-sm">C Rank (<span id="cntAbcC">0</span>)</button>
+                            </div>
+                            <div class="overflow-y-auto max-h-[260px] border border-gray-200 rounded-b-lg custom-scrollbar">
+                                <table class="w-full text-left whitespace-nowrap text-sm">
+                                    <thead class="bg-slate-50 sticky top-0 shadow-sm text-gray-600 text-xs uppercase tracking-wider z-10">
+                                        <tr>
+                                            <th class="p-3 pl-4">Code</th>
+                                            <th class="p-3">Name</th>
+                                            <th class="p-3 text-right">TC</th>
+                                            <th class="p-3 text-right">Qty</th>
+                                            <th class="p-3 text-right">Value</th>
+                                            <th class="p-3 text-right">Cum. %</th>
+                                            <th class="p-3 text-center">Rank</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="abcListBody" class="divide-y divide-gray-100 bg-white"></tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-6 rounded-xl shadow-sm border-t-4 border-t-indigo-500 border border-gray-200">
+                            <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-4">
+                                <div>
+                                    <h3 class="font-black text-indigo-900 text-xl flex items-center gap-2">
+                                        🏃 Picking Frequency ABC
+                                        <select id="hitPeriodSelect" onchange="updateAnalyticsUI()" class="ml-1 text-xs border border-gray-300 rounded px-2 py-1 bg-white font-bold text-indigo-600 outline-none focus:ring-2 focus:ring-indigo-400">
+                                            <option value="all">All Time</option>
+                                            <option value="12">Last 12 Wks</option>
+                                            <option value="4">Last 4 Wks</option>
+                                        </select>
+                                    </h3>
+                                    <p class="text-sm text-indigo-700 font-medium">Ranked by Invoice Hit Counts</p>
+                                </div>
+                            </div>
+                            <div id="hitAbcPlaceholder" class="text-center py-10 text-gray-400 font-bold text-sm">Please append Invoice Data to view Picking Frequency analysis.</div>
+                            <div id="hitAbcContent" style="display:none;">
+                                <div class="h-48 relative flex justify-center items-center mb-4">
+                                    <canvas id="hitAbcChart"></canvas>
+                                </div>
+                                <div class="flex w-full mb-0 rounded-t-lg overflow-hidden border border-gray-200 border-b-0">
+                                    <button id="btnHitAbcA" onclick="renderHitAbcList('A')" class="btn-hit-abc flex-1 py-2 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent text-sm">A Rank (<span id="cntHitAbcA">0</span>)</button>
+                                    <button id="btnHitAbcB" onclick="renderHitAbcList('B')" class="btn-hit-abc flex-1 py-2 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent text-sm">B Rank (<span id="cntHitAbcB">0</span>)</button>
+                                    <button id="btnHitAbcC" onclick="renderHitAbcList('C')" class="btn-hit-abc flex-1 py-2 text-center font-bold text-gray-500 hover:text-gray-700 hover:bg-gray-50 transition-colors border-b-4 border-transparent text-sm">C Rank (<span id="cntHitAbcC">0</span>)</button>
+                                </div>
+                                <div class="overflow-y-auto max-h-[260px] border border-gray-200 rounded-b-lg custom-scrollbar">
+                                    <table class="w-full text-left whitespace-nowrap text-sm">
+                                        <thead class="bg-slate-50 sticky top-0 shadow-sm text-gray-600 text-xs uppercase tracking-wider z-10">
+                                            <tr>
+                                                <th class="p-3 pl-4">Code</th>
+                                                <th class="p-3">Name</th>
+                                                <th class="p-3 text-right">Hits</th>
+                                                <th class="p-3 text-right">Qty</th>
+                                                <th class="p-3 text-right">Cum. %</th>
+                                                <th class="p-3 text-center">Rank</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="hitAbcListBody" class="divide-y divide-gray-100 bg-white"></tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
             </div>
         </div>
     </div>
 
-    <script src="js/state.js?v=12"></script>
-    <script src="js/utils.js?v=12"></script>
-    <script src="js/excel.js?v=12"></script>
-    <script src="js/chart.js?v=12"></script>
-    <script src="js/ui_master.js?v=12"></script>
-    <script src="js/ui_analytics.js?v=12"></script>
-    <script src="js/ui_map.js?v=12"></script>
-    <script src="js/ui.js?v=12"></script>
+    <script src="js/state.js?v=13"></script>
+    <script src="js/utils.js?v=13"></script>
+    <script src="js/excel.js?v=13"></script>
+    <script src="js/chart.js?v=13"></script>
+    <script src="js/ui_master.js?v=13"></script>
+    <script src="js/ui_analytics.js?v=13"></script>
+    <script src="js/ui_map.js?v=13"></script>
+    <script src="js/ui.js?v=13"></script>
     <script src="js/sheets-api.js?v=1"></script>
-    <script src="js/main.js?v=12"></script>
+    <script src="js/main.js?v=13"></script>
 </body>
 
 </html>
