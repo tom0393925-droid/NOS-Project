@@ -371,14 +371,14 @@ function _getArrivalDates(tab) {
     const next  = tab === 'frozen' ? globalFrozenNext  : globalDryNext;
     const next2 = tab === 'frozen' ? globalFrozenNext2 : globalDryNext2;
     const next3 = tab === 'frozen' ? globalFrozenNext3 : globalDryNext3;
-    const today = new Date();
+    const baseDate = getLatestDataDate(); // SKU詳細と同じ基準日を使用
     const dNext  = next  ? new Date(next)  : null;
     const dNext2 = next2 ? new Date(next2) : null;
     const dNext3 = next3 ? new Date(next3) : null;
     const MS_PER_WEEK = 7 * 24 * 3600 * 1000;
     return {
         next, next2, next3,
-        weeksToNext:    dNext  ? Math.max(0, (dNext  - today)  / MS_PER_WEEK) : null,
+        weeksToNext:    dNext  ? Math.max(0, (dNext  - baseDate) / MS_PER_WEEK) : null,
         weeks1to2:      (dNext && dNext2) ? Math.max(0, (dNext2 - dNext)  / MS_PER_WEEK) : null,
         weeks2to3:      (dNext2 && dNext3) ? Math.max(0, (dNext3 - dNext2) / MS_PER_WEEK) : null,
     };
