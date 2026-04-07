@@ -221,6 +221,10 @@ function updateAnalyticsUI() {
     
     // 3. Render Cross Analysis if both data are available
     renderCrossAnalysis();
+
+    // 4. Order Action Required List
+    _buildOrderData();
+    renderOrderTable();
 }
 
 
@@ -353,6 +357,250 @@ function renderCrossAnalysis() {
             }
         });
     });
+}
+
+// ==========================================
+// Order Action Required List
+// ==========================================
+
+let _orderTab = 'dry';
+let _orderSort = { col: null, asc: true };
+let _orderData = [];
+
+function _getArrivalDates(tab) {
+    const next  = tab === 'frozen' ? globalFrozenNext  : globalDryNext;
+    const next2 = tab === 'frozen' ? globalFrozenNext2 : globalDryNext2;
+    const next3 = tab === 'frozen' ? globalFrozenNext3 : globalDryNext3;
+    const today = new Date();
+    const dNext  = next  ? new Date(next)  : null;
+    const dNext2 = next2 ? new Date(next2) : null;
+    const dNext3 = next3 ? new Date(next3) : null;
+    const MS_PER_WEEK = 7 * 24 * 3600 * 1000;
+    return {
+        next, next2, next3,
+        weeksToNext:    dNext  ? Math.max(0, (dNext  - today)  / MS_PER_WEEK) : null,
+        weeks1to2:      (dNext && dNext2) ? Math.max(0, (dNext2 - dNext)  / MS_PER_WEEK) : null,
+        weeks2to3:      (dNext2 && dNext3) ? Math.max(0, (dNext3 - dNext2) / MS_PER_WEEK) : null,
+    };
+}
+
+function _buildOrderData() {
+    const dates = _getArrivalDates(_orderTab);
+    const rows = [];
+
+    for (const code in skuMaster) {
+        const master = skuMaster[code];
+        const stType = master.storageType || 'Dry';
+        const matchTab = _orderTab === 'frozen' ? stType === 'Frozen' : (stType === 'Dry' || stType === 'Chill');
+        if (!matchTab) continue;
+
+        // current qty (sum across lots)
+        let currentQty = 0;
+        for (const key in historyData) {
+            if (historyData[key].code === code) {
+                currentQty += (historyData[key].qtys[loadedWeeks - 1] || 0);
+            }
+        }
+
+        // avg weekly sales (past 12 weeks)
+        let salesSum = 0;
+        const wks = Math.min(12, loadedWeeks);
+        for (let i = loadedWeeks - wks; i < loadedWeeks; i++) {
+            for (const key in historyData) {
+                if (historyData[key].code === code) salesSum += (historyData[key].sales[i] || 0);
+            }
+        }
+        const avg = wks > 0 ? salesSum / wks : 0;
+        const safety = master.safetyStock || Math.round(avg * 8);
+
+        // predictions
+        const predNext = dates.weeksToNext !== null ? currentQty - avg * dates.weeksToNext : null;
+        let orderNext = 0, pred2nd = null, order2nd = 0, pred3rd = null, order3rd = 0;
+
+        if (predNext !== null && dates.weeks1to2 !== null) {
+            orderNext = Math.max(0, Math.round(safety + avg * dates.weeks1to2 - predNext));
+            pred2nd   = predNext + orderNext - avg * dates.weeks1to2;
+        }
+        if (pred2nd !== null && dates.weeks2to3 !== null) {
+            order2nd = Math.max(0, Math.round(safety + avg * dates.weeks2to3 - pred2nd));
+            pred3rd  = pred2nd + order2nd - avg * dates.weeks2to3;
+        }
+        if (pred3rd !== null) {
+            order3rd = Math.max(0, Math.round(safety - pred3rd));
+        }
+
+        rows.push({ code, name: master.name || code, uom: master.uom || '-', avg, safety, currentQty,
+            predNext, orderNext, pred2nd, order2nd, pred3rd, order3rd });
+    }
+
+    _orderData = rows;
+}
+
+function switchOrderTab(tab) {
+    _orderTab = tab;
+    _orderSort = { col: null, asc: true };
+    const dryBtn    = document.getElementById('btnOrderTabDry');
+    const frozenBtn = document.getElementById('btnOrderTabFrozen');
+    if (dryBtn)    dryBtn.className    = `px-5 py-2.5 font-bold text-sm border-b-2 transition-colors ${tab === 'dry'    ? 'border-purple-600 text-purple-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`;
+    if (frozenBtn) frozenBtn.className = `px-5 py-2.5 font-bold text-sm border-b-2 transition-colors ${tab === 'frozen' ? 'border-purple-600 text-purple-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`;
+    _buildOrderData();
+    renderOrderTable();
+}
+
+function sortOrderTable(col) {
+    _orderSort.asc = _orderSort.col === col ? !_orderSort.asc : (col === 'code' || col === 'name');
+    _orderSort.col = col;
+    ['code','name','avg','safety','currentQty','predNext','pred2nd','pred3rd'].forEach(c => {
+        const el = document.getElementById('sortIcon_' + c);
+        if (el) el.textContent = c === col ? (_orderSort.asc ? '↑' : '↓') : '↕';
+    });
+    renderOrderTable();
+}
+
+function renderOrderTable() {
+    const tbody = document.getElementById('orderAlertTableBody');
+    if (!tbody) return;
+
+    // update column headers with actual dates
+    const dates = _getArrivalDates(_orderTab);
+    const setTh = (id, label, date) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = date ? `→ ${date} <span id="sortIcon_${label}" class="text-blue-300">↕</span>` : `→ ${label.toUpperCase()} <span id="sortIcon_${label}" class="text-gray-300">↕</span>`;
+    };
+    setTh('thPredNext', 'predNext', dates.next);
+    setTh('thPred2nd',  'pred2nd',  dates.next2);
+    setTh('thPred3rd',  'pred3rd',  dates.next3);
+    const setOrderTh = (id, label, date) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = date ? `Order (${date})` : label;
+    };
+    setOrderTh('thOrderNext', 'Order (Next)', dates.next);
+    setOrderTh('thOrder2nd',  'Order (2nd)',  dates.next2);
+    setOrderTh('thOrder3rd',  'Order (3rd)',  dates.next3);
+
+    // filter
+    const q = (document.getElementById('orderTableSearch')?.value || '').toLowerCase();
+    let rows = q ? _orderData.filter(r => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)) : [..._orderData];
+
+    // sort
+    if (_orderSort.col) {
+        rows.sort((a, b) => {
+            const va = a[_orderSort.col], vb = b[_orderSort.col];
+            if (va === null && vb === null) return 0;
+            if (va === null) return 1;
+            if (vb === null) return -1;
+            if (typeof va === 'string') return _orderSort.asc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
+            return _orderSort.asc ? va - vb : vb - va;
+        });
+    }
+
+    if (rows.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-gray-400 font-bold">No SKUs found. Make sure container arrival dates are set above.</td></tr>`;
+        return;
+    }
+
+    const fmtPred = (v, safety) => {
+        if (v === null) return `<span class="text-gray-300">-</span>`;
+        const rounded = Math.round(v);
+        const cls = rounded < 0 ? 'text-red-700 font-black bg-red-50 px-1 rounded' :
+                    rounded < safety ? 'text-red-500 font-bold' :
+                    rounded < safety * 1.5 ? 'text-yellow-600 font-bold' : 'text-gray-700';
+        return `<span class="${cls}">${rounded.toLocaleString()}</span>`;
+    };
+
+    tbody.innerHTML = '';
+    rows.forEach(row => {
+        const sid = String(row.code).replace(/[^a-zA-Z0-9]/g, '_');
+        const tr = document.createElement('tr');
+        tr.className = 'border-b border-gray-100 hover:bg-purple-50/20';
+        tr.innerHTML = `
+            <td class="p-3 pl-4 font-bold text-indigo-700">${row.code}</td>
+            <td class="p-3 max-w-[180px] truncate text-gray-700" title="${row.name}">${row.name}</td>
+            <td class="p-3 text-center text-gray-500 text-xs">${row.uom}</td>
+            <td class="p-3 text-right font-mono text-gray-500">${row.avg.toFixed(1)}</td>
+            <td class="p-3 text-right font-mono text-red-500 font-bold">${row.safety.toLocaleString()}</td>
+            <td class="p-3 text-right font-mono font-bold text-gray-800">${row.currentQty.toLocaleString()}</td>
+            <td class="p-3 text-right bg-blue-50">${fmtPred(row.predNext, row.safety)}</td>
+            <td class="p-3 bg-blue-50"><input type="number" min="0" value="${row.orderNext}" data-sid="${sid}" data-field="orderNext" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-blue-200 rounded px-2 py-1 text-xs font-bold text-blue-800 focus:ring-1 focus:ring-blue-400 outline-none bg-white"></td>
+            <td class="p-3 text-right bg-indigo-50" id="op2_${sid}">${fmtPred(row.pred2nd, row.safety)}</td>
+            <td class="p-3 bg-indigo-50"><input type="number" min="0" value="${row.order2nd}" data-sid="${sid}" data-field="order2nd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-indigo-200 rounded px-2 py-1 text-xs font-bold text-indigo-800 focus:ring-1 focus:ring-indigo-400 outline-none bg-white"></td>
+            <td class="p-3 text-right bg-violet-50" id="op3_${sid}">${fmtPred(row.pred3rd, row.safety)}</td>
+            <td class="p-3 bg-violet-50"><input type="number" min="0" value="${row.order3rd}" data-sid="${sid}" data-field="order3rd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-violet-200 rounded px-2 py-1 text-xs font-bold text-violet-800 focus:ring-1 focus:ring-violet-400 outline-none bg-white"></td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function onOrderQtyChange(input) {
+    const sid = input.dataset.sid;
+    const field = input.dataset.field;
+    const val = parseInt(input.value) || 0;
+    const row = _orderData.find(r => String(r.code).replace(/[^a-zA-Z0-9]/g, '_') === sid);
+    if (!row) return;
+
+    const dates = _getArrivalDates(_orderTab);
+    const fmtPred = (v, safety) => {
+        if (v === null) return `<span class="text-gray-300">-</span>`;
+        const rounded = Math.round(v);
+        const cls = rounded < 0 ? 'text-red-700 font-black bg-red-50 px-1 rounded' :
+                    rounded < safety ? 'text-red-500 font-bold' :
+                    rounded < safety * 1.5 ? 'text-yellow-600 font-bold' : 'text-gray-700';
+        return `<span class="${cls}">${rounded.toLocaleString()}</span>`;
+    };
+
+    if (field === 'orderNext') {
+        row.orderNext = val;
+        if (row.predNext !== null && dates.weeks1to2 !== null) {
+            row.pred2nd  = row.predNext + val - row.avg * dates.weeks1to2;
+            row.order2nd = Math.max(0, Math.round(row.safety + row.avg * (dates.weeks2to3 || 0) - row.pred2nd));
+            if (dates.weeks2to3 !== null) {
+                row.pred3rd  = row.pred2nd + row.order2nd - row.avg * dates.weeks2to3;
+                row.order3rd = Math.max(0, Math.round(row.safety - row.pred3rd));
+            }
+        }
+    } else if (field === 'order2nd') {
+        row.order2nd = val;
+        if (row.pred2nd !== null && dates.weeks2to3 !== null) {
+            row.pred3rd  = row.pred2nd + val - row.avg * dates.weeks2to3;
+            row.order3rd = Math.max(0, Math.round(row.safety - row.pred3rd));
+        }
+    } else {
+        row.order3rd = val;
+        return;
+    }
+
+    const p2El = document.getElementById(`op2_${sid}`);
+    const p3El = document.getElementById(`op3_${sid}`);
+    const o2In = document.querySelector(`input[data-sid="${sid}"][data-field="order2nd"]`);
+    const o3In = document.querySelector(`input[data-sid="${sid}"][data-field="order3rd"]`);
+
+    if (p2El) p2El.innerHTML = fmtPred(row.pred2nd, row.safety);
+    if (p3El) p3El.innerHTML = fmtPred(row.pred3rd, row.safety);
+    if (o2In && field === 'orderNext') o2In.value = row.order2nd;
+    if (o3In) o3In.value = row.order3rd;
+}
+
+function exportOrderTable() {
+    if (!_orderData || _orderData.length === 0) { alert('No data to export.'); return; }
+    const dates = _getArrivalDates(_orderTab);
+    const q = (document.getElementById('orderTableSearch')?.value || '').toLowerCase();
+    const rows = q ? _orderData.filter(r => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)) : _orderData;
+    const n  = dates.next  || 'Next';
+    const n2 = dates.next2 || '2nd';
+    const n3 = dates.next3 || '3rd';
+    const wsData = [
+        ['Code','Item Name','UoM','Avg/Wk','Safety Stock','Current Qty',
+         `Pred @ ${n}`, `Order (${n})`, `Pred @ ${n2}`, `Order (${n2})`, `Pred @ ${n3}`, `Order (${n3})`],
+        ...rows.map(r => [r.code, r.name, r.uom, +r.avg.toFixed(1), r.safety, r.currentQty,
+            r.predNext !== null ? Math.round(r.predNext) : '-', r.orderNext,
+            r.pred2nd  !== null ? Math.round(r.pred2nd)  : '-', r.order2nd,
+            r.pred3rd  !== null ? Math.round(r.pred3rd)  : '-', r.order3rd])
+    ];
+    const wb = XLSX.utils.book_new();
+    const ws = XLSX.utils.aoa_to_sheet(wsData);
+    ws['!cols'] = [10,25,6,8,10,10,12,12,12,12,12,12].map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, ws, _orderTab === 'frozen' ? 'Frozen Order' : 'Dry-Chill Order');
+    XLSX.writeFile(wb, `Order_Plan_${_orderTab === 'frozen' ? 'Frozen' : 'Dry-Chill'}_${new Date().toISOString().split('T')[0]}.xlsx`);
 }
 
 function showCrossList(valRank, hitRank) {

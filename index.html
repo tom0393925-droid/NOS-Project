@@ -568,25 +568,51 @@
                         </div>
 
                         <div class="bg-white p-0 rounded-xl shadow-sm border-t-4 border-t-purple-500 border border-gray-200 overflow-hidden">
-                            <div class="p-6 pb-4 border-b border-gray-100 bg-purple-50/30">
-                                <h3 class="font-black text-purple-900 text-xl">⚠️ Order Action Required List</h3>
-                                <p class="text-sm text-purple-700 mt-1 font-medium">Items that will fall below their
-                                    Safety Stock before expected arrival dates.</p>
+                            <div class="p-5 pb-0 bg-purple-50/30 border-b border-gray-100">
+                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+                                    <div>
+                                        <h3 class="font-black text-purple-900 text-xl">⚠️ Order Action Required List</h3>
+                                        <p class="text-sm text-purple-700 mt-1 font-medium">Predicted stock at each container arrival. Edit order quantities as needed.</p>
+                                    </div>
+                                    <button onclick="exportOrderTable()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-colors whitespace-nowrap">
+                                        📥 Export to Excel
+                                    </button>
+                                </div>
+                                <div class="flex">
+                                    <button id="btnOrderTabDry" onclick="switchOrderTab('dry')"
+                                        class="px-5 py-2.5 font-bold text-sm border-b-2 border-purple-600 text-purple-700 bg-white transition-colors">
+                                        📦 Dry / Chill
+                                    </button>
+                                    <button id="btnOrderTabFrozen" onclick="switchOrderTab('frozen')"
+                                        class="px-5 py-2.5 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
+                                        ❄️ Frozen
+                                    </button>
+                                </div>
                             </div>
-                            <div class="overflow-y-auto max-h-[400px] custom-scrollbar">
-                                <table class="w-full text-left whitespace-nowrap">
-                                    <thead
-                                        class="bg-white sticky top-0 shadow-sm text-gray-500 text-xs uppercase tracking-wider z-10">
+                            <div class="px-4 py-3 border-b border-gray-100">
+                                <input type="text" id="orderTableSearch" placeholder="Search SKU Code or Item Name..."
+                                    class="w-full p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400 outline-none shadow-inner"
+                                    oninput="renderOrderTable()">
+                            </div>
+                            <div class="overflow-x-auto overflow-y-auto max-h-[500px] custom-scrollbar">
+                                <table class="w-full text-left text-sm whitespace-nowrap">
+                                    <thead class="bg-slate-50 sticky top-0 shadow-sm z-10 text-gray-600 text-xs uppercase tracking-wider">
                                         <tr>
-                                            <th class="p-4 pl-6 font-bold">Code</th>
-                                            <th class="p-4 font-bold">Item Name</th>
-                                            <th class="p-4 text-center font-bold">Safety</th>
-                                            <th class="p-4 text-right font-bold">Qty</th>
-                                            <th class="p-4 text-center font-bold">Predicted Status</th>
+                                            <th class="p-3 pl-4 cursor-pointer hover:bg-slate-100 select-none" onclick="sortOrderTable('code')">Code <span id="sortIcon_code" class="text-gray-400">↕</span></th>
+                                            <th class="p-3 cursor-pointer hover:bg-slate-100 select-none" onclick="sortOrderTable('name')">Item Name <span id="sortIcon_name" class="text-gray-400">↕</span></th>
+                                            <th class="p-3 text-center">UoM</th>
+                                            <th class="p-3 text-right cursor-pointer hover:bg-slate-100 select-none" onclick="sortOrderTable('avg')">Avg/Wk <span id="sortIcon_avg" class="text-gray-400">↕</span></th>
+                                            <th class="p-3 text-right cursor-pointer hover:bg-slate-100 select-none text-red-500" onclick="sortOrderTable('safety')">Safety <span id="sortIcon_safety" class="text-gray-400">↕</span></th>
+                                            <th class="p-3 text-right cursor-pointer hover:bg-slate-100 select-none" onclick="sortOrderTable('currentQty')">Current <span id="sortIcon_currentQty" class="text-gray-400">↕</span></th>
+                                            <th class="p-3 text-right cursor-pointer hover:bg-blue-100 select-none bg-blue-50 text-blue-700" onclick="sortOrderTable('predNext')" id="thPredNext">→ Next <span id="sortIcon_predNext" class="text-blue-300">↕</span></th>
+                                            <th class="p-3 text-center bg-blue-100 text-blue-800 font-black min-w-[110px]" id="thOrderNext">Order (Next)</th>
+                                            <th class="p-3 text-right cursor-pointer hover:bg-indigo-100 select-none bg-indigo-50 text-indigo-700" onclick="sortOrderTable('pred2nd')" id="thPred2nd">→ 2nd <span id="sortIcon_pred2nd" class="text-indigo-300">↕</span></th>
+                                            <th class="p-3 text-center bg-indigo-100 text-indigo-800 font-black min-w-[110px]" id="thOrder2nd">Order (2nd)</th>
+                                            <th class="p-3 text-right cursor-pointer hover:bg-violet-100 select-none bg-violet-50 text-violet-700" onclick="sortOrderTable('pred3rd')" id="thPred3rd">→ 3rd <span id="sortIcon_pred3rd" class="text-violet-300">↕</span></th>
+                                            <th class="p-3 text-center bg-violet-100 text-violet-800 font-black min-w-[110px]" id="thOrder3rd">Order (3rd)</th>
                                         </tr>
                                     </thead>
-                                    <tbody id="orderAlertTableBody" class="divide-y divide-gray-100 text-sm">
-                                    </tbody>
+                                    <tbody id="orderAlertTableBody" class="divide-y divide-gray-100 bg-white"></tbody>
                                 </table>
                             </div>
                         </div>
