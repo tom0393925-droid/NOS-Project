@@ -103,8 +103,8 @@ function importSaveData(event) {
             updateInvoiceHistoryListUI();
             
             if (typeof renderMasterList === "function") renderMasterList();
-            if (typeof renderActionList === "function") renderActionList();
-            
+            if (typeof renderActionList === "function") setTimeout(() => renderActionList(), 0);
+
             alert("✅ Data Loaded Successfully!");
             event.target.value = ''; 
         } catch (error) {

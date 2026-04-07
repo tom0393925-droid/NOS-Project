@@ -155,7 +155,7 @@ function renderMasterList() {
     const searchVal = searchEl ? searchEl.value.toLowerCase().trim() : "";
     if (!tbody) return;
 
-    tbody.innerHTML = '';
+    const fragment = document.createDocumentFragment();
     for (const code in skuMaster) {
         const item = skuMaster[code];
         const safeName = (item.name || "").toLowerCase();
@@ -195,6 +195,8 @@ function renderMasterList() {
                 <button onclick="deleteMaster('${code}')" class="text-red-500 hover:text-red-700 font-bold text-xs px-2 py-1 bg-red-50 rounded">Delete</button>
             </td>
         `;
-        tbody.appendChild(tr);
+        fragment.appendChild(tr);
     }
+    tbody.innerHTML = '';
+    tbody.appendChild(fragment);
 }

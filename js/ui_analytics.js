@@ -388,27 +388,31 @@ function _buildOrderData() {
     const dates = _getArrivalDates(_orderTab);
     const rows = [];
 
+    // Pre-index historyData by code once: O(n) build → O(1) per-SKU lookup
+    const byCode = {};
+    for (const key in historyData) {
+        const c = historyData[key].code;
+        if (!byCode[c]) byCode[c] = [];
+        byCode[c].push(historyData[key]);
+    }
+    const wks = Math.min(12, loadedWeeks);
+
     for (const code in skuMaster) {
         const master = skuMaster[code];
         const stType = master.storageType || 'Dry';
         const matchTab = _orderTab === 'frozen' ? stType === 'Frozen' : (stType === 'Dry' || stType === 'Chill');
         if (!matchTab) continue;
 
+        const lots = byCode[code] || [];
+
         // current qty (sum across lots)
         let currentQty = 0;
-        for (const key in historyData) {
-            if (historyData[key].code === code) {
-                currentQty += (historyData[key].qtys[loadedWeeks - 1] || 0);
-            }
-        }
+        for (const lot of lots) currentQty += (lot.qtys[loadedWeeks - 1] || 0);
 
         // avg weekly sales (past 12 weeks)
         let salesSum = 0;
-        const wks = Math.min(12, loadedWeeks);
         for (let i = loadedWeeks - wks; i < loadedWeeks; i++) {
-            for (const key in historyData) {
-                if (historyData[key].code === code) salesSum += (historyData[key].sales[i] || 0);
-            }
+            for (const lot of lots) salesSum += (lot.sales[i] || 0);
         }
         const avg = wks > 0 ? salesSum / wks : 0;
         const safety = master.safetyStock || Math.round(avg * 8);

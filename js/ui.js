@@ -128,7 +128,7 @@ function renderActionList() {
         }
     });
     tbody.appendChild(fragment);
-    if (typeof updateAnalyticsUI === "function") updateAnalyticsUI();
+    if (typeof updateAnalyticsUI === "function") setTimeout(() => updateAnalyticsUI(), 0);
 }
 
 function handleSearchInput() {
