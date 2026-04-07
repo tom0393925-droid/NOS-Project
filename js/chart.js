@@ -124,8 +124,8 @@ function updateChartPeriod() {
 
     const masterData = skuMaster[currentSelectedSKU] || { storageType: "Dry", safetyStock: 0 };
     const stType = masterData.storageType || 'Dry';
-    // SafetyStock未設定の場合は週平均×8週（約2ヶ月）をデフォルトとする
-    const safetyStock = masterData.safetyStock || Math.round(past12WAvg * 8);
+    // ★ セーフティストックは常に週平均×8週（約2ヶ月）で統一
+    const safetyStock = Math.round(past12WAvg * 8);
 
     let tNext  = (stType === 'Frozen') ? globalFrozenNext  : globalDryNext;
     let tNext2 = (stType === 'Frozen') ? globalFrozenNext2 : globalDryNext2;
