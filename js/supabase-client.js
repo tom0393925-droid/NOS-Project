@@ -3,8 +3,8 @@
 // Supabase接続 & データアクセス関数
 // ==========================================
 
-const SUPABASE_URL  = 'YOUR_PROJECT_URL';   // ← ここに Project URL を貼る
-const SUPABASE_ANON = 'YOUR_ANON_KEY';      // ← ここに anon public key を貼る
+const SUPABASE_URL  = 'https://jujtqiphzmcqaoxqytrt.supabase.co';  
+const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imp1anRxaXBoem1jcWFveHF5dHJ0Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzU1NDYxNjAsImV4cCI6MjA5MTEyMjE2MH0.g-okN0e5kA8Ve5CJfMfr2gAKLLWuW9abnuiShUJ1ZC8';    
 
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
