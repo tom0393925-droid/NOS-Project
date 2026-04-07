@@ -236,6 +236,15 @@
                                 <option value="Frozen">Frozen</option>
                             </select>
                         </div>
+                        <div class="flex flex-col w-32">
+                            <span class="text-[10px] font-bold text-purple-700 ml-1 mb-1">Manufacture</span>
+                            <select id="mManufacture"
+                                class="p-2 border border-purple-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-purple-400 outline-none bg-white">
+                                <option value="">-</option>
+                                <option value="JP Frozen">JP Frozen</option>
+                                <option value="Container">Container</option>
+                            </select>
+                        </div>
                         <div class="flex items-end h-full pt-5">
                             <label
                                 class="flex items-center text-sm font-bold text-blue-800 cursor-pointer bg-white px-3 py-2 rounded border border-blue-200 shadow-sm hover:bg-blue-50 transition-colors">
@@ -274,6 +283,7 @@
                                     <th class="p-3 text-green-700">Weight</th>
                                     <th class="p-3 text-red-600">Safety</th>
                                     <th class="p-3">Flags</th>
+                                    <th class="p-3 text-purple-600">Manufacture</th>
                                     <th class="p-3 text-center">Action</th>
                                 </tr>
                             </thead>
@@ -578,7 +588,7 @@
                                         📥 Export to Excel
                                     </button>
                                 </div>
-                                <div class="flex">
+                                <div class="flex flex-wrap gap-x-0 gap-y-0">
                                     <button id="btnOrderTabDry" onclick="switchOrderTab('dry')"
                                         class="px-5 py-2.5 font-bold text-sm border-b-2 border-purple-600 text-purple-700 bg-white transition-colors">
                                         📦 Dry / Chill
@@ -586,6 +596,19 @@
                                     <button id="btnOrderTabFrozen" onclick="switchOrderTab('frozen')"
                                         class="px-5 py-2.5 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
                                         ❄️ Frozen
+                                    </button>
+                                    <div class="w-px bg-gray-200 mx-2 self-stretch"></div>
+                                    <button id="btnMfAll" onclick="switchManufactureFilter('all')"
+                                        class="px-4 py-2.5 font-bold text-sm border-b-2 border-indigo-500 text-indigo-700 bg-white transition-colors">
+                                        All
+                                    </button>
+                                    <button id="btnMfJP" onclick="switchManufactureFilter('JP Frozen')"
+                                        class="px-4 py-2.5 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
+                                        🇯🇵 JP Frozen
+                                    </button>
+                                    <button id="btnMfContainer" onclick="switchManufactureFilter('Container')"
+                                        class="px-4 py-2.5 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
+                                        🚢 Container
                                     </button>
                                 </div>
                             </div>
@@ -925,16 +948,16 @@
         </div>
     </div>
 
-    <script src="js/state.js?v=21"></script>
-    <script src="js/utils.js?v=21"></script>
-    <script src="js/excel.js?v=21"></script>
-    <script src="js/chart.js?v=21"></script>
-    <script src="js/ui_master.js?v=21"></script>
-    <script src="js/ui_analytics.js?v=21"></script>
-    <script src="js/ui_map.js?v=21"></script>
-    <script src="js/ui.js?v=21"></script>
+    <script src="js/state.js?v=22"></script>
+    <script src="js/utils.js?v=22"></script>
+    <script src="js/excel.js?v=22"></script>
+    <script src="js/chart.js?v=22"></script>
+    <script src="js/ui_master.js?v=22"></script>
+    <script src="js/ui_analytics.js?v=22"></script>
+    <script src="js/ui_map.js?v=22"></script>
+    <script src="js/ui.js?v=22"></script>
     <script src="js/sheets-api.js?v=2"></script>
-    <script src="js/main.js?v=21"></script>
+    <script src="js/main.js?v=22"></script>
 </body>
 
 </html>
