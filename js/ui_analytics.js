@@ -556,10 +556,13 @@ function onOrderQtyChange(input) {
         row.orderNext = val;
         if (row.predNext !== null && dates.weeks1to2 !== null) {
             row.pred2nd  = row.predNext + val - row.avg * dates.weeks1to2;
-            row.order2nd = Math.max(0, Math.round(row.safety + row.avg * (dates.weeks2to3 || 0) - row.pred2nd));
+            // ★ Fix: weeks2to3 が null のとき || 0 で計算していたバグを修正
             if (dates.weeks2to3 !== null) {
+                row.order2nd = Math.max(0, Math.round(row.safety + row.avg * dates.weeks2to3 - row.pred2nd));
                 row.pred3rd  = row.pred2nd + row.order2nd - row.avg * dates.weeks2to3;
                 row.order3rd = Math.max(0, Math.round(row.safety - row.pred3rd));
+            } else {
+                row.order2nd = 0; row.pred3rd = null; row.order3rd = 0;
             }
         }
     } else if (field === 'order2nd') {

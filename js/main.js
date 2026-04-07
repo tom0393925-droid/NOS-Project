@@ -168,6 +168,11 @@ function saveDatesAndRender() {
     if (currentSelectedSKU && typeof renderSKUDetails === 'function') {
         renderSKUDetails(currentSelectedSKU);
     }
+    // ★ 到着日が変わったら Order Action Required List も再構築
+    if (typeof _buildOrderData === 'function' && typeof renderOrderTable === 'function') {
+        _buildOrderData();
+        renderOrderTable();
+    }
 }
 
 function restoreContainerDates() {
