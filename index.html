@@ -322,7 +322,22 @@
                     </div>
                 </div>
 
-                <!-- Supabase Upload -->
+                <!-- Supabase SKU Master Upload -->
+                <div class="bg-purple-50 p-6 rounded-xl shadow-sm border border-purple-200 mt-6">
+                    <h3 class="font-bold text-purple-900 text-lg mb-1">☁️ Supabase — SKUマスター アップロード</h3>
+                    <p class="text-xs text-purple-700 mb-4">月次更新のSKUマスターExcelをアップロード → Supabaseに自動登録（既存データは上書き）</p>
+                    <div class="border-2 border-dashed border-purple-400 rounded-xl p-6 text-center cursor-pointer transition-colors"
+                        onclick="document.getElementById('sbMasterFileInput').click()">
+                        <div class="text-3xl mb-2">📋</div>
+                        <p class="font-bold text-purple-800">SKUマスターExcelをクリックして選択</p>
+                        <p class="text-xs text-purple-600 mt-1">.xlsx / .xls / .csv</p>
+                        <input type="file" id="sbMasterFileInput" accept=".xlsx,.xls,.csv" class="hidden"
+                            onchange="uploadSkuMasterFile(this.files)">
+                    </div>
+                    <div id="sbMasterUploadStatus" class="text-sm mt-3"></div>
+                </div>
+
+                <!-- Supabase Weekly Sales Upload -->
                 <div class="bg-green-50 p-6 rounded-xl shadow-sm border border-green-200 mt-6">
                     <h3 class="font-bold text-green-900 text-lg mb-1">☁️ Supabase — 週次在庫データ アップロード</h3>
                     <p class="text-xs text-green-700 mb-4">Global Inventory Excelファイルを複数まとめてドロップ → Supabaseに自動登録</p>

@@ -119,6 +119,82 @@ async function uploadWeeklyInventoryFiles(files) {
     `;
 }
 
+// ==========================================
+// SKUマスターExcel → sku_master テーブル
+// フォーマット:
+//   行3（index 2）: ヘッダー行（SKU, Item name JP, Brand, Item name EN...）
+//   行4+（index 3+）: データ行（列Aが空でない行のみ有効）
+//   A=0:SKU, D=3:Name(EN), K=10:PP/UNIT(USD), N=13:COST TOTAL, P=15:Unit, V=21:Logistic temperature
+// ==========================================
+
+function _storageTypeMap(val) {
+    const v = String(val || '').trim().toLowerCase();
+    if (v === 'frozen') return 'Frozen';
+    if (v === 'chilled' || v === 'chill' || v === 'fresh') return 'Chill';
+    return 'Dry'; // Dried / Dry / その他
+}
+
+async function uploadSkuMasterFile(files) {
+    const statusEl = document.getElementById('sbMasterUploadStatus');
+    if (!statusEl) return;
+
+    const fileList = Array.from(files).filter(f => f.name.match(/\.(xlsx|xls|csv)$/i));
+    if (fileList.length === 0) {
+        statusEl.innerHTML = '<span class="text-red-600">❌ Excelまたはcsvファイルを選択してください。</span>';
+        return;
+    }
+
+    const file = fileList[0];
+    statusEl.innerHTML = '<span class="text-blue-600">⏳ 読み込み中...</span>';
+
+    try {
+        const isCsv = file.name.toLowerCase().endsWith('.csv');
+        const content = await new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = e => resolve(e.target.result);
+            reader.onerror = () => reject(new Error('読み込み失敗'));
+            isCsv ? reader.readAsText(file, 'UTF-8') : reader.readAsBinaryString(file);
+        });
+
+        const wb = isCsv
+            ? XLSX.read(content, { type: 'string' })
+            : XLSX.read(content, { type: 'binary' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+
+        // 行3（index 2）がヘッダー → データは index 3 から
+        const records = [];
+        for (let i = 3; i < rows.length; i++) {
+            const row = rows[i];
+            const code = String(row[0] || '').trim();
+            if (!code) continue;
+
+            const name        = String(row[3]  || '').trim();
+            const tc          = parseFloat(String(row[13] || '').replace(/[$,]/g, '')) || 0;
+            const uom         = String(row[15] || '').trim() || 'pcs';
+            const storageType = _storageTypeMap(row[21]);
+
+            records.push({ code, name, uom, tc, storage_type: storageType });
+        }
+
+        if (records.length === 0) throw new Error('データ行が見つかりません。列構成を確認してください。');
+
+        statusEl.innerHTML = `<span class="text-blue-600">⏳ ${records.length}件をSupabaseに登録中...</span>`;
+
+        // 既存データを upsert（code が同じなら上書き）
+        const chunkSize = 100;
+        for (let i = 0; i < records.length; i += chunkSize) {
+            const chunk = records.slice(i, i + chunkSize);
+            const { error } = await _sb.from('sku_master').upsert(chunk, { onConflict: 'code' });
+            if (error) throw error;
+        }
+
+        statusEl.innerHTML = `<span class="text-green-700 font-bold">✅ ${records.length}件のSKUマスターを登録しました。</span>`;
+    } catch (err) {
+        statusEl.innerHTML = `<span class="text-red-600">❌ エラー: ${err.message}</span>`;
+    }
+}
+
 // ドラッグ&ドロップ初期化
 function initSbUploadArea() {
     const area = document.getElementById('sbDropArea');
