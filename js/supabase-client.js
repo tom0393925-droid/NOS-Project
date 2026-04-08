@@ -138,3 +138,142 @@ async function sbSaveShipmentOrder(code, arrivalDate, orderQty, status = 'pendin
     }, { onConflict: 'code,arrival_date' });
     if (error) throw error;
 }
+
+// ==========================================
+// weekly_sales rows → historyData 形式に変換
+// ==========================================
+function _weeklySalesToHistoryData(rows) {
+    // 全週キーを収集してソート
+    const weekSet = new Set(rows.map(r => r.week_start));
+    const weekKeys   = [...weekSet].sort();
+    const weekLabels = weekKeys.map(w => 'W/' + w);
+
+    // code+expiry をキーにグループ化（複数locationは合算）
+    const groups = {};
+    for (const row of rows) {
+        const expiryStr = row.expiry_date ? row.expiry_date : 'noexpiry';
+        const gKey = row.code + '_' + expiryStr;
+        if (!groups[gKey]) {
+            groups[gKey] = {
+                code:      row.code,
+                expiryStr,
+                expiry:    row.expiry_date ? new Date(row.expiry_date) : null,
+                byWeek:    {},
+            };
+        }
+        const wk = row.week_start;
+        if (!groups[gKey].byWeek[wk]) {
+            groups[gKey].byWeek[wk] = { endQty: 0, sales: 0 };
+        }
+        // 同週・複数locationは合算
+        groups[gKey].byWeek[wk].endQty += parseFloat(row.ending_qty)  || 0;
+        groups[gKey].byWeek[wk].sales  += parseFloat(row.total_sales) || 0;
+    }
+
+    // historyData 形式に変換
+    const historyData = {};
+    for (const [gKey, group] of Object.entries(groups)) {
+        const qtys  = [];
+        const sales = [];
+        let prevQty = 0;
+        for (const wk of weekKeys) {
+            if (group.byWeek[wk]) {
+                prevQty = group.byWeek[wk].endQty;
+                qtys.push(prevQty);
+                sales.push(group.byWeek[wk].sales);
+            } else {
+                qtys.push(prevQty); // 前週の値を引き継ぎ
+                sales.push(0);
+            }
+        }
+        historyData[gKey] = {
+            code:      group.code,
+            name:      '',        // sku_master から後で補完
+            uom:       '',
+            expiry:    group.expiry,
+            expiryStr: group.expiryStr,
+            isDamaged: false,
+            qtys,
+            sales,
+        };
+    }
+
+    return { historyData, weekKeys, weekLabels };
+}
+
+// ==========================================
+// picking_data rows → invoiceHistoryData 形式に変換
+// ==========================================
+function _pickingDataToInvoiceHistory(rows, weekKeys) {
+    const result = {};
+    for (const row of rows) {
+        const code = row.code;
+        if (!result[code]) {
+            result[code] = {
+                code,
+                hits: new Array(weekKeys.length).fill(0),
+                qtys: new Array(weekKeys.length).fill(0),
+            };
+        }
+        const idx = weekKeys.indexOf(row.week_start);
+        if (idx >= 0) {
+            result[code].hits[idx] += row.pick_count || 0;
+            result[code].qtys[idx] += parseFloat(row.pick_qty) || 0;
+        }
+    }
+    return result;
+}
+
+// ==========================================
+// Supabase から全データを読み込んでグローバル変数に展開
+// ==========================================
+async function sbLoadAllData(statusCallback) {
+    const log = statusCallback || (() => {});
+
+    log('SKUマスターを読み込み中...');
+    const masterData  = await sbLoadSkuMaster();
+
+    log('週次販売データを読み込み中...');
+    const salesRows   = await sbLoadWeeklySales();
+
+    log('ピッキングデータを読み込み中...');
+    const pickingRows = await sbLoadPickingData();
+
+    log('発注データを読み込み中...');
+    const ordersData  = await sbLoadShipmentOrders();
+
+    log('データを変換中...');
+    const { historyData: hd, weekKeys, weekLabels } = _weeklySalesToHistoryData(salesRows);
+
+    // sku_master の name / uom を historyData に補完
+    for (const key in hd) {
+        const code = hd[key].code;
+        if (masterData[code]) {
+            hd[key].name = masterData[code].name;
+            hd[key].uom  = masterData[code].uom;
+        }
+    }
+
+    const invoiceHd = _pickingDataToInvoiceHistory(pickingRows, weekKeys);
+
+    // グローバル変数に反映
+    skuMaster            = masterData;
+    historyData          = hd;
+    invoiceHistoryData   = invoiceHd;
+    loadedWeeks          = weekKeys.length;
+    loadedFiles          = weekLabels;
+    loadedInvoiceWeeks   = weekKeys.length;
+    loadedInvoiceFiles   = weekLabels.map(w => 'Picking ' + w);
+    window.shipmentOrders = ordersData;
+
+    // UI を更新
+    const wkEl = document.getElementById('uiWeekCount');
+    if (wkEl) wkEl.innerText = loadedWeeks;
+
+    log(`完了: ${Object.keys(masterData).length} SKUs / ${weekKeys.length} 週 / ${salesRows.length} レコード`);
+
+    if (typeof renderMasterList    === 'function') renderMasterList();
+    if (typeof renderActionList    === 'function') setTimeout(() => renderActionList(), 0);
+    if (typeof updateAnalyticsUI   === 'function') setTimeout(() => updateAnalyticsUI(), 100);
+    if (typeof renderWarehouseMap  === 'function') setTimeout(() => renderWarehouseMap(), 200);
+}
