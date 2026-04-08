@@ -72,14 +72,23 @@ async function sbDeleteSkuMaster(code) {
 // ==========================================
 // Weekly Sales
 // ==========================================
-async function sbLoadWeeklySales(limitWeeks = 52) {
-    // 直近N週分だけ取得してブラウザを軽く保つ
-    const { data, error } = await _sb
-        .from('weekly_sales')
-        .select('*')
-        .order('week_start', { ascending: true });
-    if (error) throw error;
-    return data;
+async function sbLoadWeeklySales() {
+    // 1000行上限を回避するためページネーションで全件取得
+    const allRows = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+        const { data, error } = await _sb
+            .from('weekly_sales')
+            .select('*')
+            .order('week_start', { ascending: true })
+            .range(from, from + pageSize - 1);
+        if (error) throw error;
+        allRows.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+    }
+    return allRows;
 }
 
 async function sbUpsertWeeklySales(rows) {
@@ -93,13 +102,22 @@ async function sbUpsertWeeklySales(rows) {
 // ==========================================
 // Picking Data
 // ==========================================
-async function sbLoadPickingData(limitWeeks = 52) {
-    const { data, error } = await _sb
-        .from('picking_data')
-        .select('*')
-        .order('week_start', { ascending: true });
-    if (error) throw error;
-    return data;
+async function sbLoadPickingData() {
+    const allRows = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+        const { data, error } = await _sb
+            .from('picking_data')
+            .select('*')
+            .order('week_start', { ascending: true })
+            .range(from, from + pageSize - 1);
+        if (error) throw error;
+        allRows.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+    }
+    return allRows;
 }
 
 async function sbUpsertPickingData(rows) {
