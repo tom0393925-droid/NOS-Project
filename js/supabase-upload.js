@@ -162,22 +162,59 @@ async function uploadSkuMasterFile(files) {
         const ws = wb.Sheets[wb.SheetNames[0]];
         const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
-        // 行3（index 2）がヘッダー → データは index 3 から
-        const records = [];
-        for (let i = 3; i < rows.length; i++) {
+        // ヘッダー行を探す（"SKU" が含まれる行）
+        let headerRow = -1;
+        for (let i = 0; i < Math.min(10, rows.length); i++) {
+            if (rows[i].some(c => String(c).trim().toUpperCase() === 'SKU')) {
+                headerRow = i;
+                break;
+            }
+        }
+        if (headerRow < 0) throw new Error('ヘッダー行（SKU列）が見つかりません。');
+
+        // ヘッダーから列インデックスを動的に取得
+        const headers = rows[headerRow].map(h => String(h).trim().toLowerCase());
+        const col = name => {
+            // 部分一致で検索
+            const patterns = {
+                'sku':   ['sku'],
+                'name':  ['item name (en)', 'item name(en)', 'name (en)', 'name'],
+                'tc':    ['cost total', 'pp/unit (usd)', 'cost'],
+                'uom':   ['unit', 'uom'],
+                'temp':  ['logistic temperature', 'logistic temp', 'temperature', 'type'],
+            };
+            for (const p of (patterns[name] || [name])) {
+                const idx = headers.findIndex(h => h.includes(p));
+                if (idx >= 0) return idx;
+            }
+            return -1;
+        };
+
+        const iSku  = col('sku');
+        const iName = col('name');
+        const iTc   = col('tc');
+        const iUom  = col('uom');
+        const iTemp = col('temp');
+
+        if (iSku < 0) throw new Error('SKU列が見つかりません。');
+
+        // データ行を解析（重複はMapで後勝ち）
+        const recordMap = new Map();
+        for (let i = headerRow + 1; i < rows.length; i++) {
             const row = rows[i];
-            const code = String(row[0] || '').trim();
-            if (!code) continue;
+            const code = String(row[iSku] || '').trim();
+            if (!code || code.toLowerCase() === 'sku') continue;
 
-            const name        = String(row[3]  || '').trim();
-            const tc          = parseFloat(String(row[13] || '').replace(/[$,]/g, '')) || 0;
-            const uom         = String(row[15] || '').trim() || 'pcs';
-            const storageType = _storageTypeMap(row[21]);
+            const name        = iName >= 0 ? String(row[iName] || '').trim() : '';
+            const tc          = iTc   >= 0 ? parseFloat(String(row[iTc] || '').replace(/[$,]/g, '')) || 0 : 0;
+            const uom         = iUom  >= 0 ? String(row[iUom] || '').trim() || 'pcs' : 'pcs';
+            const storageType = iTemp >= 0 ? _storageTypeMap(row[iTemp]) : 'Dry';
 
-            records.push({ code, name, uom, tc, storage_type: storageType });
+            recordMap.set(code, { code, name, uom, tc, storage_type: storageType });
         }
 
-        if (records.length === 0) throw new Error('データ行が見つかりません。列構成を確認してください。');
+        const records = [...recordMap.values()];
+        if (records.length === 0) throw new Error('データ行が見つかりません。');
 
         statusEl.innerHTML = `<span class="text-blue-600">⏳ ${records.length}件をSupabaseに登録中...</span>`;
 
