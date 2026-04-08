@@ -302,8 +302,8 @@
                         onclick="document.getElementById('sbFileInput').click()">
                         <div class="text-3xl mb-2">📂</div>
                         <p class="font-bold text-green-800">Excelファイルをここにドロップまたはクリックして選択</p>
-                        <p class="text-xs text-green-600 mt-1">複数ファイル同時対応 (.xlsx / .xls)</p>
-                        <input type="file" id="sbFileInput" accept=".xlsx,.xls" multiple class="hidden"
+                        <p class="text-xs text-green-600 mt-1">複数ファイル同時対応 (.xlsx / .xls / .csv)</p>
+                        <input type="file" id="sbFileInput" accept=".xlsx,.xls,.csv" multiple class="hidden"
                             onchange="uploadWeeklyInventoryFiles(this.files)">
                     </div>
                     <div id="sbUploadProgress" class="text-xs text-blue-600 font-bold mt-2 hidden"></div>

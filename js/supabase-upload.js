@@ -14,9 +14,12 @@
 function _parseInventoryExcel(file) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
+        const isCsv = file.name.toLowerCase().endsWith('.csv');
         reader.onload = (e) => {
             try {
-                const wb = XLSX.read(e.target.result, { type: 'binary' });
+                const wb = isCsv
+                    ? XLSX.read(e.target.result, { type: 'string' })
+                    : XLSX.read(e.target.result, { type: 'binary' });
                 const ws = wb.Sheets[wb.SheetNames[0]];
                 const rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
 
@@ -60,7 +63,11 @@ function _parseInventoryExcel(file) {
             }
         };
         reader.onerror = () => reject(new Error('ファイルの読み込みに失敗しました。'));
-        reader.readAsBinaryString(file);
+        if (isCsv) {
+            reader.readAsText(file, 'UTF-8');
+        } else {
+            reader.readAsBinaryString(file);
+        }
     });
 }
 
@@ -69,9 +76,9 @@ async function uploadWeeklyInventoryFiles(files) {
     const progressEl = document.getElementById('sbUploadProgress');
     if (!statusEl) return;
 
-    const fileList = Array.from(files).filter(f => f.name.match(/\.(xlsx|xls)$/i));
+    const fileList = Array.from(files).filter(f => f.name.match(/\.(xlsx|xls|csv)$/i));
     if (fileList.length === 0) {
-        statusEl.innerHTML = '<span class="text-red-600">❌ Excelファイル (.xlsx / .xls) を選択してください。</span>';
+        statusEl.innerHTML = '<span class="text-red-600">❌ ファイル (.xlsx / .xls / .csv) を選択してください。</span>';
         return;
     }
 
