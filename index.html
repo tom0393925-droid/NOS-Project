@@ -43,10 +43,21 @@
                             <p class="text-sm text-gray-500 mt-1">Supabaseデータベースから全データを読み込みます。</p>
                             <p id="sbLoadStatus" class="text-sm mt-1 font-medium text-gray-400"></p>
                         </div>
-                        <button onclick="sbLoadAllData(msg => document.getElementById('sbLoadStatus').textContent = msg)"
-                            class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md whitespace-nowrap">
-                            🔄 Load from Supabase
-                        </button>
+                        <div class="flex items-center gap-3">
+                            <div class="flex flex-col items-end gap-1">
+                                <span class="text-xs font-bold text-gray-500">読み込む週数</span>
+                                <select id="sbWeeksSelect" class="p-2 border border-gray-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-green-400 outline-none">
+                                    <option value="13">13週（3ヶ月）</option>
+                                    <option value="26">26週（半年）</option>
+                                    <option value="52" selected>52週（1年）</option>
+                                    <option value="104">104週（2年）</option>
+                                </select>
+                            </div>
+                            <button onclick="sbLoadAllData(msg => document.getElementById('sbLoadStatus').textContent = msg, parseInt(document.getElementById('sbWeeksSelect').value))"
+                                class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md whitespace-nowrap">
+                                🔄 Load from Supabase
+                            </button>
+                        </div>
                     </div>
                 </div>
 

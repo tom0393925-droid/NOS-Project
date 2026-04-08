@@ -72,8 +72,12 @@ async function sbDeleteSkuMaster(code) {
 // ==========================================
 // Weekly Sales
 // ==========================================
-async function sbLoadWeeklySales() {
-    // 1000行上限を回避するためページネーションで全件取得
+async function sbLoadWeeklySales(weeks = 52) {
+    // 直近N週の開始日を計算
+    const cutoff = new Date();
+    cutoff.setDate(cutoff.getDate() - weeks * 7);
+    const cutoffStr = cutoff.toISOString().split('T')[0];
+
     const allRows = [];
     const pageSize = 1000;
     let from = 0;
@@ -81,6 +85,7 @@ async function sbLoadWeeklySales() {
         const { data, error } = await _sb
             .from('weekly_sales')
             .select('*')
+            .gte('week_start', cutoffStr)
             .order('week_start', { ascending: true })
             .range(from, from + pageSize - 1);
         if (error) throw error;
@@ -245,14 +250,14 @@ function _pickingDataToInvoiceHistory(rows, weekKeys) {
 // ==========================================
 // Supabase から全データを読み込んでグローバル変数に展開
 // ==========================================
-async function sbLoadAllData(statusCallback) {
+async function sbLoadAllData(statusCallback, weeks = 52) {
     const log = statusCallback || (() => {});
 
     log('SKUマスターを読み込み中...');
     const masterData  = await sbLoadSkuMaster();
 
-    log('週次販売データを読み込み中...');
-    const salesRows   = await sbLoadWeeklySales();
+    log(`週次販売データを読み込み中（直近${weeks}週）...`);
+    const salesRows   = await sbLoadWeeklySales(weeks);
 
     log('ピッキングデータを読み込み中...');
     const pickingRows = await sbLoadPickingData();
