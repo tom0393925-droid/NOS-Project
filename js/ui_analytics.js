@@ -222,11 +222,9 @@ function updateAnalyticsUI() {
     // 3. Render Cross Analysis if both data are available
     renderCrossAnalysis();
 
-    // 4. Order Action Required List: ボタンを押したときのみ描画
+    // 4. Order Action Required List: タブを選んだときのみ描画
     const orderSection = document.getElementById('orderActionSection');
-    const orderReveal  = document.getElementById('orderRevealBtn');
     if (orderSection) orderSection.classList.add('hidden');
-    if (orderReveal)  orderReveal.classList.remove('hidden');
 }
 
 
@@ -458,10 +456,8 @@ function switchOrderTab(tab) {
 function showOrderActionList() {
     if (typeof _showLoading === 'function') _showLoading('発注リストを計算中...');
     setTimeout(() => {
-        const section   = document.getElementById('orderActionSection');
-        const revealBtn = document.getElementById('orderRevealBtn');
-        if (section)   section.classList.remove('hidden');
-        if (revealBtn) revealBtn.classList.add('hidden');
+        const section = document.getElementById('orderActionSection');
+        if (section) section.classList.remove('hidden');
         _buildOrderData();
         renderOrderTable();
         if (typeof _hideLoading === 'function') _hideLoading();
