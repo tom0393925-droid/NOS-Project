@@ -13,6 +13,14 @@
 
 <body class="bg-gray-100">
 
+    <!-- ローディングオーバーレイ -->
+    <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex flex-col items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4 min-w-[300px]">
+            <div class="w-12 h-12 border-4 border-green-500 border-t-transparent rounded-full animate-spin"></div>
+            <p id="loadingMessage" class="text-gray-700 font-bold text-center">読み込み中...</p>
+        </div>
+    </div>
+
     <div class="card p-0 overflow-hidden relative min-h-screen flex flex-col">
         <div class="p-6 pb-4 bg-white border-b border-gray-200">
             <div class="header-top flex justify-between items-center m-0">

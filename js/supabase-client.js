@@ -260,8 +260,22 @@ function _pickingDataToInvoiceHistory(rows, weekKeys) {
 // ==========================================
 // Supabase から全データを読み込んでグローバル変数に展開
 // ==========================================
+function _showLoading(msg) {
+    const overlay = document.getElementById('loadingOverlay');
+    const msgEl   = document.getElementById('loadingMessage');
+    if (overlay) overlay.classList.remove('hidden');
+    if (msgEl)   msgEl.textContent = msg || '読み込み中...';
+}
+function _hideLoading() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) overlay.classList.add('hidden');
+}
+
 async function sbLoadAllData(statusCallback, weeks = 52) {
-    const log = statusCallback || (() => {});
+    const log = msg => {
+        if (statusCallback) statusCallback(msg);
+        _showLoading(msg);
+    };
 
     log('SKUマスターを読み込み中...');
     const masterData  = await sbLoadSkuMaster();
@@ -305,8 +319,16 @@ async function sbLoadAllData(statusCallback, weeks = 52) {
 
     log(`完了: ${Object.keys(masterData).length} SKUs / ${weekKeys.length} 週 / ${salesRows.length} レコード`);
 
-    if (typeof renderMasterList    === 'function') renderMasterList();
-    if (typeof renderActionList    === 'function') setTimeout(() => renderActionList(), 0);
-    if (typeof updateAnalyticsUI   === 'function') setTimeout(() => updateAnalyticsUI(), 100);
-    if (typeof renderWarehouseMap  === 'function') setTimeout(() => renderWarehouseMap(), 200);
+    _showLoading('画面を描画中...');
+    if (typeof renderMasterList   === 'function') renderMasterList();
+    setTimeout(() => {
+        if (typeof renderActionList  === 'function') renderActionList();
+        setTimeout(() => {
+            if (typeof updateAnalyticsUI  === 'function') updateAnalyticsUI();
+            setTimeout(() => {
+                if (typeof renderWarehouseMap === 'function') renderWarehouseMap();
+                _hideLoading();
+            }, 200);
+        }, 100);
+    }, 0);
 }
