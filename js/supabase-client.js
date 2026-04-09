@@ -25,11 +25,21 @@ async function testSupabaseConnection() {
 // SKU Master
 // ==========================================
 async function sbLoadSkuMaster() {
-    const { data, error } = await _sb.from('sku_master').select('*');
-    if (error) throw error;
-    // アプリのskuMaster形式に変換
+    const allRows = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+        const { data, error } = await _sb
+            .from('sku_master')
+            .select('*')
+            .range(from, from + pageSize - 1);
+        if (error) throw error;
+        allRows.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+    }
     const result = {};
-    for (const row of data) {
+    for (const row of allRows) {
         result[row.code] = {
             name:        row.name,
             uom:         row.uom,
