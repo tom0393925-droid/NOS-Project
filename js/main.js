@@ -59,15 +59,19 @@ function switchTab(tabId, btnElement) {
         btnElement.classList.replace('bg-transparent', 'bg-slate-700');
     }
 
-    // ★ アクティブになったタブの機能だけを呼び出す（裏での無駄な全計算をストップ）
-    if (tabId === 'nosTab' && typeof renderActionList === 'function') {
-        renderActionList();
-    } else if (tabId === 'analyticsTab' && typeof updateAnalyticsUI === 'function') {
-        updateAnalyticsUI();
-    } else if (tabId === 'mapTab' && typeof renderWarehouseMap === 'function') {
-        renderWarehouseMap();
-        if (typeof updateAnalyticsUI === 'function') updateAnalyticsUI();
-    }
+    // ★ アクティブになったタブの機能だけを呼び出す
+    if (typeof _showLoading === 'function') _showLoading('画面を描画中...');
+    setTimeout(() => {
+        if (tabId === 'nosTab' && typeof renderActionList === 'function') {
+            renderActionList();
+        } else if (tabId === 'analyticsTab' && typeof updateAnalyticsUI === 'function') {
+            updateAnalyticsUI();
+        } else if (tabId === 'mapTab' && typeof renderWarehouseMap === 'function') {
+            renderWarehouseMap();
+            if (typeof updateAnalyticsUI === 'function') updateAnalyticsUI();
+        }
+        if (typeof _hideLoading === 'function') _hideLoading();
+    }, 0);
 
     // ★ crossAnalysisSection と simulatorArea は mapTab のみで表示
     const _cross = document.getElementById('crossAnalysisSection');

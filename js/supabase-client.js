@@ -303,8 +303,15 @@ async function sbLoadAllData(statusCallback, weeks = 52) {
 
     const invoiceHd = _pickingDataToInvoiceHistory(pickingRows, weekKeys);
 
+    // ★ weekly_salesに存在するコードだけにsku_masterを絞る
+    const activeCodes = new Set(Object.values(hd).map(v => v.code));
+    const filteredMaster = {};
+    for (const code of activeCodes) {
+        if (masterData[code]) filteredMaster[code] = masterData[code];
+    }
+
     // グローバル変数に反映
-    skuMaster            = masterData;
+    skuMaster            = filteredMaster;
     historyData          = hd;
     invoiceHistoryData   = invoiceHd;
     loadedWeeks          = weekKeys.length;

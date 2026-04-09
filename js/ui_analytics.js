@@ -222,9 +222,11 @@ function updateAnalyticsUI() {
     // 3. Render Cross Analysis if both data are available
     renderCrossAnalysis();
 
-    // 4. Order Action Required List
-    _buildOrderData();
-    renderOrderTable();
+    // 4. Order Action Required List: ボタンを押したときのみ描画
+    const orderSection = document.getElementById('orderActionSection');
+    const orderReveal  = document.getElementById('orderRevealBtn');
+    if (orderSection) orderSection.classList.add('hidden');
+    if (orderReveal)  orderReveal.classList.remove('hidden');
 }
 
 
@@ -450,6 +452,19 @@ function switchOrderTab(tab) {
     if (frozenBtn) frozenBtn.className = `px-5 py-2.5 font-bold text-sm border-b-2 transition-colors ${tab === 'frozen' ? 'border-purple-600 text-purple-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`;
     _buildOrderData();
     renderOrderTable();
+}
+
+function showOrderActionList() {
+    if (typeof _showLoading === 'function') _showLoading('発注リストを計算中...');
+    setTimeout(() => {
+        const section = document.getElementById('orderActionSection');
+        const revealBtn = document.getElementById('orderRevealBtn');
+        if (section)   section.classList.remove('hidden');
+        if (revealBtn) revealBtn.classList.add('hidden');
+        _buildOrderData();
+        renderOrderTable();
+        if (typeof _hideLoading === 'function') _hideLoading();
+    }, 0);
 }
 
 function switchManufactureFilter(mf) {
