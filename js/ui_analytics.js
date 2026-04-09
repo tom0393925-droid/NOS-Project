@@ -450,6 +450,7 @@ function switchOrderTab(tab) {
     const frozenBtn = document.getElementById('btnOrderTabFrozen');
     if (dryBtn)    dryBtn.className    = `px-5 py-2.5 font-bold text-sm border-b-2 transition-colors ${tab === 'dry'    ? 'border-purple-600 text-purple-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`;
     if (frozenBtn) frozenBtn.className = `px-5 py-2.5 font-bold text-sm border-b-2 transition-colors ${tab === 'frozen' ? 'border-purple-600 text-purple-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`;
+    _ensureOrderListVisible();
     _buildOrderData();
     renderOrderTable();
 }
@@ -457,7 +458,7 @@ function switchOrderTab(tab) {
 function showOrderActionList() {
     if (typeof _showLoading === 'function') _showLoading('発注リストを計算中...');
     setTimeout(() => {
-        const section = document.getElementById('orderActionSection');
+        const section   = document.getElementById('orderActionSection');
         const revealBtn = document.getElementById('orderRevealBtn');
         if (section)   section.classList.remove('hidden');
         if (revealBtn) revealBtn.classList.add('hidden');
@@ -467,7 +468,15 @@ function showOrderActionList() {
     }, 0);
 }
 
+function _ensureOrderListVisible() {
+    const section = document.getElementById('orderActionSection');
+    if (section && section.classList.contains('hidden')) {
+        showOrderActionList();
+    }
+}
+
 function switchManufactureFilter(mf) {
+    _ensureOrderListVisible();
     _manufactureFilter = mf;
     const btns = { 'all': 'btnMfAll', 'JP Frozen': 'btnMfJP', 'Container': 'btnMfContainer' };
     for (const [val, id] of Object.entries(btns)) {
