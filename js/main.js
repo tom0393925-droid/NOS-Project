@@ -186,14 +186,49 @@ async function saveDatesAndRender() {
     }
 }
 
+// 過去の到着日を除去して残りを前に詰める
+function _shiftExpiredDates(dates) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const shift = (...ds) => {
+        const future = ds.filter(d => d && new Date(d) >= today);
+        while (future.length < 3) future.push('');
+        return future;
+    };
+
+    const dry    = shift(dates.dryNext,    dates.dryNext2,    dates.dryNext3);
+    const frozen = shift(dates.frozenNext, dates.frozenNext2, dates.frozenNext3);
+
+    return {
+        dryNext:     dry[0],    dryNext2:    dry[1],    dryNext3:    dry[2],
+        frozenNext:  frozen[0], frozenNext2: frozen[1], frozenNext3: frozen[2],
+    };
+}
+
 // sbLoadAllData() から呼ばれる：取得済みデータをグローバル変数とUIに展開
-function restoreContainerDatesFromData(dates) {
-    globalDryNext     = dates.dryNext     || '';
-    globalDryNext2    = dates.dryNext2    || '';
-    globalDryNext3    = dates.dryNext3    || '';
-    globalFrozenNext  = dates.frozenNext  || '';
-    globalFrozenNext2 = dates.frozenNext2 || '';
-    globalFrozenNext3 = dates.frozenNext3 || '';
+async function restoreContainerDatesFromData(dates) {
+    const shifted = _shiftExpiredDates(dates);
+
+    // 過去日が1つでもあった場合は自動でSupabaseを更新
+    const hasExpired =
+        shifted.dryNext    !== (dates.dryNext    || '') ||
+        shifted.dryNext2   !== (dates.dryNext2   || '') ||
+        shifted.dryNext3   !== (dates.dryNext3   || '') ||
+        shifted.frozenNext !== (dates.frozenNext  || '') ||
+        shifted.frozenNext2 !== (dates.frozenNext2 || '') ||
+        shifted.frozenNext3 !== (dates.frozenNext3 || '');
+
+    if (hasExpired) {
+        try { await sbSaveContainerDates(shifted); } catch (e) { console.error(e); }
+    }
+
+    globalDryNext     = shifted.dryNext;
+    globalDryNext2    = shifted.dryNext2;
+    globalDryNext3    = shifted.dryNext3;
+    globalFrozenNext  = shifted.frozenNext;
+    globalFrozenNext2 = shifted.frozenNext2;
+    globalFrozenNext3 = shifted.frozenNext3;
 
     if (document.getElementById('dryNextDate'))     document.getElementById('dryNextDate').value     = globalDryNext;
     if (document.getElementById('dryNext2Date'))    document.getElementById('dryNext2Date').value    = globalDryNext2;
