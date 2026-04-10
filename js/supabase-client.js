@@ -309,7 +309,7 @@ function _hideLoading() {
     if (overlay) overlay.classList.add('hidden');
 }
 
-async function sbLoadAllData(statusCallback, weeks = 52) {
+async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = true) {
     const log = msg => {
         if (statusCallback) statusCallback(msg);
         _showLoading(msg);
@@ -344,8 +344,19 @@ async function sbLoadAllData(statusCallback, weeks = 52) {
 
     const invoiceHd = _pickingDataToInvoiceHistory(pickingRows, weekKeys);
 
-    // ★ weekly_salesに存在するコードだけにsku_masterを絞る
-    const activeCodes = new Set(Object.values(hd).map(v => v.code));
+    // activeOnly: 最新週のQty > 0 のものだけに絞る
+    let filteredHd = hd;
+    if (activeOnly) {
+        filteredHd = {};
+        for (const key in hd) {
+            const qtys = hd[key].qtys;
+            const latestQty = qtys.length > 0 ? qtys[qtys.length - 1] : 0;
+            if (latestQty > 0) filteredHd[key] = hd[key];
+        }
+    }
+
+    // weekly_salesに存在するコードだけにsku_masterを絞る
+    const activeCodes = new Set(Object.values(filteredHd).map(v => v.code));
     const filteredMaster = {};
     for (const code of activeCodes) {
         if (masterData[code]) filteredMaster[code] = masterData[code];
@@ -353,7 +364,7 @@ async function sbLoadAllData(statusCallback, weeks = 52) {
 
     // グローバル変数に反映
     skuMaster            = filteredMaster;
-    historyData          = hd;
+    historyData          = filteredHd;
     invoiceHistoryData   = invoiceHd;
     loadedWeeks          = weekKeys.length;
     loadedFiles          = weekLabels;
@@ -370,7 +381,10 @@ async function sbLoadAllData(statusCallback, weeks = 52) {
     const wkEl = document.getElementById('uiWeekCount');
     if (wkEl) wkEl.innerText = loadedWeeks;
 
-    log(`Done: ${Object.keys(masterData).length} SKUs / ${weekKeys.length} weeks / ${salesRows.length} records`);
+    const skuCount = Object.keys(filteredMaster).length;
+    const totalCount = Object.keys(masterData).length;
+    const filterNote = activeOnly ? ` (active only, ${totalCount} total)` : '';
+    log(`Done: ${skuCount} SKUs${filterNote} / ${weekKeys.length} weeks / ${salesRows.length} records`);
 
     _showLoading('Rendering...');
     if (typeof renderMasterList   === 'function') renderMasterList();

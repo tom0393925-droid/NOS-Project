@@ -51,17 +51,24 @@
                             <p class="text-sm text-gray-500 mt-1">Load all data from Supabase database.</p>
                             <p id="sbLoadStatus" class="text-sm mt-1 font-medium text-gray-400"></p>
                         </div>
-                        <div class="flex items-center gap-3">
-                            <div class="flex flex-col items-end gap-1">
-                                <span class="text-xs font-bold text-gray-500">Weeks to load</span>
-                                <select id="sbWeeksSelect" class="p-2 border border-gray-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-green-400 outline-none">
-                                    <option value="13">13 weeks (3 months)</option>
-                                    <option value="26">26 weeks (6 months)</option>
-                                    <option value="52" selected>52 weeks (1 year)</option>
-                                    <option value="104">104 weeks (2 years)</option>
-                                </select>
+                        <div class="flex items-center gap-4">
+                            <div class="flex flex-col items-end gap-2">
+                                <div class="flex flex-col items-end gap-1">
+                                    <span class="text-xs font-bold text-gray-500">Weeks to load</span>
+                                    <select id="sbWeeksSelect" class="p-2 border border-gray-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-green-400 outline-none">
+                                        <option value="13">13 weeks (3 months)</option>
+                                        <option value="26">26 weeks (6 months)</option>
+                                        <option value="52" selected>52 weeks (1 year)</option>
+                                        <option value="104">104 weeks (2 years)</option>
+                                    </select>
+                                </div>
+                                <label class="flex items-center gap-2 cursor-pointer select-none">
+                                    <input type="checkbox" id="sbActiveOnly" checked
+                                        class="w-4 h-4 accent-green-600">
+                                    <span class="text-xs font-bold text-gray-600">Active stock only</span>
+                                </label>
                             </div>
-                            <button onclick="sbLoadAllData(msg => document.getElementById('sbLoadStatus').textContent = msg, parseInt(document.getElementById('sbWeeksSelect').value))"
+                            <button onclick="sbLoadAllData(msg => document.getElementById('sbLoadStatus').textContent = msg, parseInt(document.getElementById('sbWeeksSelect').value), document.getElementById('sbActiveOnly').checked)"
                                 class="bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md whitespace-nowrap">
                                 🔄 Load from Supabase
                             </button>
