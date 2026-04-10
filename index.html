@@ -69,122 +69,6 @@
                     </div>
                 </div>
 
-                <!-- ☁️ Google Sheets 直接読込 -->
-                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-emerald-500 border-y border-r border-gray-200">
-                    <div class="mb-4">
-                        <h3 class="font-bold text-emerald-800 text-lg flex items-center gap-2">
-                            ☁️ Load from Google Sheets
-                            <span class="text-xs font-normal bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full">Recommended</span>
-                        </h3>
-                        <p class="text-sm text-gray-500 mt-1">スプレッドシートから直接読み込みます。Sheet ID と API Key を入力してください。</p>
-                    </div>
-                    <div class="flex flex-col sm:flex-row gap-3 mb-3">
-                        <input type="text" id="sheetsSheetId" placeholder="Spreadsheet ID"
-                            class="flex-grow p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 outline-none font-mono"
-                            title="スプレッドシートURLの /d/ と /edit の間の文字列">
-                        <input type="password" id="sheetsApiKey" placeholder="Google API Key"
-                            class="flex-grow p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-emerald-400 outline-none font-mono">
-                        <button id="loadSheetsBtn" onclick="SheetsAPI.loadAll()"
-                            class="bg-emerald-600 hover:bg-emerald-700 text-white px-6 py-2.5 rounded-lg font-bold transition-colors shadow-md whitespace-nowrap">
-                            🔄 Load from Google Sheets
-                        </button>
-                    </div>
-                    <p id="sheetsLoadStatus" class="text-sm mt-1 font-medium text-gray-400"></p>
-                </div>
-
-                <!-- Step 1: JSON 読込（バックアップ / オフライン用） -->
-                                <div
-                    class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500 border-y border-r border-gray-200">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
-                            <h3 class="font-bold text-blue-800 text-lg flex items-center gap-2">Step 1: Load Database <span class="text-xs font-normal bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full">Backup / Offline</span></h3>
-                            <p class="text-sm text-gray-600 mt-1">JSONデータベースファイルを読み込みます（バックアップ・オフライン用）。</p>
-                        </div>
-                        <label
-                            class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-bold cursor-pointer transition-colors shadow-md flex items-center gap-2 whitespace-nowrap">
-                            📂 Load JSON Data
-                            <input type="file" accept=".json" class="hidden" onchange="importSaveData(event)">
-                        </label>
-                    </div>
-                </div>
-
-                <div class="flex items-center gap-4 py-4">
-                    <div class="h-px bg-gray-300 flex-grow"></div>
-                    <span class="text-sm font-bold text-gray-400 tracking-widest uppercase">Data Updater Workflow</span>
-                    <div class="h-px bg-gray-300 flex-grow"></div>
-                </div>
-
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-
-                    <div class="flex flex-col gap-6">
-                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                            <h3 class="font-bold text-gray-800 text-lg mb-1">Step 2-A: Append NOS Data</h3>
-                            <p class="text-xs text-gray-500 mb-4">Loaded Weeks: <span id="uiWeekCount"
-                                    class="font-black text-blue-600 text-lg">0</span></p>
-                            <label class="file-slot block mb-4 flex flex-col justify-center items-center py-6"
-                                id="slotWeek">
-                                <div class="font-bold text-gray-700 text-sm mb-2">📥 Select NOS Excel</div>
-                                <div class="file-name text-gray-500 text-xs bg-gray-100 px-3 py-1 rounded"
-                                    id="nameWeek">No file selected</div>
-                                <input type="file" id="fileWeek" accept=".xlsx, .xls" class="hidden"
-                                    onchange="updateSingleSlot()">
-                            </label>
-                            <button
-                                class="w-full bg-green-600 hover:bg-green-700 text-white border-none py-3 font-bold rounded-lg transition-colors shadow-md"
-                                id="analyzeBtn" onclick="runAnalysis()">Run Analysis & Append</button>
-                            <div id="loading" class="hidden text-center font-bold text-green-600 mt-3">Processing...
-                            </div>
-                        </div>
-
-                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex-grow flex flex-col">
-                            <div class="flex justify-between items-center mb-3 border-b border-gray-100 pb-3">
-                                <h3 class="font-bold text-gray-800 text-sm">📁 NOS File History</h3>
-                                <button onclick="clearAllData()"
-                                    class="text-xs bg-red-50 text-red-600 hover:bg-red-100 px-3 py-1.5 rounded font-bold transition-colors border border-red-200 shadow-sm">🗑
-                                    Reset NOS</button>
-                            </div>
-                            <div
-                                class="flex-grow overflow-y-auto bg-slate-50 border border-gray-200 rounded-lg p-3 custom-scrollbar h-40">
-                                <ul id="fileHistoryList" class="space-y-2"></ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col gap-6">
-                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200">
-                            <h3 class="font-bold text-gray-800 text-lg mb-1">Step 2-B: Append Invoice Data</h3>
-                            <p class="text-xs text-gray-500 mb-4">Loaded Weeks: <span id="uiInvoiceWeekCount"
-                                    class="font-black text-purple-600 text-lg">0</span></p>
-                            <label class="file-slot block mb-4 flex flex-col justify-center items-center py-6"
-                                id="slotInvoiceWeek">
-                                <div class="font-bold text-gray-700 text-sm mb-2">📥 Select Invoice Excel</div>
-                                <div class="file-name text-gray-500 text-xs bg-gray-100 px-3 py-1 rounded"
-                                    id="nameInvoiceWeek">No file selected</div>
-                                <input type="file" id="fileInvoice" accept=".xlsx, .xls" class="hidden"
-                                    onchange="updateInvoiceSlot()">
-                            </label>
-                            <button
-                                class="w-full bg-purple-600 hover:bg-purple-700 text-white border-none py-3 font-bold rounded-lg transition-colors shadow-md"
-                                id="analyzeInvoiceBtn" onclick="runInvoiceAnalysis()">Extract Pick Frequency</button>
-                            <div id="loadingInvoice" class="hidden text-center font-bold text-purple-600 mt-3">
-                                Processing...</div>
-                        </div>
-
-                        <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 flex-grow flex flex-col">
-                            <div class="flex justify-between items-center mb-3 border-b border-gray-100 pb-3">
-                                <h3 class="font-bold text-gray-800 text-sm">📁 Invoice File History</h3>
-                                <button onclick="clearInvoiceData()"
-                                    class="text-xs bg-purple-50 text-purple-600 hover:bg-purple-100 px-3 py-1.5 rounded font-bold transition-colors border border-purple-200 shadow-sm">🗑
-                                    Reset Invoice</button>
-                            </div>
-                            <div
-                                class="flex-grow overflow-y-auto bg-slate-50 border border-gray-200 rounded-lg p-3 custom-scrollbar h-40">
-                                <ul id="invoiceHistoryList" class="space-y-2"></ul>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
 
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mt-6">
                     <div class="flex justify-between items-end mb-4 border-b pb-3">
@@ -1019,7 +903,6 @@
     <script src="js/ui_analytics.js?v=24"></script>
     <script src="js/ui_map.js?v=22"></script>
     <script src="js/ui.js?v=22"></script>
-    <script src="js/sheets-api.js?v=2"></script>
     <script src="js/main.js?v=24"></script>
 </body>
 
