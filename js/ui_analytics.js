@@ -363,15 +363,14 @@ function renderCrossAnalysis() {
 // Order Action Required List
 // ==========================================
 
-let _orderTab = 'dry';
+let _mfTab = 'CFJP'; // 'CFJP', 'CRJP'
 let _orderSort = { col: null, asc: true };
 let _orderData = [];
-let _manufactureFilter = 'all';
 
-function _getArrivalDates(tab) {
-    const next  = tab === 'frozen' ? globalFrozenNext  : globalDryNext;
-    const next2 = tab === 'frozen' ? globalFrozenNext2 : globalDryNext2;
-    const next3 = tab === 'frozen' ? globalFrozenNext3 : globalDryNext3;
+function _getArrivalDates(type) {
+    const next  = type === 'frozen' ? globalFrozenNext  : globalDryNext;
+    const next2 = type === 'frozen' ? globalFrozenNext2 : globalDryNext2;
+    const next3 = type === 'frozen' ? globalFrozenNext3 : globalDryNext3;
     const baseDate = getLatestDataDate(); // SKU詳細と同じ基準日を使用
     const dNext  = next  ? new Date(next)  : null;
     const dNext2 = next2 ? new Date(next2) : null;
@@ -386,7 +385,6 @@ function _getArrivalDates(tab) {
 }
 
 function _buildOrderData() {
-    const dates = _getArrivalDates(_orderTab);
     const rows = [];
 
     // Pre-index historyData by code once: O(n) build → O(1) per-SKU lookup
@@ -400,9 +398,13 @@ function _buildOrderData() {
 
     for (const code in skuMaster) {
         const master = skuMaster[code];
+        const mf = master.manufacture || '';
+        // CFJP / CRJP のみ対象
+        if (mf !== _mfTab) continue;
+
+        // SKUの温度帯に応じて到着日を選択（CFJP=Frozen, CRJP=Dry）
         const stType = master.storageType || 'Dry';
-        const matchTab = _orderTab === 'frozen' ? stType === 'Frozen' : (stType === 'Dry' || stType === 'Chill');
-        if (!matchTab) continue;
+        const dates = _getArrivalDates(stType === 'Frozen' ? 'frozen' : 'dry');
 
         const lots = byCode[code] || [];
 
@@ -434,54 +436,30 @@ function _buildOrderData() {
             order3rd = Math.max(0, Math.round(safety - pred3rd));
         }
 
-        rows.push({ code, name: master.name || code, uom: master.uom || '-', avg, safety, currentQty,
-            predNext, orderNext, pred2nd, order2nd, pred3rd, order3rd });
+        rows.push({ code, name: master.name || code, uom: master.uom || '-', mf, dates,
+            avg, safety, currentQty, predNext, orderNext, pred2nd, order2nd, pred3rd, order3rd });
     }
 
     _orderData = rows;
 }
 
-function switchOrderTab(tab) {
-    _orderTab = tab;
+function switchMfTab(mf) {
+    _mfTab = mf;
     _orderSort = { col: null, asc: true };
-    const dryBtn    = document.getElementById('btnOrderTabDry');
-    const frozenBtn = document.getElementById('btnOrderTabFrozen');
-    if (dryBtn)    dryBtn.className    = `px-5 py-2.5 font-bold text-sm border-b-2 transition-colors ${tab === 'dry'    ? 'border-purple-600 text-purple-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`;
-    if (frozenBtn) frozenBtn.className = `px-5 py-2.5 font-bold text-sm border-b-2 transition-colors ${tab === 'frozen' ? 'border-purple-600 text-purple-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`;
-    _ensureOrderListVisible();
-    _buildOrderData();
-    renderOrderTable();
-}
-
-function showOrderActionList() {
+    const tabIds = { 'CFJP': 'btnMfCFJP', 'CRJP': 'btnMfCRJP' };
+    for (const [val, id] of Object.entries(tabIds)) {
+        const el = document.getElementById(id);
+        if (!el) continue;
+        el.className = `px-5 py-2.5 font-bold text-sm border-b-2 transition-colors ${val === mf ? 'border-purple-600 text-purple-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`;
+    }
+    const section = document.getElementById('orderActionSection');
+    if (section) section.classList.remove('hidden');
     if (typeof _showLoading === 'function') _showLoading('発注リストを計算中...');
     setTimeout(() => {
-        const section = document.getElementById('orderActionSection');
-        if (section) section.classList.remove('hidden');
         _buildOrderData();
         renderOrderTable();
         if (typeof _hideLoading === 'function') _hideLoading();
     }, 0);
-}
-
-function _ensureOrderListVisible() {
-    const section = document.getElementById('orderActionSection');
-    if (section && section.classList.contains('hidden')) {
-        showOrderActionList();
-    }
-}
-
-function switchManufactureFilter(mf) {
-    _ensureOrderListVisible();
-    _manufactureFilter = mf;
-    const btns = { 'all': 'btnMfAll', 'JP Frozen': 'btnMfJP', 'Container': 'btnMfContainer' };
-    for (const [val, id] of Object.entries(btns)) {
-        const el = document.getElementById(id);
-        if (!el) continue;
-        const active = val === mf;
-        el.className = `px-4 py-2.5 font-bold text-sm border-b-2 transition-colors ${active ? 'border-indigo-500 text-indigo-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`;
-    }
-    renderOrderTable();
 }
 
 function sortOrderTable(col) {
@@ -498,8 +476,11 @@ function renderOrderTable() {
     const tbody = document.getElementById('orderAlertTableBody');
     if (!tbody) return;
 
-    // update column headers with actual dates
-    const dates = _getArrivalDates(_orderTab);
+    // update column headers with actual dates (tab-specific; All shows no specific dates)
+    const headerDates = _mfTab === 'CFJP' ? _getArrivalDates('frozen')
+                      : _mfTab === 'CRJP' ? _getArrivalDates('dry')
+                      : { next: null, next2: null, next3: null };
+    const dates = headerDates;
     const setTh = (id, label, date) => {
         const el = document.getElementById(id);
         if (el) el.innerHTML = date ? `→ ${date} <span id="sortIcon_${label}" class="text-blue-300">↕</span>` : `→ ${label.toUpperCase()} <span id="sortIcon_${label}" class="text-gray-300">↕</span>`;
@@ -519,7 +500,6 @@ function renderOrderTable() {
     const q = (document.getElementById('orderTableSearch')?.value || '').toLowerCase();
     let rows = [..._orderData];
     if (q) rows = rows.filter(r => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q));
-    if (_manufactureFilter !== 'all') rows = rows.filter(r => (skuMaster[r.code]?.manufacture || '') === _manufactureFilter);
 
     // sort
     if (_orderSort.col) {
@@ -577,7 +557,7 @@ function onOrderQtyChange(input) {
     const row = _orderData.find(r => String(r.code).replace(/[^a-zA-Z0-9]/g, '_') === sid);
     if (!row) return;
 
-    const dates = _getArrivalDates(_orderTab);
+    const dates = row.dates;
     const fmtPred = (v, safety) => {
         if (v === null) return `<span class="text-gray-300">-</span>`;
         const rounded = Math.round(v);
@@ -624,12 +604,14 @@ function onOrderQtyChange(input) {
 
 function exportOrderTable() {
     if (!_orderData || _orderData.length === 0) { alert('No data to export.'); return; }
-    const dates = _getArrivalDates(_orderTab);
     const q = (document.getElementById('orderTableSearch')?.value || '').toLowerCase();
     const rows = q ? _orderData.filter(r => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)) : _orderData;
-    const n  = dates.next  || 'Next';
-    const n2 = dates.next2 || '2nd';
-    const n3 = dates.next3 || '3rd';
+    const hd = _mfTab === 'CFJP' ? _getArrivalDates('frozen')
+             : _mfTab === 'CRJP' ? _getArrivalDates('dry')
+             : { next: null, next2: null, next3: null };
+    const n  = hd.next  || 'Next';
+    const n2 = hd.next2 || '2nd';
+    const n3 = hd.next3 || '3rd';
     const wsData = [
         ['Code','Item Name','UoM','Avg/Wk','Safety Stock','Current Qty',
          `Pred @ ${n}`, `Order (${n})`, `Pred @ ${n2}`, `Order (${n2})`, `Pred @ ${n3}`, `Order (${n3})`],
@@ -641,8 +623,8 @@ function exportOrderTable() {
     const wb = XLSX.utils.book_new();
     const ws = XLSX.utils.aoa_to_sheet(wsData);
     ws['!cols'] = [10,25,6,8,10,10,12,12,12,12,12,12].map(w => ({ wch: w }));
-    XLSX.utils.book_append_sheet(wb, ws, _orderTab === 'frozen' ? 'Frozen Order' : 'Dry-Chill Order');
-    XLSX.writeFile(wb, `Order_Plan_${_orderTab === 'frozen' ? 'Frozen' : 'Dry-Chill'}_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, `Order_${_mfTab}`);
+    XLSX.writeFile(wb, `Order_Plan_${_mfTab}_${new Date().toISOString().split('T')[0]}.xlsx`);
 }
 
 function showCrossList(valRank, hitRank) {
