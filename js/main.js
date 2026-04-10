@@ -154,7 +154,7 @@ function updateShipmentOrder(slot, value) {
 // Container Arrival Dates: save / restore
 // ==========================================
 
-function saveDatesAndRender() {
+async function saveDatesAndRender() {
     globalDryNext    = document.getElementById('dryNextDate')?.value    || '';
     globalDryNext2   = document.getElementById('dryNext2Date')?.value   || '';
     globalDryNext3   = document.getElementById('dryNext3Date')?.value   || '';
@@ -162,12 +162,19 @@ function saveDatesAndRender() {
     globalFrozenNext2= document.getElementById('frozenNext2Date')?.value|| '';
     globalFrozenNext3= document.getElementById('frozenNext3Date')?.value|| '';
 
-    localStorage.setItem('nos_dryNext',     globalDryNext);
-    localStorage.setItem('nos_dryNext2',    globalDryNext2);
-    localStorage.setItem('nos_dryNext3',    globalDryNext3);
-    localStorage.setItem('nos_frozenNext',  globalFrozenNext);
-    localStorage.setItem('nos_frozenNext2', globalFrozenNext2);
-    localStorage.setItem('nos_frozenNext3', globalFrozenNext3);
+    // Supabase に保存（失敗してもUIは継続）
+    try {
+        await sbSaveContainerDates({
+            dryNext:     globalDryNext,
+            dryNext2:    globalDryNext2,
+            dryNext3:    globalDryNext3,
+            frozenNext:  globalFrozenNext,
+            frozenNext2: globalFrozenNext2,
+            frozenNext3: globalFrozenNext3,
+        });
+    } catch (e) {
+        console.error('コンテナ日程の保存失敗:', e);
+    }
 
     if (currentSelectedSKU && typeof renderSKUDetails === 'function') {
         renderSKUDetails(currentSelectedSKU);
@@ -179,6 +186,24 @@ function saveDatesAndRender() {
     }
 }
 
+// sbLoadAllData() から呼ばれる：取得済みデータをグローバル変数とUIに展開
+function restoreContainerDatesFromData(dates) {
+    globalDryNext     = dates.dryNext     || '';
+    globalDryNext2    = dates.dryNext2    || '';
+    globalDryNext3    = dates.dryNext3    || '';
+    globalFrozenNext  = dates.frozenNext  || '';
+    globalFrozenNext2 = dates.frozenNext2 || '';
+    globalFrozenNext3 = dates.frozenNext3 || '';
+
+    if (document.getElementById('dryNextDate'))     document.getElementById('dryNextDate').value     = globalDryNext;
+    if (document.getElementById('dryNext2Date'))    document.getElementById('dryNext2Date').value    = globalDryNext2;
+    if (document.getElementById('dryNext3Date'))    document.getElementById('dryNext3Date').value    = globalDryNext3;
+    if (document.getElementById('frozenNextDate'))  document.getElementById('frozenNextDate').value  = globalFrozenNext;
+    if (document.getElementById('frozenNext2Date')) document.getElementById('frozenNext2Date').value = globalFrozenNext2;
+    if (document.getElementById('frozenNext3Date')) document.getElementById('frozenNext3Date').value = globalFrozenNext3;
+}
+
+// 初回ロード時（Supabaseデータ読込前）のフォールバック：localStorageから復元
 function restoreContainerDates() {
     globalDryNext     = localStorage.getItem('nos_dryNext')     || '';
     globalDryNext2    = localStorage.getItem('nos_dryNext2')    || '';
@@ -187,12 +212,12 @@ function restoreContainerDates() {
     globalFrozenNext2 = localStorage.getItem('nos_frozenNext2') || '';
     globalFrozenNext3 = localStorage.getItem('nos_frozenNext3') || '';
 
-    if (document.getElementById('dryNextDate'))    document.getElementById('dryNextDate').value    = globalDryNext;
-    if (document.getElementById('dryNext2Date'))   document.getElementById('dryNext2Date').value   = globalDryNext2;
-    if (document.getElementById('dryNext3Date'))   document.getElementById('dryNext3Date').value   = globalDryNext3;
-    if (document.getElementById('frozenNextDate')) document.getElementById('frozenNextDate').value = globalFrozenNext;
-    if (document.getElementById('frozenNext2Date'))document.getElementById('frozenNext2Date').value= globalFrozenNext2;
-    if (document.getElementById('frozenNext3Date'))document.getElementById('frozenNext3Date').value= globalFrozenNext3;
+    if (document.getElementById('dryNextDate'))     document.getElementById('dryNextDate').value     = globalDryNext;
+    if (document.getElementById('dryNext2Date'))    document.getElementById('dryNext2Date').value    = globalDryNext2;
+    if (document.getElementById('dryNext3Date'))    document.getElementById('dryNext3Date').value    = globalDryNext3;
+    if (document.getElementById('frozenNextDate'))  document.getElementById('frozenNextDate').value  = globalFrozenNext;
+    if (document.getElementById('frozenNext2Date')) document.getElementById('frozenNext2Date').value = globalFrozenNext2;
+    if (document.getElementById('frozenNext3Date')) document.getElementById('frozenNext3Date').value = globalFrozenNext3;
 }
 
 document.addEventListener('click', function(event) {

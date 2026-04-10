@@ -173,6 +173,44 @@ async function sbSaveShipmentOrder(code, arrivalDate, orderQty, status = 'pendin
 }
 
 // ==========================================
+// Container Schedules
+// ==========================================
+async function sbLoadContainerDates() {
+    const { data, error } = await _sb
+        .from('container_schedules')
+        .select('*')
+        .eq('id', 'global')
+        .single();
+    if (error) {
+        // 行がまだ存在しない場合は空オブジェクトを返す
+        if (error.code === 'PGRST116') return {};
+        throw error;
+    }
+    return {
+        dryNext:     data.dry_next     || '',
+        dryNext2:    data.dry_next2    || '',
+        dryNext3:    data.dry_next3    || '',
+        frozenNext:  data.frozen_next  || '',
+        frozenNext2: data.frozen_next2 || '',
+        frozenNext3: data.frozen_next3 || '',
+    };
+}
+
+async function sbSaveContainerDates(dates) {
+    const { error } = await _sb.from('container_schedules').upsert({
+        id:           'global',
+        dry_next:     dates.dryNext    || null,
+        dry_next2:    dates.dryNext2   || null,
+        dry_next3:    dates.dryNext3   || null,
+        frozen_next:  dates.frozenNext || null,
+        frozen_next2: dates.frozenNext2 || null,
+        frozen_next3: dates.frozenNext3 || null,
+        updated_at:   new Date().toISOString(),
+    }, { onConflict: 'id' });
+    if (error) throw error;
+}
+
+// ==========================================
 // weekly_sales rows → historyData 形式に変換
 // ==========================================
 function _weeklySalesToHistoryData(rows) {
@@ -289,6 +327,9 @@ async function sbLoadAllData(statusCallback, weeks = 52) {
     log('発注データを読み込み中...');
     const ordersData  = await sbLoadShipmentOrders();
 
+    log('コンテナ到着日を読み込み中...');
+    const containerDates = await sbLoadContainerDates();
+
     log('データを変換中...');
     const { historyData: hd, weekKeys, weekLabels } = _weeklySalesToHistoryData(salesRows);
 
@@ -319,6 +360,11 @@ async function sbLoadAllData(statusCallback, weeks = 52) {
     loadedInvoiceWeeks   = weekKeys.length;
     loadedInvoiceFiles   = weekLabels.map(w => 'Picking ' + w);
     window.shipmentOrders = ordersData;
+
+    // コンテナ到着日をグローバル変数とUIに反映
+    if (typeof restoreContainerDatesFromData === 'function') {
+        restoreContainerDatesFromData(containerDates);
+    }
 
     // UI を更新
     const wkEl = document.getElementById('uiWeekCount');
