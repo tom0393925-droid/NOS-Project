@@ -68,7 +68,8 @@ function updateAnalyticsUI() {
 
     setSafeText('kpiTotalValue', '$' + Math.round(totalNormalValue).toLocaleString());
     setSafeText('kpiWasteRisk', '$' + Math.round(totalWasteRisk).toLocaleString());
-    let activeSkusCount = Object.values(skuTotalsMap).filter(sku => sku.hasActiveStock).length;
+    // skuMaster はSupabaseロード時にフィルター済みの唯一の正確な件数を持つ
+    const activeSkusCount = Object.keys(skuMaster).length;
     setSafeText('kpiTotalSkus', activeSkusCount.toLocaleString());
 
     // ==========================================
