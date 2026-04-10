@@ -3,8 +3,21 @@
 // ==========================================
 
 function autoFillMasterForm() {
-    const code = document.getElementById('mCode').value.trim();
-    if (!code || !skuMaster[code]) return;
+    const code    = document.getElementById('mCode').value.trim();
+    const status  = document.getElementById('masterStatus');
+    const btnReset = document.getElementById('btnMasterReset');
+
+    if (!code || !skuMaster[code]) {
+        // コードが存在しない場合はフォームをクリア
+        if (status && code && !skuMaster[code]) {
+            status.innerText = '';
+        }
+        const btn = document.getElementById('btnMasterUpdate');
+        if (btn) btn.innerText = '➕ Add New';
+        if (btnReset) btnReset.classList.add('hidden');
+        return;
+    }
+
     const item = skuMaster[code];
     document.getElementById('mName').value    = item.name        || '';
     document.getElementById('mTc').value      = item.tc          || 0;
@@ -16,7 +29,16 @@ function autoFillMasterForm() {
     document.getElementById('mFF').checked    = item.isFF        || false;
     if (document.getElementById('mManufacture')) document.getElementById('mManufacture').value = item.manufacture || '';
     if (document.getElementById('mLocation'))    document.getElementById('mLocation').value    = item.location    || '-';
-    document.getElementById('btnMasterUpdate').innerText = "Update";
+
+    const btn = document.getElementById('btnMasterUpdate');
+    if (btn) btn.innerText = '✏️ Update';
+    if (btnReset) btnReset.classList.remove('hidden');
+
+    if (status) {
+        status.className = 'w-full text-xs text-blue-600 font-bold mt-1';
+        status.innerText = `Loaded: ${item.name || code}`;
+        setTimeout(() => { status.innerText = ''; }, 2000);
+    }
 }
 
 function editMaster(code) {

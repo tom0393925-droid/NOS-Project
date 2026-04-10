@@ -103,14 +103,9 @@
 
                 <!-- Update SKU Master -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mt-6">
-                    <div class="flex justify-between items-end mb-4 border-b pb-3">
+                    <div class="mb-4 border-b pb-3">
                         <h3 class="font-bold text-gray-800 text-lg">Update SKU Master</h3>
-                        <div class="flex items-center gap-2 bg-gray-50 p-2 rounded-lg border border-gray-200">
-                            <span class="text-xs font-bold text-gray-600">⚡ Bulk Update:</span>
-                            <label class="bg-white hover:bg-gray-100 text-gray-800 px-3 py-1 rounded text-xs font-bold cursor-pointer border border-gray-300 shadow-sm transition-colors">
-                                Select File <input type="file" accept=".xlsx, .xls" class="hidden" onchange="handleTcExcelUpload(event)">
-                            </label>
-                        </div>
+                        <p class="text-sm text-gray-500 mt-1">Enter a SKU Code to load existing data, edit fields, then click Update.</p>
                     </div>
 
                     <div class="flex flex-wrap gap-3 mb-6 items-center bg-yellow-50 p-4 rounded-lg border border-yellow-200" id="masterInputArea">
@@ -118,7 +113,7 @@
                             <span class="text-[10px] font-bold text-yellow-700 ml-1 mb-1">SKU Code</span>
                             <input type="text" id="mCode" placeholder="Code"
                                 class="p-2 border border-gray-300 rounded shadow-sm text-sm focus:ring-2 focus:ring-yellow-400 outline-none font-bold disabled:bg-gray-200"
-                                oninput="autoFillMasterForm()">
+                                oninput="autoFillMasterForm()" onblur="autoFillMasterForm()">
                         </div>
                         <div class="flex flex-col flex-grow min-w-[200px]">
                             <span class="text-[10px] font-bold text-blue-600 ml-1 mb-1">Item Name</span>
