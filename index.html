@@ -42,8 +42,8 @@
 
                 <!-- Load from Supabase -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500 border-y border-r border-gray-200">
-                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                        <div>
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                        <div class="flex-grow">
                             <h3 class="font-bold text-green-800 text-lg flex items-center gap-2">
                                 ☁️ Load from Supabase
                                 <span class="text-xs font-normal bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Recommended</span>
@@ -51,7 +51,7 @@
                             <p class="text-sm text-gray-500 mt-1">Load all data from Supabase database.</p>
                             <p id="sbLoadStatus" class="text-sm mt-1 font-medium text-gray-400"></p>
                         </div>
-                        <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-3 flex-shrink-0">
                             <div class="flex flex-col items-end gap-2">
                                 <div class="flex flex-col items-end gap-1">
                                     <span class="text-xs font-bold text-gray-500">Weeks to load</span>
@@ -63,8 +63,7 @@
                                     </select>
                                 </div>
                                 <label class="flex items-center gap-2 cursor-pointer select-none">
-                                    <input type="checkbox" id="sbActiveOnly" checked
-                                        class="w-4 h-4 accent-green-600">
+                                    <input type="checkbox" id="sbActiveOnly" checked class="w-4 h-4 accent-green-600">
                                     <span class="text-xs font-bold text-gray-600">Active stock only</span>
                                 </label>
                             </div>
