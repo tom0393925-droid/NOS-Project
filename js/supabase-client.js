@@ -302,7 +302,7 @@ function _showLoading(msg) {
     const overlay = document.getElementById('loadingOverlay');
     const msgEl   = document.getElementById('loadingMessage');
     if (overlay) overlay.classList.remove('hidden');
-    if (msgEl)   msgEl.textContent = msg || '読み込み中...';
+    if (msgEl)   msgEl.textContent = msg || 'Loading...';
 }
 function _hideLoading() {
     const overlay = document.getElementById('loadingOverlay');
@@ -315,22 +315,22 @@ async function sbLoadAllData(statusCallback, weeks = 52) {
         _showLoading(msg);
     };
 
-    log('SKUマスターを読み込み中...');
+    log('Loading SKU master...');
     const masterData  = await sbLoadSkuMaster();
 
-    log(`週次販売データを読み込み中（直近${weeks}週）...`);
+    log(`Loading weekly sales data (last ${weeks} weeks)...`);
     const salesRows   = await sbLoadWeeklySales(weeks);
 
-    log('ピッキングデータを読み込み中...');
+    log('Loading picking data...');
     const pickingRows = await sbLoadPickingData();
 
-    log('発注データを読み込み中...');
+    log('Loading shipment orders...');
     const ordersData  = await sbLoadShipmentOrders();
 
-    log('コンテナ到着日を読み込み中...');
+    log('Loading container arrival dates...');
     const containerDates = await sbLoadContainerDates();
 
-    log('データを変換中...');
+    log('Converting data...');
     const { historyData: hd, weekKeys, weekLabels } = _weeklySalesToHistoryData(salesRows);
 
     // sku_master の name / uom を historyData に補完
@@ -370,9 +370,9 @@ async function sbLoadAllData(statusCallback, weeks = 52) {
     const wkEl = document.getElementById('uiWeekCount');
     if (wkEl) wkEl.innerText = loadedWeeks;
 
-    log(`完了: ${Object.keys(masterData).length} SKUs / ${weekKeys.length} 週 / ${salesRows.length} レコード`);
+    log(`Done: ${Object.keys(masterData).length} SKUs / ${weekKeys.length} weeks / ${salesRows.length} records`);
 
-    _showLoading('画面を描画中...');
+    _showLoading('Rendering...');
     if (typeof renderMasterList   === 'function') renderMasterList();
     setTimeout(() => {
         if (typeof renderActionList  === 'function') renderActionList();

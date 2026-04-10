@@ -173,7 +173,7 @@ async function saveDatesAndRender() {
             frozenNext3: globalFrozenNext3,
         });
     } catch (e) {
-        console.error('コンテナ日程の保存失敗:', e);
+        console.error('Failed to save container dates:', e);
     }
 
     if (currentSelectedSKU && typeof renderSKUDetails === 'function') {

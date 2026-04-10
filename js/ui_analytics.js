@@ -454,7 +454,7 @@ function switchMfTab(mf) {
     }
     const section = document.getElementById('orderActionSection');
     if (section) section.classList.remove('hidden');
-    if (typeof _showLoading === 'function') _showLoading('発注リストを計算中...');
+    if (typeof _showLoading === 'function') _showLoading('Building order list...');
     setTimeout(() => {
         _buildOrderData();
         renderOrderTable();
