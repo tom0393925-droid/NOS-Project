@@ -364,7 +364,7 @@ function renderCrossAnalysis() {
 // Order Action Required List
 // ==========================================
 
-let _mfTab = 'CFJP'; // 'CFJP', 'CRJP'
+let _mfTab = 'CFJP'; // 'CFJP', 'RFJP'
 let _orderSort = { col: null, asc: true };
 let _orderData = [];
 
@@ -400,12 +400,11 @@ function _buildOrderData() {
     for (const code in skuMaster) {
         const master = skuMaster[code];
         const mf = master.manufacture || '';
-        // CFJP / CRJP のみ対象
+        // CFJP / RFJP のみ対象
         if (mf !== _mfTab) continue;
 
-        // SKUの温度帯に応じて到着日を選択（CFJP=Frozen, CRJP=Dry）
-        const stType = master.storageType || 'Dry';
-        const dates = _getArrivalDates(stType === 'Frozen' ? 'frozen' : 'dry');
+        // カテゴリで到着日を選択（CFJP=Dry/Chill, RFJP=Frozen）
+        const dates = _getArrivalDates(_mfTab === 'RFJP' ? 'frozen' : 'dry');
 
         const lots = byCode[code] || [];
 
@@ -447,7 +446,7 @@ function _buildOrderData() {
 function switchMfTab(mf) {
     _mfTab = mf;
     _orderSort = { col: null, asc: true };
-    const tabIds = { 'CFJP': 'btnMfCFJP', 'CRJP': 'btnMfCRJP' };
+    const tabIds = { 'CFJP': 'btnMfCFJP', 'RFJP': 'btnMfRFJP' };
     for (const [val, id] of Object.entries(tabIds)) {
         const el = document.getElementById(id);
         if (!el) continue;
@@ -478,9 +477,8 @@ function renderOrderTable() {
     if (!tbody) return;
 
     // update column headers with actual dates (tab-specific; All shows no specific dates)
-    const headerDates = _mfTab === 'CFJP' ? _getArrivalDates('frozen')
-                      : _mfTab === 'CRJP' ? _getArrivalDates('dry')
-                      : { next: null, next2: null, next3: null };
+    const headerDates = _mfTab === 'RFJP' ? _getArrivalDates('frozen')
+                      : _getArrivalDates('dry');
     const dates = headerDates;
     const setTh = (id, label, date) => {
         const el = document.getElementById(id);
@@ -607,9 +605,8 @@ function exportOrderTable() {
     if (!_orderData || _orderData.length === 0) { alert('No data to export.'); return; }
     const q = (document.getElementById('orderTableSearch')?.value || '').toLowerCase();
     const rows = q ? _orderData.filter(r => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)) : _orderData;
-    const hd = _mfTab === 'CFJP' ? _getArrivalDates('frozen')
-             : _mfTab === 'CRJP' ? _getArrivalDates('dry')
-             : { next: null, next2: null, next3: null };
+    const hd = _mfTab === 'RFJP' ? _getArrivalDates('frozen')
+             : _getArrivalDates('dry');
     const n  = hd.next  || 'Next';
     const n2 = hd.next2 || '2nd';
     const n3 = hd.next3 || '3rd';

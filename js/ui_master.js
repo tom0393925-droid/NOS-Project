@@ -154,7 +154,7 @@ function renderMasterList() {
 
         let mfBadge = '';
         if      (item.manufacture === 'CFJP') mfBadge = '<span class="bg-blue-50 border border-blue-200 text-blue-700 px-2 py-0.5 rounded text-[10px] font-bold">❄️ CFJP</span>';
-        else if (item.manufacture === 'CRJP') mfBadge = '<span class="bg-yellow-50 border border-yellow-200 text-yellow-700 px-2 py-0.5 rounded text-[10px] font-bold">📦 CRJP</span>';
+        else if (item.manufacture === 'RFJP') mfBadge = '<span class="bg-cyan-50 border border-cyan-200 text-cyan-700 px-2 py-0.5 rounded text-[10px] font-bold">❄️ RFJP</span>';
 
         tr.innerHTML = `
             <td class="p-3 font-bold text-indigo-700 cursor-pointer hover:underline" onclick="editMaster('${code}')">${code}</td>
