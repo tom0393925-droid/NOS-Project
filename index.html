@@ -286,48 +286,39 @@
 
                     <div id="analyticsContent" style="display:none;" class="space-y-6">
                         <div class="bg-purple-50 border border-purple-200 rounded-xl p-6 shadow-sm">
-                            <h3 class="font-bold text-purple-900 text-lg mb-3">🚢 Container Arrival Schedule</h3>
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                <div class="bg-white p-5 rounded-lg border border-purple-100 shadow-sm">
-                                    <h4 class="text-base font-bold text-gray-800 mb-4 border-b pb-2">📦 Dry / Chill</h4>
-                                    <div class="flex flex-col gap-4">
-                                        <label
-                                            class="text-sm font-bold text-gray-600 flex items-center justify-between"><span>1️⃣
-                                                Next Arrival:</span><input type="date" id="dryNextDate"
-                                                class="border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 outline-none shadow-sm"
-                                                onchange="saveDatesAndRender()"></label>
-                                        <label
-                                            class="text-sm font-bold text-gray-600 flex items-center justify-between"><span>2️⃣
-                                                2nd Next Arrival:</span><input type="date" id="dryNext2Date"
-                                                class="border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 outline-none shadow-sm"
-                                                onchange="saveDatesAndRender()"></label>
-                                        <label
-                                            class="text-sm font-bold text-gray-600 flex items-center justify-between"><span>3️⃣
-                                                3rd Next Arrival:</span><input type="date" id="dryNext3Date"
-                                                class="border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 outline-none shadow-sm"
-                                                onchange="saveDatesAndRender()"></label>
-                                    </div>
+                            <h3 class="font-bold text-purple-900 text-lg mb-4">📦 Order Category Management</h3>
+                            <!-- Category list (dynamically populated) -->
+                            <div id="categoryListArea" class="space-y-2 mb-5">
+                                <p class="text-sm text-gray-400 italic">Load data from Supabase to manage categories.</p>
+                            </div>
+                            <!-- Add New Category -->
+                            <div class="flex items-center gap-3 pt-4 border-t border-purple-200">
+                                <input type="text" id="newCategoryId" maxlength="12" placeholder="e.g. CFJP2"
+                                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-36 focus:ring-2 focus:ring-purple-400 outline-none">
+                                <button onclick="addNewCategory()"
+                                    class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors">
+                                    + Add Category
+                                </button>
+                            </div>
+                            <!-- Excel Import -->
+                            <div class="mt-5 pt-5 border-t border-purple-200">
+                                <h4 class="font-bold text-purple-800 text-sm mb-3">📂 Import SKU List from Excel</h4>
+                                <div class="flex flex-wrap items-center gap-3">
+                                    <select id="categoryImportSelect"
+                                        class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 outline-none">
+                                        <option value="">-- Select Category --</option>
+                                    </select>
+                                    <label class="cursor-pointer bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-50 flex items-center gap-2 transition-colors">
+                                        📎 <span id="nameCategoryFile">Choose Excel file</span>
+                                        <input type="file" id="fileCategoryImport" accept=".xlsx,.xls" class="hidden" onchange="updateCategoryFileName()">
+                                    </label>
+                                    <button onclick="importSkuCategoryExcel()"
+                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors">
+                                        Import
+                                    </button>
                                 </div>
-                                <div class="bg-white p-5 rounded-lg border border-blue-100 shadow-sm">
-                                    <h4 class="text-base font-bold text-blue-800 mb-4 border-b pb-2">❄️ Frozen</h4>
-                                    <div class="flex flex-col gap-4">
-                                        <label
-                                            class="text-sm font-bold text-gray-600 flex items-center justify-between"><span>1️⃣
-                                                Next Arrival:</span><input type="date" id="frozenNextDate"
-                                                class="border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 outline-none shadow-sm"
-                                                onchange="saveDatesAndRender()"></label>
-                                        <label
-                                            class="text-sm font-bold text-gray-600 flex items-center justify-between"><span>2️⃣
-                                                2nd Next Arrival:</span><input type="date" id="frozenNext2Date"
-                                                class="border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 outline-none shadow-sm"
-                                                onchange="saveDatesAndRender()"></label>
-                                        <label
-                                            class="text-sm font-bold text-gray-600 flex items-center justify-between"><span>3️⃣
-                                                3rd Next Arrival:</span><input type="date" id="frozenNext3Date"
-                                                class="border border-gray-300 rounded-md px-3 py-1.5 focus:ring-2 outline-none shadow-sm"
-                                                onchange="saveDatesAndRender()"></label>
-                                    </div>
-                                </div>
+                                <p id="categoryImportStatus" class="text-xs text-green-700 font-bold mt-2"></p>
+                                <p class="text-xs text-gray-400 mt-1">Column A = SKU code. All codes will be added to the selected category.</p>
                             </div>
                         </div>
 
@@ -531,17 +522,12 @@
                                         📥 Export to Excel
                                     </button>
                                 </div>
-                                <div class="flex flex-wrap gap-x-0 gap-y-0">
-                                    <button id="btnMfCFJP" onclick="switchMfTab('CFJP')"
-                                        class="px-5 py-2.5 font-bold text-sm border-b-2 border-purple-600 text-purple-700 bg-white transition-colors">
-                                        ❄️ CFJP
-                                    </button>
-                                    <button id="btnMfRFJP" onclick="switchMfTab('RFJP')"
-                                        class="px-5 py-2.5 font-bold text-sm border-b-2 border-transparent text-gray-500 hover:text-gray-700 transition-colors">
-                                        ❄️ RFJP
-                                    </button>
-                                </div>
+                                <!-- Tabs: dynamically populated by renderOrderCategoryTabs() -->
+                                <div id="orderCategoryTabBar" class="flex flex-wrap gap-x-0 gap-y-0"></div>
                             </div>
+
+                            <!-- Container schedule bar: shown when a tab is active -->
+                            <div id="categoryScheduleBar"></div>
 
                             <!-- テーブル部分：カテゴリ選択時のみ表示 -->
                             <div id="orderActionSection" class="hidden">
@@ -881,14 +867,15 @@
         </div>
     </div>
 
-  <script src="js/supabase-client.js?v=3"></script>
+  <script src="js/supabase-client.js?v=4"></script>
     <script src="js/supabase-upload.js?v=3"></script>
     <script src="js/state.js?v=22"></script>
     <script src="js/utils.js?v=22"></script>
     <script src="js/excel.js?v=22"></script>
     <script src="js/chart.js?v=23"></script>
     <script src="js/ui_master.js?v=26"></script>
-    <script src="js/ui_analytics.js?v=26"></script>
+    <script src="js/ui_categories.js?v=1"></script>
+    <script src="js/ui_analytics.js?v=27"></script>
     <script src="js/ui_map.js?v=22"></script>
     <script src="js/ui.js?v=22"></script>
     <script src="js/main.js?v=25"></script>

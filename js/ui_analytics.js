@@ -5,7 +5,9 @@
 function updateAnalyticsUI() {
     if (document.getElementById('analyticsPlaceholder')) document.getElementById('analyticsPlaceholder').style.display = 'none';
     if (document.getElementById('analyticsContent')) document.getElementById('analyticsContent').style.display = 'block';
-    
+
+    renderOrderCategoryTabs();
+
     // アラートの描画（ui.js側に残している場合はそちらを呼び出し）
     if (typeof renderOrderAlerts === "function") renderOrderAlerts();
 
@@ -368,20 +370,21 @@ let _mfTab = 'CFJP'; // 'CFJP', 'RFJP'
 let _orderSort = { col: null, asc: true };
 let _orderData = [];
 
-function _getArrivalDates(type) {
-    const next  = type === 'frozen' ? globalFrozenNext  : globalDryNext;
-    const next2 = type === 'frozen' ? globalFrozenNext2 : globalDryNext2;
-    const next3 = type === 'frozen' ? globalFrozenNext3 : globalDryNext3;
-    const baseDate = getLatestDataDate(); // SKU詳細と同じ基準日を使用
+function _getArrivalDates() {
+    const cat   = (window.orderCategories && window.orderCategories[_mfTab]) || {};
+    const next  = cat.next1 || '';
+    const next2 = cat.next2 || '';
+    const next3 = cat.next3 || '';
+    const baseDate = getLatestDataDate();
     const dNext  = next  ? new Date(next)  : null;
     const dNext2 = next2 ? new Date(next2) : null;
     const dNext3 = next3 ? new Date(next3) : null;
     const MS_PER_WEEK = 7 * 24 * 3600 * 1000;
     return {
         next, next2, next3,
-        weeksToNext:    dNext  ? Math.max(0, (dNext  - baseDate) / MS_PER_WEEK) : null,
-        weeks1to2:      (dNext && dNext2) ? Math.max(0, (dNext2 - dNext)  / MS_PER_WEEK) : null,
-        weeks2to3:      (dNext2 && dNext3) ? Math.max(0, (dNext3 - dNext2) / MS_PER_WEEK) : null,
+        weeksToNext:  dNext  ? Math.max(0, (dNext  - baseDate) / MS_PER_WEEK) : null,
+        weeks1to2:    (dNext && dNext2) ? Math.max(0, (dNext2 - dNext)  / MS_PER_WEEK) : null,
+        weeks2to3:    (dNext2 && dNext3) ? Math.max(0, (dNext3 - dNext2) / MS_PER_WEEK) : null,
     };
 }
 
@@ -399,12 +402,11 @@ function _buildOrderData() {
 
     for (const code in skuMaster) {
         const master = skuMaster[code];
-        const mf = master.manufacture || '';
-        // CFJP / RFJP のみ対象
-        if (mf !== _mfTab) continue;
+        // skuCategoryMap でフィルター（多対多対応）
+        const skuCats = (window.skuCategoryMap && window.skuCategoryMap[code]) || [];
+        if (!skuCats.includes(_mfTab)) continue;
 
-        // カテゴリで到着日を選択（CFJP=Dry/Chill, RFJP=Frozen）
-        const dates = _getArrivalDates(_mfTab === 'RFJP' ? 'frozen' : 'dry');
+        const dates = _getArrivalDates();
 
         const lots = byCode[code] || [];
 
@@ -446,12 +448,8 @@ function _buildOrderData() {
 function switchMfTab(mf) {
     _mfTab = mf;
     _orderSort = { col: null, asc: true };
-    const tabIds = { 'CFJP': 'btnMfCFJP', 'RFJP': 'btnMfRFJP' };
-    for (const [val, id] of Object.entries(tabIds)) {
-        const el = document.getElementById(id);
-        if (!el) continue;
-        el.className = `px-5 py-2.5 font-bold text-sm border-b-2 transition-colors ${val === mf ? 'border-purple-600 text-purple-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'}`;
-    }
+    renderOrderCategoryTabs();
+    renderCategoryScheduleBar();
     const section = document.getElementById('orderActionSection');
     if (section) section.classList.remove('hidden');
     if (typeof _showLoading === 'function') _showLoading('Building order list...');
@@ -460,6 +458,40 @@ function switchMfTab(mf) {
         renderOrderTable();
         if (typeof _hideLoading === 'function') _hideLoading();
     }, 0);
+}
+
+function renderOrderCategoryTabs() {
+    const container = document.getElementById('orderCategoryTabBar');
+    if (!container) return;
+    const cats = window.orderCategories || {};
+    container.innerHTML = '';
+    for (const id of Object.keys(cats).sort()) {
+        const btn = document.createElement('button');
+        const isActive = id === _mfTab;
+        btn.id        = `btnMf${id}`;
+        btn.className = `px-5 py-2.5 font-bold text-sm border-b-2 transition-colors ${
+            isActive ? 'border-purple-600 text-purple-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'
+        }`;
+        btn.textContent = id;
+        btn.onclick     = () => switchMfTab(id);
+        container.appendChild(btn);
+    }
+}
+
+function renderCategoryScheduleBar() {
+    const bar = document.getElementById('categoryScheduleBar');
+    if (!bar) return;
+    const cat = (window.orderCategories && window.orderCategories[_mfTab]) || {};
+    const fmt = d => d
+        ? `<span class="font-bold text-gray-800">${d}</span>`
+        : `<span class="text-gray-400">—</span>`;
+    bar.innerHTML = `
+        <div class="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 py-2.5 bg-purple-50 border-b border-purple-100 text-sm">
+            <span class="font-bold text-purple-700">${_mfTab} Container Schedule</span>
+            <span class="text-gray-500">Next: ${fmt(cat.next1)}</span>
+            <span class="text-gray-500">2nd: ${fmt(cat.next2)}</span>
+            <span class="text-gray-500">3rd: ${fmt(cat.next3)}</span>
+        </div>`;
 }
 
 function sortOrderTable(col) {
@@ -476,9 +508,8 @@ function renderOrderTable() {
     const tbody = document.getElementById('orderAlertTableBody');
     if (!tbody) return;
 
-    // update column headers with actual dates (tab-specific; All shows no specific dates)
-    const headerDates = _mfTab === 'RFJP' ? _getArrivalDates('frozen')
-                      : _getArrivalDates('dry');
+    // update column headers with actual dates
+    const headerDates = _getArrivalDates();
     const dates = headerDates;
     const setTh = (id, label, date) => {
         const el = document.getElementById(id);
@@ -605,8 +636,7 @@ function exportOrderTable() {
     if (!_orderData || _orderData.length === 0) { alert('No data to export.'); return; }
     const q = (document.getElementById('orderTableSearch')?.value || '').toLowerCase();
     const rows = q ? _orderData.filter(r => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)) : _orderData;
-    const hd = _mfTab === 'RFJP' ? _getArrivalDates('frozen')
-             : _getArrivalDates('dry');
+    const hd = _getArrivalDates();
     const n  = hd.next  || 'Next';
     const n2 = hd.next2 || '2nd';
     const n3 = hd.next3 || '3rd';

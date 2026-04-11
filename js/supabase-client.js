@@ -211,6 +211,72 @@ async function sbSaveContainerDates(dates) {
 }
 
 // ==========================================
+// Order Categories
+// ==========================================
+async function sbLoadOrderCategories() {
+    const { data, error } = await _sb.from('order_categories').select('*').order('id');
+    if (error) throw error;
+    const result = {};
+    for (const row of data) {
+        result[row.id] = {
+            id:    row.id,
+            name:  row.name || row.id,
+            next1: row.next1 || '',
+            next2: row.next2 || '',
+            next3: row.next3 || '',
+        };
+    }
+    return result;
+}
+
+async function sbSaveOrderCategory(catData) {
+    const { error } = await _sb.from('order_categories').upsert(
+        { id: catData.id, name: catData.name || catData.id,
+          next1: catData.next1 || null, next2: catData.next2 || null, next3: catData.next3 || null },
+        { onConflict: 'id' }
+    );
+    if (error) throw error;
+}
+
+async function sbDeleteOrderCategory(id) {
+    const { error } = await _sb.from('order_categories').delete().eq('id', id);
+    if (error) throw error;
+}
+
+// ==========================================
+// SKU Category Map
+// ==========================================
+async function sbLoadSkuCategoryMap() {
+    const allRows = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+        const { data, error } = await _sb.from('sku_category_map').select('*').range(from, from + pageSize - 1);
+        if (error) throw error;
+        allRows.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+    }
+    const result = {};
+    for (const row of allRows) {
+        if (!result[row.sku_code]) result[row.sku_code] = [];
+        result[row.sku_code].push(row.category_id);
+    }
+    return result;
+}
+
+async function sbBulkUpsertSkuCategory(skuCodes, categoryId) {
+    if (!skuCodes.length) return;
+    const rows = skuCodes.map(code => ({ sku_code: code, category_id: categoryId }));
+    const batchSize = 500;
+    for (let i = 0; i < rows.length; i += batchSize) {
+        const { error } = await _sb.from('sku_category_map')
+            .upsert(rows.slice(i, i + batchSize), { onConflict: 'sku_code,category_id' });
+        if (error) throw error;
+    }
+}
+
+// ==========================================
 // weekly_sales rows → historyData 形式に変換
 // ==========================================
 function _weeklySalesToHistoryData(rows) {
@@ -327,8 +393,10 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = true) {
     log('Loading shipment orders...');
     const ordersData  = await sbLoadShipmentOrders();
 
-    log('Loading container arrival dates...');
-    const containerDates = await sbLoadContainerDates();
+    log('Loading order categories...');
+    const orderCats  = await sbLoadOrderCategories();
+    log('Loading SKU category map...');
+    const skuCatMap  = await sbLoadSkuCategoryMap();
 
     log('Converting data...');
     const { historyData: hd, weekKeys, weekLabels } = _weeklySalesToHistoryData(salesRows);
@@ -370,12 +438,19 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = true) {
     loadedFiles          = weekLabels;
     loadedInvoiceWeeks   = weekKeys.length;
     loadedInvoiceFiles   = weekLabels.map(w => 'Picking ' + w);
-    window.shipmentOrders = ordersData;
+    window.shipmentOrders  = ordersData;
+    window.orderCategories = orderCats;
+    window.skuCategoryMap  = skuCatMap;
 
-    // コンテナ到着日をグローバル変数とUIに反映
-    if (typeof restoreContainerDatesFromData === 'function') {
-        restoreContainerDatesFromData(containerDates);
-    }
+    // Set global date vars from CFJP/RFJP for chart.js backward compat
+    const _cfjp = orderCats['CFJP'] || {};
+    const _rfjp = orderCats['RFJP'] || {};
+    globalDryNext     = _cfjp.next1 || '';
+    globalDryNext2    = _cfjp.next2 || '';
+    globalDryNext3    = _cfjp.next3 || '';
+    globalFrozenNext  = _rfjp.next1 || '';
+    globalFrozenNext2 = _rfjp.next2 || '';
+    globalFrozenNext3 = _rfjp.next3 || '';
 
     // UI を更新
     const wkEl = document.getElementById('uiWeekCount');
@@ -387,7 +462,9 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = true) {
     log(`Done: ${skuCount} SKUs${filterNote} / ${weekKeys.length} weeks / ${salesRows.length} records`);
 
     _showLoading('Rendering...');
-    if (typeof renderMasterList   === 'function') renderMasterList();
+    if (typeof renderCategoryManagement === 'function') renderCategoryManagement();
+    if (typeof renderOrderCategoryTabs  === 'function') renderOrderCategoryTabs();
+    if (typeof renderMasterList         === 'function') renderMasterList();
     setTimeout(() => {
         if (typeof renderActionList  === 'function') renderActionList();
         setTimeout(() => {
