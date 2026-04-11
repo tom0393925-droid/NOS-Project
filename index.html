@@ -230,15 +230,15 @@
         <div id="dashboardView" class="hidden flex-grow flex flex-col bg-white">
             <div class="tab-container mx-6 mt-6 mb-0 rounded-t-xl bg-slate-800 shadow-inner flex">
                 <button
-                    class="tab-button active flex-1 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
+                    class="tab-button active flex-auto px-4 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors"
                     onclick="switchTab('nosTab', this)">📦 NOS Meeting List</button>
                <button
-                    class="tab-button flex-1 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
-                    onclick="switchTab('analyticsTab', this); updateAnalyticsUI();">📊 Analytics & Order Planning</button>
-                <button
-                    class="tab-button flex-1 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
-                    onclick="switchTab('mapTab', this)">🗺️ Warehouse Map</button>
-            </div>
+                    class="tab-button flex-auto px-4 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
+                    onclick="switchTab('analyticsTab', this); updateAnalyticsUI();">📊 Analytics & Order Planning</button>
+                <button
+                    class="tab-button flex-auto px-4 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
+                    onclick="switchTab('mapTab', this)">🗺️ Warehouse Map</button>
+            </div>
 
             <div class="bg-gray-100 flex-grow">
                 <div id="nosTab" class="tab-content active nos-wrapper px-6 pb-6 pt-4">
