@@ -2,6 +2,18 @@
 // js/chart.js: Chart configuration and Future Prediction Plugin
 // ==========================================
 
+// ── Simulation state ──
+let _simAvg = null;          // null = use real avg; number = user override
+let _realAvg = 0;            // computed 12-week average
+let _simNumFutureWeeks = 0;  // how many future weeks are extended on the chart
+let _simLatestQty = 0;       // inventory qty at the last historical week
+let _simBaseDate = null;     // Date object for the last historical week
+let _prevChartSKU = null;    // detect SKU switches to auto-reset sim
+let _isDragging = false;
+let _dragStartClientY = 0;
+let _dragStartAvg = 0;
+let _chartDragInitialized = false;
+
 const futureLinesPlugin = {
     id: 'futureLines',
     afterDraw: (chart) => {
@@ -108,6 +120,15 @@ function updateChartPeriod() {
     for(let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) past12WSalesSum += (totalSalesTrend[i] || 0);
     const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
 
+    // Reset sim when switching SKUs; keep sim avg when just changing zoom
+    if (currentSelectedSKU !== _prevChartSKU) {
+        _simAvg = null;
+        _prevChartSKU = currentSelectedSKU;
+    }
+    _realAvg = past12WAvg;
+    const avgToUse = (_simAvg !== null) ? _simAvg : past12WAvg;
+    _simNumFutureWeeks = 0; // reset; set inside block below if future extension exists
+
     let extendedLabels = loadedFiles.map((filename, i) => {
         // Sheets API format: "W/2026-03-24"
         const isoMatch = filename.match(/(\d{4})-(\d{2})-(\d{2})/);
@@ -138,6 +159,11 @@ function updateChartPeriod() {
         const diffDays = (new Date(tFarthest) - baseDate) / 86400000;
         let extendWeeks = Math.ceil(diffDays / 7) + 1;
         if (extendWeeks > 0 && extendWeeks <= 78) {
+            // Store simulation state
+            _simLatestQty = latestQty;
+            _simBaseDate = baseDate;
+            _simNumFutureWeeks = extendWeeks;
+
             const skuShipments = (window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [];
             let runningQty = latestQty;
             for (let i = 1; i <= extendWeeks; i++) {
@@ -149,8 +175,8 @@ function updateChartPeriod() {
                     const sd = new Date(s.arrivalDate);
                     if (sd > wStart && sd <= wEnd) runningQty += s.orderQty;
                 });
-                // 週平均販売分を減算
-                runningQty = Math.max(0, runningQty - past12WAvg);
+                // 週平均販売分を減算（simAvgまたはreal avgを使用）
+                runningQty = Math.max(0, runningQty - avgToUse);
                 extendedLabels.push(`${wEnd.getFullYear().toString().slice(-2)}/${('0'+(wEnd.getMonth()+1)).slice(-2)}/${('0'+wEnd.getDate()).slice(-2)}`);
                 predictionData.push(runningQty);
             }
@@ -210,4 +236,136 @@ function updateChartPeriod() {
 
     const scrollWrapper = document.getElementById('chartScrollWrapper');
     if(scrollWrapper) setTimeout(() => { scrollWrapper.scrollLeft = scrollWrapper.scrollWidth; }, 100);
+
+    // Show/update simulation control bar
+    const simBar = document.getElementById('simControlBar');
+    if (simBar) {
+        if (_simNumFutureWeeks > 0) {
+            simBar.classList.remove('hidden');
+            _syncSimUI(avgToUse);
+        } else {
+            simBar.classList.add('hidden');
+        }
+    }
+
+    _initChartDrag();
+}
+
+// ==========================================
+// Simulation helpers
+// ==========================================
+
+function _syncSimUI(currentAvg) {
+    const input   = document.getElementById('simAvgInput');
+    const deltaEl = document.getElementById('simAvgDelta');
+    const realEl  = document.getElementById('simRealAvg');
+    if (realEl)  realEl.textContent  = _realAvg.toFixed(1);
+    if (input)   input.value         = currentAvg.toFixed(1);
+    if (deltaEl) {
+        const diff = currentAvg - _realAvg;
+        const pct  = _realAvg > 0 ? (diff / _realAvg * 100) : 0;
+        const sign = diff >= 0 ? '+' : '';
+        if (Math.abs(diff) < 0.05) {
+            deltaEl.textContent  = '—';
+            deltaEl.className    = 'text-gray-400 text-xs min-w-[140px]';
+        } else {
+            deltaEl.textContent  = `${sign}${diff.toFixed(1)} pcs/wk (${sign}${pct.toFixed(0)}%)`;
+            deltaEl.className    = diff > 0
+                ? 'text-red-500 font-bold text-xs min-w-[140px]'
+                : 'text-green-600 font-bold text-xs min-w-[140px]';
+        }
+    }
+    const resetBtn = document.getElementById('btnSimReset');
+    if (resetBtn) resetBtn.disabled = (_simAvg === null);
+}
+
+function _rebuildPrediction(newAvg) {
+    if (!skuChartInstance || _simNumFutureWeeks <= 0) return;
+    const ds = skuChartInstance.data.datasets[2].data;
+    // Clear historical nulls and reset anchor
+    for (let i = 0; i < loadedWeeks - 1; i++) ds[i] = null;
+    ds[loadedWeeks - 1] = _simLatestQty;
+    // Rebuild future data points with new avg
+    const skuShipments = (window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [];
+    let runningQty = _simLatestQty;
+    for (let i = 1; i <= _simNumFutureWeeks; i++) {
+        const wStart = new Date(_simBaseDate); wStart.setDate(_simBaseDate.getDate() + ((i - 1) * 7));
+        const wEnd   = new Date(_simBaseDate); wEnd.setDate(_simBaseDate.getDate() + (i * 7));
+        skuShipments.forEach(s => {
+            if (s.status === 'arrived') return;
+            const sd = new Date(s.arrivalDate);
+            if (sd > wStart && sd <= wEnd) runningQty += s.orderQty;
+        });
+        runningQty = Math.max(0, runningQty - newAvg);
+        ds[loadedWeeks - 1 + i] = runningQty;
+    }
+    skuChartInstance.update('none');
+    _syncSimUI(newAvg);
+}
+
+function _onSimAvgInput(value) {
+    const v = parseFloat(value);
+    if (isNaN(v) || v < 0) return;
+    _simAvg = v;
+    _rebuildPrediction(v);
+}
+
+function resetSimAvg() {
+    _simAvg = null;
+    updateChartPeriod();
+}
+
+function _initChartDrag() {
+    if (_chartDragInitialized) return;
+    _chartDragInitialized = true;
+    const canvas = document.getElementById('skuChart');
+    if (!canvas) return;
+
+    canvas.addEventListener('mousedown', (e) => {
+        if (!skuChartInstance || _simNumFutureWeeks <= 0) return;
+        const y1   = skuChartInstance.scales.y1;
+        if (!y1) return;
+        const rect = canvas.getBoundingClientRect();
+        const y    = e.clientY - rect.top;
+        if (y < y1.top || y > y1.bottom) return;
+        _isDragging      = true;
+        _dragStartClientY = e.clientY;
+        _dragStartAvg    = (_simAvg !== null) ? _simAvg : _realAvg;
+        canvas.style.cursor = 'ns-resize';
+        e.preventDefault();
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+        if (!skuChartInstance) return;
+        const y1   = skuChartInstance.scales.y1;
+        const rect = canvas.getBoundingClientRect();
+        const y    = e.clientY - rect.top;
+
+        if (!_isDragging) {
+            if (_simNumFutureWeeks > 0 && y1 && y >= y1.top && y <= y1.bottom) {
+                canvas.style.cursor = 'ns-resize';
+            } else {
+                canvas.style.cursor = 'default';
+            }
+            return;
+        }
+
+        if (!y1 || _simNumFutureWeeks <= 0) return;
+        const chartHeight = y1.bottom - y1.top;
+        const pixelDelta  = e.clientY - _dragStartClientY;
+        // Dragging down (positive pixelDelta) → prediction endpoint goes down → higher avg
+        const newAvg = Math.max(0, _dragStartAvg + (pixelDelta * (y1.max / chartHeight)) / _simNumFutureWeeks);
+        _simAvg = newAvg;
+        _rebuildPrediction(newAvg);
+    });
+
+    const endDrag = () => {
+        if (_isDragging) {
+            _isDragging = false;
+            const c = document.getElementById('skuChart');
+            if (c) c.style.cursor = 'default';
+        }
+    };
+    canvas.addEventListener('mouseup', endDrag);
+    document.addEventListener('mouseup', endDrag);
 }

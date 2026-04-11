@@ -478,6 +478,24 @@
                                     </div>
                                 </div>
 
+                                <!-- Simulation control bar (shown only when future prediction exists) -->
+                                <div id="simControlBar" class="hidden flex items-center gap-3 mb-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2 flex-wrap">
+                                    <span class="text-xs text-gray-500 font-semibold">Real Avg:</span>
+                                    <span id="simRealAvg" class="font-bold text-xs text-gray-700">—</span>
+                                    <span class="text-xs text-gray-400">pcs/wk</span>
+                                    <div class="w-px h-4 bg-gray-300"></div>
+                                    <span class="text-xs text-amber-700 font-bold">Sim Avg:</span>
+                                    <input id="simAvgInput" type="number" step="0.1" min="0"
+                                        class="w-20 border border-amber-300 rounded px-2 py-1 text-xs font-bold text-center focus:outline-none focus:ring-2 focus:ring-amber-400 bg-white"
+                                        oninput="_onSimAvgInput(this.value)" />
+                                    <span class="text-xs text-gray-400">pcs/wk</span>
+                                    <span id="simAvgDelta" class="text-gray-400 text-xs min-w-[140px]">—</span>
+                                    <button id="btnSimReset" onclick="resetSimAvg()"
+                                        class="ml-auto bg-amber-500 hover:bg-amber-600 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold px-3 py-1 rounded transition-colors"
+                                        disabled>Reset</button>
+                                    <span class="text-[10px] text-gray-400 italic">Drag chart up/down to adjust slope</span>
+                                </div>
+
                                 <div
                                     class="flex w-full h-[350px] border border-gray-200 rounded-xl bg-white shadow-sm overflow-hidden relative">
                                     <div class="w-16 flex-shrink-0 bg-slate-50 border-r border-gray-200 relative z-10">
@@ -868,7 +886,7 @@
     <script src="js/state.js?v=22"></script>
     <script src="js/utils.js?v=22"></script>
     <script src="js/excel.js?v=22"></script>
-    <script src="js/chart.js?v=22"></script>
+    <script src="js/chart.js?v=23"></script>
     <script src="js/ui_master.js?v=25"></script>
     <script src="js/ui_analytics.js?v=25"></script>
     <script src="js/ui_map.js?v=22"></script>
