@@ -476,14 +476,9 @@
                         <div class="bg-white p-0 rounded-xl shadow-sm border-t-4 border-t-purple-500 border border-gray-200 overflow-hidden">
                             <!-- ヘッダー＆タブ：常に表示 -->
                             <div class="p-5 pb-0 bg-purple-50/30 border-b border-gray-100">
-                                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
-                                    <div>
-                                        <h3 class="font-black text-purple-900 text-xl">📋 Order Planning</h3>
-                                        <p class="text-sm text-purple-700 mt-1 font-medium">Manage order categories and decide order quantities for each upcoming shipment.</p>
-                                    </div>
-                                    <button onclick="exportOrderTable()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-colors whitespace-nowrap">
-                                        📥 Export to Excel
-                                    </button>
+                                <div class="mb-4">
+                                    <h3 class="font-black text-purple-900 text-xl">📋 Order Planning</h3>
+                                    <p class="text-sm text-purple-700 mt-1 font-medium">Manage order categories and decide order quantities for each upcoming shipment.</p>
                                 </div>
                                 <!-- Order Category Management (collapsible) -->
                                 <div class="bg-purple-50 rounded-lg mb-4 border border-purple-100 overflow-hidden">
@@ -528,7 +523,12 @@
                                     </div>
                                 </div>
                                 <!-- Tabs: dynamically populated by renderOrderCategoryTabs() -->
-                                <div id="orderCategoryTabBar" class="flex flex-wrap gap-x-0 gap-y-0"></div>
+                                <div class="flex items-center justify-between">
+                                    <div id="orderCategoryTabBar" class="flex flex-wrap gap-x-0 gap-y-0"></div>
+                                    <button onclick="exportOrderTable()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-colors whitespace-nowrap mb-0.5">
+                                        📥 Export to Excel
+                                    </button>
+                                </div>
                             </div>
 
                             <!-- Container schedule bar: shown when a tab is active -->
