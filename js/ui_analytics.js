@@ -453,10 +453,8 @@ function _buildOrderData() {
             order3rd = Math.max(0, Math.round(safety - pred3rd));
         }
 
-        // Capture auto-calculated values before applying saved overrides
+        // auto for 1st = system calc before any saved override
         const autoOrderNext = orderNext;
-        const autoOrder2nd  = order2nd;
-        const autoOrder3rd  = order3rd;
 
         // Restore saved order quantities from Supabase
         const savedOrders = window.shipmentOrders?.[code] || [];
@@ -474,6 +472,9 @@ function _buildOrderData() {
                 } else { order2nd = 0; pred3rd = null; order3rd = 0; }
             }
         }
+        // auto for 2nd = cascade from (possibly saved) 1st order, before any saved 2nd override
+        const autoOrder2nd = order2nd;
+
         if (dates.next2 && savedByDate[dates.next2] !== undefined) {
             order2nd = savedByDate[dates.next2];
             if (pred2nd !== null && dates.weeks2to3 !== null) {
@@ -481,6 +482,9 @@ function _buildOrderData() {
                 order3rd = Math.max(0, Math.round(safety - pred3rd));
             }
         }
+        // auto for 3rd = cascade from (possibly saved) 1st+2nd orders, before any saved 3rd override
+        const autoOrder3rd = order3rd;
+
         if (dates.next3 && savedByDate[dates.next3] !== undefined) {
             order3rd = savedByDate[dates.next3];
         }
