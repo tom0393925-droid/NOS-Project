@@ -285,43 +285,6 @@
                     </div>
 
                     <div id="analyticsContent" style="display:none;" class="space-y-6">
-                        <div class="bg-purple-50 border border-purple-200 rounded-xl p-6 shadow-sm">
-                            <h3 class="font-bold text-purple-900 text-lg mb-4">📦 Order Category Management</h3>
-                            <!-- Category list (dynamically populated) -->
-                            <div id="categoryListArea" class="space-y-2 mb-5">
-                                <p class="text-sm text-gray-400 italic">Load data from Supabase to manage categories.</p>
-                            </div>
-                            <!-- Add New Category -->
-                            <div class="flex items-center gap-3 pt-4 border-t border-purple-200">
-                                <input type="text" id="newCategoryId" maxlength="12" placeholder="e.g. CFJP2"
-                                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-36 focus:ring-2 focus:ring-purple-400 outline-none">
-                                <button onclick="addNewCategory()"
-                                    class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors">
-                                    + Add Category
-                                </button>
-                            </div>
-                            <!-- Excel Import -->
-                            <div class="mt-5 pt-5 border-t border-purple-200">
-                                <h4 class="font-bold text-purple-800 text-sm mb-3">📂 Import SKU List from Excel</h4>
-                                <div class="flex flex-wrap items-center gap-3">
-                                    <select id="categoryImportSelect"
-                                        class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 outline-none">
-                                        <option value="">-- Select Category --</option>
-                                    </select>
-                                    <label class="cursor-pointer bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-50 flex items-center gap-2 transition-colors">
-                                        📎 <span id="nameCategoryFile">Choose Excel file</span>
-                                        <input type="file" id="fileCategoryImport" accept=".xlsx,.xls" class="hidden" onchange="updateCategoryFileName()">
-                                    </label>
-                                    <button onclick="importSkuCategoryExcel()"
-                                        class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors">
-                                        Import
-                                    </button>
-                                </div>
-                                <p id="categoryImportStatus" class="text-xs text-green-700 font-bold mt-2"></p>
-                                <p class="text-xs text-gray-400 mt-1">Column A = SKU code. All codes will be added to the selected category.</p>
-                            </div>
-                        </div>
-
                         <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                             <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
                                 <h3 class="text-sm font-bold text-gray-500 uppercase tracking-wider">Normal Stock Value
@@ -515,12 +478,46 @@
                             <div class="p-5 pb-0 bg-purple-50/30 border-b border-gray-100">
                                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
                                     <div>
-                                        <h3 class="font-black text-purple-900 text-xl">⚠️ Order Action Required List</h3>
-                                        <p class="text-sm text-purple-700 mt-1 font-medium">Predicted stock at each container arrival. Edit order quantities as needed.</p>
+                                        <h3 class="font-black text-purple-900 text-xl">📋 Order Planning</h3>
+                                        <p class="text-sm text-purple-700 mt-1 font-medium">Manage order categories and decide order quantities for each upcoming shipment.</p>
                                     </div>
                                     <button onclick="exportOrderTable()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-colors whitespace-nowrap">
                                         📥 Export to Excel
                                     </button>
+                                </div>
+                                <!-- Order Category Management -->
+                                <div class="bg-purple-50 rounded-lg p-4 mb-4 border border-purple-100">
+                                    <h4 class="font-bold text-purple-900 text-sm mb-3">📦 Category Settings</h4>
+                                    <div id="categoryListArea" class="space-y-2 mb-4">
+                                        <p class="text-sm text-gray-400 italic">Load data from Supabase to manage categories.</p>
+                                    </div>
+                                    <div class="flex items-center gap-3 pt-3 border-t border-purple-200">
+                                        <input type="text" id="newCategoryId" maxlength="12" placeholder="e.g. CFJP2"
+                                            class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-36 focus:ring-2 focus:ring-purple-400 outline-none">
+                                        <button onclick="addNewCategory()"
+                                            class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors">
+                                            + Add Category
+                                        </button>
+                                    </div>
+                                    <div class="mt-4 pt-4 border-t border-purple-200">
+                                        <h5 class="font-bold text-purple-800 text-xs mb-3">📂 Import SKU List from Excel</h5>
+                                        <div class="flex flex-wrap items-center gap-3">
+                                            <select id="categoryImportSelect"
+                                                class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 outline-none">
+                                                <option value="">-- Select Category --</option>
+                                            </select>
+                                            <label class="cursor-pointer bg-white border border-gray-300 rounded-lg px-3 py-2 text-sm font-medium hover:bg-gray-50 flex items-center gap-2 transition-colors">
+                                                📎 <span id="nameCategoryFile">Choose Excel file</span>
+                                                <input type="file" id="fileCategoryImport" accept=".xlsx,.xls" class="hidden" onchange="updateCategoryFileName()">
+                                            </label>
+                                            <button onclick="importSkuCategoryExcel()"
+                                                class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors">
+                                                Import
+                                            </button>
+                                        </div>
+                                        <p id="categoryImportStatus" class="text-xs text-green-700 font-bold mt-2"></p>
+                                        <p class="text-xs text-gray-400 mt-1">Column A = SKU code. All codes will be added to the selected category.</p>
+                                    </div>
                                 </div>
                                 <!-- Tabs: dynamically populated by renderOrderCategoryTabs() -->
                                 <div id="orderCategoryTabBar" class="flex flex-wrap gap-x-0 gap-y-0"></div>
