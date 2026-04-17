@@ -667,12 +667,17 @@ function onOrderQtyChange(input) {
                 row.order2nd = 0; row.pred3rd = null; row.order3rd = 0;
             }
         }
+        // auto hints for 2nd/3rd reflect the newly derived values
+        row.autoOrder2nd = row.order2nd;
+        row.autoOrder3rd = row.order3rd;
     } else if (field === 'order2nd') {
         row.order2nd = val;
         if (row.pred2nd !== null && dates.weeks2to3 !== null) {
             row.pred3rd  = row.pred2nd + val - row.avg * dates.weeks2to3;
             row.order3rd = Math.max(0, Math.round(row.safety - row.pred3rd));
         }
+        // auto hint for 3rd reflects the newly derived value
+        row.autoOrder3rd = row.order3rd;
     } else {
         row.order3rd = val;
     }
