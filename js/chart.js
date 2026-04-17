@@ -58,18 +58,14 @@ const futureLinesPlugin = {
                     if (nextL.includes('/')) {
                         const nextParts = nextL.split('/');
                         const nextDate = new Date(`20${nextParts[0]}/${nextParts[1]}/${nextParts[2]}`).getTime();
-                        if (tDate >= lDate && tDate <= nextDate) {
-                            const ratio = (tDate - lDate) / (nextDate - lDate);
-                            const x1 = xAxis.getPixelForValue(i);
-                            const x2 = xAxis.getPixelForValue(i+1);
-                            xPos = x1 + (x2 - x1) * ratio;
+                        if (tDate > lDate && tDate <= nextDate) {
+                            // Snap to wEnd (i+1) — chart rise also occurs there
+                            xPos = xAxis.getPixelForValue(i+1);
                             break;
                         }
                     }
                 } else if (tDate >= lDate && tDate <= lDate + 604800000*4) {
-                    const ratio = (tDate - lDate) / 604800000;
-                    const dx = xAxis.getPixelForValue(i) - xAxis.getPixelForValue(i-1);
-                    xPos = xAxis.getPixelForValue(i) + (dx * ratio);
+                    xPos = xAxis.getPixelForValue(i);
                 }
             }
 
