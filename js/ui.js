@@ -224,7 +224,7 @@ function renderSKUDetails(selectedCode) {
     const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
 
     // ★ セーフティストックは常に週平均×8週（約2ヶ月）で統一
-    const safetyStock = Math.round(past12WAvg * 8);
+    const safetyStock = Math.round(past12WAvg * safetyWeeks);
 
     setSafeText('skuDetailCode', targetLots[0].code);
     setSafeText('skuDetailName', dispName);
@@ -367,7 +367,7 @@ function refreshPredictedBalances() {
     const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
 
     // ★ セーフティストックは常に週平均×8週（約2ヶ月）で統一
-    const safetyStock = Math.round(past12WAvg * 8);
+    const safetyStock = Math.round(past12WAvg * safetyWeeks);
 
     let targetNext = '', targetNext2 = '';
     if (stType === 'Frozen') { targetNext = globalFrozenNext; targetNext2 = globalFrozenNext2; }

@@ -278,6 +278,8 @@ window.onload = function() {
         dashBg.appendChild(mapTab);
     }
 
+    const swInput = document.getElementById('safetyWeeksInput');
+    if (swInput) swInput.value = safetyWeeks;
     restoreContainerDates();
     if (typeof renderMasterList === "function") renderMasterList();
     const analyticsBtn = document.querySelector('[onclick*="analyticsTab"]');

@@ -435,7 +435,7 @@ function _buildOrderData() {
             for (const lot of lots) salesSum += (lot.sales[i] || 0);
         }
         const avg = wks > 0 ? salesSum / wks : 0;
-        const safety = Math.round(avg * 8); // ★ 常に週平均×8週（約2ヶ月）で統一
+        const safety = Math.round(avg * safetyWeeks); 
 
         // predictions
         const predNext = dates.weeksToNext !== null ? currentQty - avg * dates.weeksToNext : null;

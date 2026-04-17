@@ -17,6 +17,8 @@ let myHitAbcChart = null; // NEW
 let skuChartInstance = null; 
 let currentSelectedSKU = null; 
 
+let safetyWeeks = parseFloat(localStorage.getItem('nos_safetyWeeks')) || 6;
+
 let globalDryNext = "";
 let globalDryNext2 = "";
 let globalDryNext3 = "";
