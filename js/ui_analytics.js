@@ -595,7 +595,7 @@ function renderOrderTable() {
     }
 
     if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-gray-400 font-bold">No SKUs found. Make sure container arrival dates are set above.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-gray-400 font-bold">No SKUs found. Make sure container arrival dates are set above.</td></tr>`;
         return;
     }
 
@@ -631,6 +631,7 @@ function renderOrderTable() {
             <td class="p-3 bg-indigo-50"><input type="number" min="0" value="${row.order2nd}" data-sid="${sid}" data-field="order2nd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-indigo-200 rounded px-2 py-1 text-xs font-bold text-indigo-800 focus:ring-1 focus:ring-indigo-400 outline-none bg-white">${autoHint(`hint_2nd_${sid}`, row.order2nd, row.autoOrder2nd)}</td>
             <td class="p-3 text-right bg-violet-50" id="op3_${sid}">${fmtPred(row.pred3rd, row.safety)}</td>
             <td class="p-3 bg-violet-50"><input type="number" min="0" value="${row.order3rd}" data-sid="${sid}" data-field="order3rd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-violet-200 rounded px-2 py-1 text-xs font-bold text-violet-800 focus:ring-1 focus:ring-violet-400 outline-none bg-white">${autoHint(`hint_3rd_${sid}`, row.order3rd, row.autoOrder3rd)}</td>
+            <td class="p-3 text-center"><button onclick="deleteSkuFromOrderPlan('${row.code.replace(/'/g, "\\'")}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 rounded px-1.5 py-1 text-xs transition-colors" title="Remove from ${_mfTab}">✕</button></td>
         `;
         tbody.appendChild(tr);
     });
@@ -726,6 +727,60 @@ function onOrderQtyChange(input) {
             console.error('Order save failed:', e);
         }
     }, 2500);
+}
+
+async function deleteSkuFromOrderPlan(code) {
+    if (!confirm(`Remove "${code}" from ${_mfTab}?`)) return;
+    try {
+        await sbRemoveSkuFromCategory(code, _mfTab);
+        if (window.skuCategoryMap?.[code]) {
+            window.skuCategoryMap[code] = window.skuCategoryMap[code].filter(c => c !== _mfTab);
+        }
+        _buildOrderData();
+        renderOrderTable();
+        const countEl = document.getElementById('categorySkuCount');
+        if (countEl) countEl.textContent = `${_orderData.length} SKUs`;
+    } catch (e) {
+        alert('Delete failed: ' + e.message);
+    }
+}
+
+async function addNewSkuToOrder() {
+    const codeEl   = document.getElementById('newOrderSkuCode');
+    const nameEl   = document.getElementById('newOrderSkuName');
+    const uomEl    = document.getElementById('newOrderSkuUom');
+    const statusEl = document.getElementById('addOrderSkuStatus');
+    const code = (codeEl?.value || '').trim().toUpperCase();
+    const name = (nameEl?.value || '').trim();
+    const uom  = (uomEl?.value  || '').trim() || 'pcs';
+    if (!code) { alert('Please enter a SKU Code.'); return; }
+
+    try {
+        if (statusEl) statusEl.textContent = 'Saving...';
+        // Upsert to sku_master if not already there
+        if (!skuMaster[code]) {
+            await sbSaveSkuMaster(code, { name, uom });
+            skuMaster[code] = { name, uom, price: 0, tc: 0, weight: 0, storageType: 'Dry', manufacture: '', location: '-', isFF: false, safetyStock: 0 };
+        }
+        // Add to current category
+        await sbBulkUpsertSkuCategory([code], _mfTab);
+        if (!window.skuCategoryMap) window.skuCategoryMap = {};
+        if (!window.skuCategoryMap[code]) window.skuCategoryMap[code] = [];
+        if (!window.skuCategoryMap[code].includes(_mfTab)) window.skuCategoryMap[code].push(_mfTab);
+
+        if (codeEl) codeEl.value = '';
+        if (nameEl) nameEl.value = '';
+        if (uomEl)  uomEl.value  = '';
+        if (statusEl) { statusEl.textContent = `✅ ${code} added`; setTimeout(() => { statusEl.textContent = ''; }, 3000); }
+
+        _buildOrderData();
+        renderOrderTable();
+        const countEl = document.getElementById('categorySkuCount');
+        if (countEl) countEl.textContent = `${_orderData.length} SKUs`;
+    } catch (e) {
+        if (statusEl) statusEl.textContent = '';
+        alert('Add failed: ' + e.message);
+    }
 }
 
 function exportOrderTable() {

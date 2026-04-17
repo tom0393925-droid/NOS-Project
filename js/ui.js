@@ -140,20 +140,14 @@ function handleSearchInput() {
         const query = inputEl.value.trim().toLowerCase();
         if (!query) { suggestList.classList.add('hidden'); return; }
 
-        let matches = []; let seenCodes = new Set();
+        let matches = [];
 
-        for (const key in historyData) {
-            const item = historyData[key];
-            if (!item || !item.code) continue;
-            if (seenCodes.has(item.code)) continue;
-
-            const safeCode = String(item.code).toLowerCase();
-            const dispName = getSkuName(item.code);
-            const safeName = dispName ? String(dispName).toLowerCase() : "";
-
+        for (const code in skuMaster) {
+            const master = skuMaster[code];
+            const safeCode = code.toLowerCase();
+            const safeName = (master.name || '').toLowerCase();
             if (safeCode.includes(query) || safeName.includes(query)) {
-                matches.push({...item, name: dispName});
-                seenCodes.add(item.code);
+                matches.push({ code, name: master.name || code });
             }
         }
 
@@ -185,8 +179,20 @@ function renderSKUDetails(selectedCode) {
         grandTotalSales += sSum;
         if (h.code === selectedCode) { targetLots.push(h); allTimeSalesSum += sSum; }
     }
-    
-    if (targetLots.length === 0) return;
+
+    if (targetLots.length === 0) {
+        if (typeof sbLoadSkuHistory === 'function') {
+            if (typeof _showLoading === 'function') _showLoading('Loading SKU history...');
+            sbLoadSkuHistory(selectedCode).then(lots => {
+                if (typeof _hideLoading === 'function') _hideLoading();
+                if (lots.length > 0) {
+                    for (const lot of lots) historyData[lot.code + '_' + lot.expiryStr] = lot;
+                    renderSKUDetails(selectedCode);
+                }
+            }).catch(e => { if (typeof _hideLoading === 'function') _hideLoading(); console.error('Lazy load failed:', e); });
+        }
+        return;
+    }
 
     let latestQty = 0;
     for (const key in historyData) {

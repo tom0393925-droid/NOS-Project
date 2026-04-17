@@ -276,6 +276,65 @@ async function sbBulkUpsertSkuCategory(skuCodes, categoryId) {
     }
 }
 
+async function sbRemoveSkuFromCategory(skuCode, categoryId) {
+    const { error } = await _sb.from('sku_category_map')
+        .delete()
+        .eq('sku_code', skuCode)
+        .eq('category_id', categoryId);
+    if (error) throw error;
+}
+
+async function sbLoadSkuHistory(code) {
+    const weekKeys = window._loadedWeekKeys || [];
+    if (!weekKeys.length) return [];
+    const cutoffStr = weekKeys[0];
+
+    const allRows = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+        const { data, error } = await _sb
+            .from('weekly_sales')
+            .select('*')
+            .eq('code', code)
+            .gte('week_start', cutoffStr)
+            .order('week_start', { ascending: true })
+            .range(from, from + pageSize - 1);
+        if (error) throw error;
+        allRows.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+    }
+
+    if (!allRows.length) return [];
+
+    const groups = {};
+    for (const row of allRows) {
+        const expiryStr = row.expiry_date || 'noexpiry';
+        const gKey = code + '_' + expiryStr;
+        if (!groups[gKey]) {
+            groups[gKey] = { code, expiryStr, expiry: row.expiry_date ? new Date(row.expiry_date) : null, byWeek: {} };
+        }
+        if (!groups[gKey].byWeek[row.week_start]) groups[gKey].byWeek[row.week_start] = { endQty: 0, sales: 0 };
+        groups[gKey].byWeek[row.week_start].endQty += parseFloat(row.ending_qty)  || 0;
+        groups[gKey].byWeek[row.week_start].sales  += parseFloat(row.total_sales) || 0;
+    }
+
+    const masterData = (typeof skuMaster !== 'undefined' && skuMaster[code]) || {};
+    const result = [];
+    for (const [, group] of Object.entries(groups)) {
+        const qtys = [], sales = [];
+        let prevQty = 0;
+        for (const wk of weekKeys) {
+            if (group.byWeek[wk]) { prevQty = group.byWeek[wk].endQty; qtys.push(prevQty); sales.push(group.byWeek[wk].sales); }
+            else { qtys.push(prevQty); sales.push(0); }
+        }
+        result.push({ code, expiryStr: group.expiryStr, expiry: group.expiry,
+            name: masterData.name || code, uom: masterData.uom || '', isDamaged: false, qtys, sales });
+    }
+    return result;
+}
+
 // ==========================================
 // weekly_sales rows → historyData 形式に変換
 // ==========================================
@@ -375,7 +434,7 @@ function _hideLoading() {
     if (overlay) overlay.classList.add('hidden');
 }
 
-async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = true) {
+async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = false) {
     const log = msg => {
         if (statusCallback) statusCallback(msg);
         _showLoading(msg);
@@ -410,9 +469,12 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = true) {
         }
     }
 
+    // Store global week keys for lazy-loading
+    window._loadedWeekKeys = weekKeys;
+
     const invoiceHd = _pickingDataToInvoiceHistory(pickingRows, weekKeys);
 
-    // activeOnly: 最新週のQty > 0 のものだけに絞る
+    // activeOnly: 最新週のQty > 0 のものだけに絞る（historyData のみ）
     let filteredHd = hd;
     if (activeOnly) {
         filteredHd = {};
@@ -423,12 +485,8 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = true) {
         }
     }
 
-    // weekly_salesに存在するコードだけにsku_masterを絞る
-    const activeCodes = new Set(Object.values(filteredHd).map(v => v.code));
-    const filteredMaster = {};
-    for (const code of activeCodes) {
-        if (masterData[code]) filteredMaster[code] = masterData[code];
-    }
+    // sku_master は activeOnly に関わらず全件保持（Order Planning で全SKU表示するため）
+    const filteredMaster = { ...masterData };
 
     // グローバル変数に反映
     skuMaster            = filteredMaster;
