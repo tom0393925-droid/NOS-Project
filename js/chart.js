@@ -199,7 +199,7 @@ function updateChartPeriod() {
     }
 
     const maxSales = Math.max(...totalSalesTrend, 10) * 1.1;
-    const maxQtys = Math.max(...totalQtysTrend, safetyStock * 1.2, 10) * 1.1;
+    const maxQtys = Math.max(...totalQtysTrend, ...predictionData, safetyStock * 1.2, 10) * 1.1;
 
     setSafeText('yLeftMax', Math.round(maxSales).toLocaleString());
     setSafeText('yLeftMid', Math.round(maxSales / 2).toLocaleString());
