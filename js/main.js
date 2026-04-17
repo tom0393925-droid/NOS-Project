@@ -122,19 +122,8 @@ function updateInvoiceSlot() {
 }
 
 // ==========================================
-// Shipment Order: on-site edit with auto-save
+// Shipment Order: on-site edit (in-memory only, save via Order Planning table)
 // ==========================================
-
-let _shipSaveTimer = null;
-
-function _setShipSaveStatus(state) {
-    const el = document.getElementById('shipSaveStatus');
-    if (!el) return;
-    if (state === 'saving') { el.textContent = '●'; el.className = 'text-[10px] text-amber-400 font-bold'; }
-    else if (state === 'saved') { el.textContent = '✓'; el.className = 'text-[10px] text-green-500 font-bold'; }
-    else if (state === 'error') { el.textContent = '!'; el.className = 'text-[10px] text-red-500 font-bold'; }
-    else { el.textContent = ''; }
-}
 
 function updateShipmentOrder(slot, value) {
     if (!currentSelectedSKU) return;
@@ -159,20 +148,6 @@ function updateShipmentOrder(slot, value) {
     // チャートと残高テキストのみ軽量更新（フォーカスを奪わない）
     if (typeof updateChartPeriod === 'function') updateChartPeriod();
     if (typeof refreshPredictedBalances === 'function') refreshPredictedBalances();
-
-    // Auto-save with debounce (2.5s)
-    _setShipSaveStatus('saving');
-    if (_shipSaveTimer) clearTimeout(_shipSaveTimer);
-    _shipSaveTimer = setTimeout(async () => {
-        try {
-            await sbSaveShipmentOrder(currentSelectedSKU, arrivalDate, qty);
-            _setShipSaveStatus('saved');
-            setTimeout(() => _setShipSaveStatus(''), 2500);
-        } catch (e) {
-            _setShipSaveStatus('error');
-            console.error('Shipment order save failed:', e);
-        }
-    }, 2500);
 }
 
 // ==========================================
