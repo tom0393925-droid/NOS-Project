@@ -626,11 +626,11 @@ function renderOrderTable() {
             <td class="p-3 text-right font-mono text-red-500 font-bold">${row.safety.toLocaleString()}</td>
             <td class="p-3 text-right font-mono font-bold text-gray-800">${row.currentQty.toLocaleString()}</td>
             <td class="p-3 text-right bg-blue-50">${fmtPred(row.predNext, row.safety)}</td>
-            <td class="p-3 bg-blue-50"><input type="number" min="0" value="${row.orderNext}" data-sid="${sid}" data-field="orderNext" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-blue-200 rounded px-2 py-1 text-xs font-bold text-blue-800 focus:ring-1 focus:ring-blue-400 outline-none bg-white">${autoHint(`hint_next_${sid}`, row.orderNext, row.autoOrderNext)}</td>
+            <td class="p-3 bg-blue-50"><input type="text" inputmode="numeric" value="${row.orderNext.toLocaleString()}" data-sid="${sid}" data-field="orderNext" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-blue-200 rounded px-2 py-1 text-xs font-bold text-blue-800 focus:ring-1 focus:ring-blue-400 outline-none bg-white">${autoHint(`hint_next_${sid}`, row.orderNext, row.autoOrderNext)}</td>
             <td class="p-3 text-right bg-indigo-50" id="op2_${sid}">${fmtPred(row.pred2nd, row.safety)}</td>
-            <td class="p-3 bg-indigo-50"><input type="number" min="0" value="${row.order2nd}" data-sid="${sid}" data-field="order2nd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-indigo-200 rounded px-2 py-1 text-xs font-bold text-indigo-800 focus:ring-1 focus:ring-indigo-400 outline-none bg-white">${autoHint(`hint_2nd_${sid}`, row.order2nd, row.autoOrder2nd)}</td>
+            <td class="p-3 bg-indigo-50"><input type="text" inputmode="numeric" value="${row.order2nd.toLocaleString()}" data-sid="${sid}" data-field="order2nd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-indigo-200 rounded px-2 py-1 text-xs font-bold text-indigo-800 focus:ring-1 focus:ring-indigo-400 outline-none bg-white">${autoHint(`hint_2nd_${sid}`, row.order2nd, row.autoOrder2nd)}</td>
             <td class="p-3 text-right bg-violet-50" id="op3_${sid}">${fmtPred(row.pred3rd, row.safety)}</td>
-            <td class="p-3 bg-violet-50"><input type="number" min="0" value="${row.order3rd}" data-sid="${sid}" data-field="order3rd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-violet-200 rounded px-2 py-1 text-xs font-bold text-violet-800 focus:ring-1 focus:ring-violet-400 outline-none bg-white">${autoHint(`hint_3rd_${sid}`, row.order3rd, row.autoOrder3rd)}</td>
+            <td class="p-3 bg-violet-50"><input type="text" inputmode="numeric" value="${row.order3rd.toLocaleString()}" data-sid="${sid}" data-field="order3rd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-violet-200 rounded px-2 py-1 text-xs font-bold text-violet-800 focus:ring-1 focus:ring-violet-400 outline-none bg-white">${autoHint(`hint_3rd_${sid}`, row.order3rd, row.autoOrder3rd)}</td>
             <td class="p-3 text-center"><button onclick="deleteSkuFromOrderPlan('${row.code.replace(/'/g, "\\'")}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 rounded px-1.5 py-1 text-xs transition-colors" title="Remove from ${_mfTab}">✕</button></td>
         `;
         tbody.appendChild(tr);
@@ -640,7 +640,8 @@ function renderOrderTable() {
 function onOrderQtyChange(input) {
     const sid = input.dataset.sid;
     const field = input.dataset.field;
-    const val = parseInt(input.value) || 0;
+    const val = parseInt(String(input.value).replace(/,/g, '')) || 0;
+    input.value = val.toLocaleString();
     const row = _orderData.find(r => String(r.code).replace(/[^a-zA-Z0-9]/g, '_') === sid);
     if (!row) return;
 
@@ -682,8 +683,8 @@ function onOrderQtyChange(input) {
     const o3In = document.querySelector(`input[data-sid="${sid}"][data-field="order3rd"]`);
     if (p2El) p2El.innerHTML = fmtPred(row.pred2nd, row.safety);
     if (p3El) p3El.innerHTML = fmtPred(row.pred3rd, row.safety);
-    if (o2In && field === 'orderNext') o2In.value = row.order2nd;
-    if (o3In) o3In.value = row.order3rd;
+    if (o2In && field === 'orderNext') o2In.value = row.order2nd.toLocaleString();
+    if (o3In) o3In.value = row.order3rd.toLocaleString();
 
     // Update auto hints
     const updHint = (hintId, cur, auto) => {
