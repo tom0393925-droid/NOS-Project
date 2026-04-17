@@ -369,6 +369,21 @@ function renderCrossAnalysis() {
 let _mfTab = 'CFJP'; // 'CFJP', 'RFJP'
 let _orderSort = { col: null, asc: true };
 let _orderData = [];
+const _saveTimers = {};
+
+function _setRowSaveStatus(sid, state) {
+    const el = document.getElementById(`saveStatus_${sid}`);
+    if (!el) return;
+    if (state === 'saving') {
+        el.textContent = '●'; el.className = 'text-[10px] text-amber-400 font-bold';
+    } else if (state === 'saved') {
+        el.textContent = '✓'; el.className = 'text-[10px] text-green-500 font-bold';
+    } else if (state === 'error') {
+        el.textContent = '!'; el.className = 'text-[10px] text-red-500 font-bold';
+    } else {
+        el.textContent = '';
+    }
+}
 
 function _getArrivalDates() {
     const cat   = (window.orderCategories && window.orderCategories[_mfTab]) || {};
@@ -436,6 +451,33 @@ function _buildOrderData() {
         }
         if (pred3rd !== null) {
             order3rd = Math.max(0, Math.round(safety - pred3rd));
+        }
+
+        // Restore saved order quantities from Supabase
+        const savedOrders = window.shipmentOrders?.[code] || [];
+        const savedByDate = {};
+        for (const s of savedOrders) savedByDate[s.arrivalDate] = s.orderQty;
+
+        if (dates.next && savedByDate[dates.next] !== undefined) {
+            orderNext = savedByDate[dates.next];
+            if (predNext !== null && dates.weeks1to2 !== null) {
+                pred2nd = predNext + orderNext - avg * dates.weeks1to2;
+                if (dates.weeks2to3 !== null) {
+                    order2nd = Math.max(0, Math.round(safety + avg * dates.weeks2to3 - pred2nd));
+                    pred3rd  = pred2nd + order2nd - avg * dates.weeks2to3;
+                    order3rd = Math.max(0, Math.round(safety - pred3rd));
+                } else { order2nd = 0; pred3rd = null; order3rd = 0; }
+            }
+        }
+        if (dates.next2 && savedByDate[dates.next2] !== undefined) {
+            order2nd = savedByDate[dates.next2];
+            if (pred2nd !== null && dates.weeks2to3 !== null) {
+                pred3rd  = pred2nd + order2nd - avg * dates.weeks2to3;
+                order3rd = Math.max(0, Math.round(safety - pred3rd));
+            }
+        }
+        if (dates.next3 && savedByDate[dates.next3] !== undefined) {
+            order3rd = savedByDate[dates.next3];
         }
 
         rows.push({ code, name: master.name || code, uom: master.uom || '-', mf: _mfTab, dates,
@@ -563,7 +605,7 @@ function renderOrderTable() {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-gray-100 hover:bg-purple-50/20';
         tr.innerHTML = `
-            <td class="p-3 pl-4 font-bold text-indigo-700">${row.code}</td>
+            <td class="p-3 pl-4 font-bold text-indigo-700">${row.code} <span id="saveStatus_${sid}" class="text-[10px] font-bold"></span></td>
             <td class="p-3 max-w-[180px] truncate text-gray-700" title="${row.name}">${row.name}</td>
             <td class="p-3 text-center text-gray-500 text-xs">${row.uom}</td>
             <td class="p-3 text-right font-mono text-gray-500">${row.avg.toFixed(1)}</td>
@@ -601,7 +643,6 @@ function onOrderQtyChange(input) {
         row.orderNext = val;
         if (row.predNext !== null && dates.weeks1to2 !== null) {
             row.pred2nd  = row.predNext + val - row.avg * dates.weeks1to2;
-            // ★ Fix: weeks2to3 が null のとき || 0 で計算していたバグを修正
             if (dates.weeks2to3 !== null) {
                 row.order2nd = Math.max(0, Math.round(row.safety + row.avg * dates.weeks2to3 - row.pred2nd));
                 row.pred3rd  = row.pred2nd + row.order2nd - row.avg * dates.weeks2to3;
@@ -618,18 +659,47 @@ function onOrderQtyChange(input) {
         }
     } else {
         row.order3rd = val;
-        return;
     }
 
     const p2El = document.getElementById(`op2_${sid}`);
     const p3El = document.getElementById(`op3_${sid}`);
     const o2In = document.querySelector(`input[data-sid="${sid}"][data-field="order2nd"]`);
     const o3In = document.querySelector(`input[data-sid="${sid}"][data-field="order3rd"]`);
-
     if (p2El) p2El.innerHTML = fmtPred(row.pred2nd, row.safety);
     if (p3El) p3El.innerHTML = fmtPred(row.pred3rd, row.safety);
     if (o2In && field === 'orderNext') o2In.value = row.order2nd;
     if (o3In) o3In.value = row.order3rd;
+
+    // Auto-save with debounce (2.5s)
+    _setRowSaveStatus(sid, 'saving');
+    if (_saveTimers[sid]) clearTimeout(_saveTimers[sid]);
+    _saveTimers[sid] = setTimeout(async () => {
+        try {
+            const cat = window.orderCategories?.[row.mf] || {};
+            const saves = [];
+            if (cat.next1) saves.push(sbSaveShipmentOrder(row.code, cat.next1, row.orderNext));
+            if (cat.next2) saves.push(sbSaveShipmentOrder(row.code, cat.next2, row.order2nd));
+            if (cat.next3) saves.push(sbSaveShipmentOrder(row.code, cat.next3, row.order3rd));
+            await Promise.all(saves);
+            // Update in-memory cache
+            if (!window.shipmentOrders) window.shipmentOrders = {};
+            if (!window.shipmentOrders[row.code]) window.shipmentOrders[row.code] = [];
+            const updateLocal = (date, qty) => {
+                if (!date) return;
+                const entry = window.shipmentOrders[row.code].find(s => s.arrivalDate === date);
+                if (entry) entry.orderQty = qty;
+                else window.shipmentOrders[row.code].push({ arrivalDate: date, orderQty: qty, status: 'pending' });
+            };
+            updateLocal(cat.next1, row.orderNext);
+            updateLocal(cat.next2, row.order2nd);
+            updateLocal(cat.next3, row.order3rd);
+            _setRowSaveStatus(sid, 'saved');
+            setTimeout(() => _setRowSaveStatus(sid, ''), 2500);
+        } catch (e) {
+            _setRowSaveStatus(sid, 'error');
+            console.error('Order save failed:', e);
+        }
+    }, 2500);
 }
 
 function exportOrderTable() {
