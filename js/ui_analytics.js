@@ -729,6 +729,29 @@ function onOrderQtyChange(input) {
     }, 2500);
 }
 
+function onNewSkuCodeInput() {
+    const code = (document.getElementById('newOrderSkuCode')?.value || '').trim().toUpperCase();
+    const nameEl  = document.getElementById('newOrderSkuName');
+    const uomEl   = document.getElementById('newOrderSkuUom');
+    const badge   = document.getElementById('newSkuExistsBadge');
+    if (!code) {
+        if (nameEl) nameEl.value = '';
+        if (uomEl)  uomEl.value  = '';
+        if (badge)  { badge.textContent = ''; badge.classList.add('hidden'); }
+        return;
+    }
+    const master = skuMaster[code];
+    if (master) {
+        if (nameEl) nameEl.value = master.name || '';
+        if (uomEl)  uomEl.value  = master.uom  || '';
+        if (badge)  { badge.textContent = '既存SKU'; badge.className = 'text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700'; }
+    } else {
+        if (nameEl) nameEl.value = '';
+        if (uomEl)  uomEl.value  = '';
+        if (badge)  { badge.textContent = '新規SKU'; badge.className = 'text-xs font-bold px-2 py-0.5 rounded bg-green-100 text-green-700'; }
+    }
+}
+
 async function deleteSkuFromOrderPlan(code) {
     if (!confirm(`Remove "${code}" from ${_mfTab}?`)) return;
     try {
