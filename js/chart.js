@@ -58,14 +58,18 @@ const futureLinesPlugin = {
                     if (nextL.includes('/')) {
                         const nextParts = nextL.split('/');
                         const nextDate = new Date(`20${nextParts[0]}/${nextParts[1]}/${nextParts[2]}`).getTime();
-                        if (tDate > lDate && tDate <= nextDate) {
-                            // Snap to wEnd (i+1) — chart rise also occurs there
-                            xPos = xAxis.getPixelForValue(i+1);
+                        if (tDate >= lDate && tDate <= nextDate) {
+                            const ratio = (tDate - lDate) / (nextDate - lDate);
+                            const x1 = xAxis.getPixelForValue(i);
+                            const x2 = xAxis.getPixelForValue(i+1);
+                            xPos = x1 + (x2 - x1) * ratio;
                             break;
                         }
                     }
                 } else if (tDate >= lDate && tDate <= lDate + 604800000*4) {
-                    xPos = xAxis.getPixelForValue(i);
+                    const ratio = (tDate - lDate) / 604800000;
+                    const dx = xAxis.getPixelForValue(i) - xAxis.getPixelForValue(i-1);
+                    xPos = xAxis.getPixelForValue(i) + (dx * ratio);
                 }
             }
 
@@ -160,7 +164,9 @@ function updateChartPeriod() {
             _simBaseDate = baseDate;
             _simNumFutureWeeks = extendWeeks;
 
-            const skuShipments = (window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [];
+            const _validDates = new Set([tNext, tNext2, tNext3].filter(Boolean));
+            const skuShipments = ((window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [])
+                .filter(s => _validDates.size === 0 || _validDates.has(s.arrivalDate));
             let runningQty = latestQty;
             for (let i = 1; i <= extendWeeks; i++) {
                 const wStart = new Date(baseDate); wStart.setDate(baseDate.getDate() + ((i - 1) * 7));
