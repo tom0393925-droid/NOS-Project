@@ -438,7 +438,7 @@ function _buildOrderData() {
             order3rd = Math.max(0, Math.round(safety - pred3rd));
         }
 
-        rows.push({ code, name: master.name || code, uom: master.uom || '-', mf, dates,
+        rows.push({ code, name: master.name || code, uom: master.uom || '-', mf: _mfTab, dates,
             avg, safety, currentQty, predNext, orderNext, pred2nd, order2nd, pred3rd, order3rd });
     }
 
