@@ -181,8 +181,19 @@ function renderSKUDetails(selectedCode) {
     }
 
     if (targetLots.length === 0) {
+        // まずskuMasterの情報で即座にパネルを更新し、古いSKUの表示を消す
+        const mPrev = skuMaster[selectedCode] || {};
+        setSafeText('skuDetailCode', selectedCode);
+        setSafeText('skuDetailName', mPrev.name || selectedCode);
+        setSafeText('skuDetailUom',  mPrev.uom  || '-');
+        setSafeText('skuDetailQty',  '0');
+        setSafeText('skuDetailTotalAmount', '$0');
+        setSafeText('skuDetailSafety', '0');
+        setSafeText('skuDetailWos', '-');
+        setSafeText('skuDetailAvg', '(履歴データなし)');
+
         if (typeof sbLoadSkuHistory === 'function') {
-            if (typeof _showLoading === 'function') _showLoading('Loading SKU history...');
+            if (typeof _showLoading === 'function') _showLoading('履歴データを読み込み中...');
             sbLoadSkuHistory(selectedCode).then(lots => {
                 if (typeof _hideLoading === 'function') _hideLoading();
                 if (lots.length > 0) {
