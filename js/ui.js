@@ -189,8 +189,8 @@ function renderSKUDetails(selectedCode) {
         setSafeText('skuDetailQty',  '0');
         setSafeText('skuDetailTotalAmount', '$0');
         setSafeText('skuDetailSafety', '0');
-        setSafeText('skuDetailWos', '-');
-        setSafeText('skuDetailAvg', '(履歴データなし)');
+        const bodyEl = document.getElementById('skuDetailBody');
+        if (bodyEl) bodyEl.style.display = 'none';
 
         if (typeof sbLoadSkuHistory === 'function') {
             if (typeof _showLoading === 'function') _showLoading('履歴データを読み込み中...');
@@ -338,6 +338,8 @@ function renderSKUDetails(selectedCode) {
     }
 
     if (document.getElementById('skuDetailArea')) document.getElementById('skuDetailArea').style.display = 'block';
+    const bodyEl = document.getElementById('skuDetailBody');
+    if (bodyEl) bodyEl.style.display = 'block';
     if (typeof updateChartPeriod === "function") updateChartPeriod();
 }
 
