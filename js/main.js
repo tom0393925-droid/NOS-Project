@@ -29,6 +29,8 @@ function toggleSetupView() {
         btn.classList.replace('hover:bg-blue-700', 'hover:bg-slate-800');
         btn.classList.replace('border-blue-500', 'border-slate-600');
         checkDashboardVisibility();
+        const analyticsBtn = document.querySelector('[onclick*="analyticsTab"]');
+        if (analyticsBtn) switchTab('analyticsTab', analyticsBtn);
     }
 }
 
@@ -278,8 +280,8 @@ window.onload = function() {
 
     restoreContainerDates();
     if (typeof renderMasterList === "function") renderMasterList();
-    const firstTabBtn = document.querySelector('.tab-button');
-    if(firstTabBtn) switchTab('nosTab', firstTabBtn);
+    const analyticsBtn = document.querySelector('[onclick*="analyticsTab"]');
+    if(analyticsBtn) switchTab('analyticsTab', analyticsBtn);
     if(typeof checkDashboardVisibility === "function") checkDashboardVisibility();
     
     // 画面が描画されると同時に、静かに一番上をセットする（ガクッとならない）
