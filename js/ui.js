@@ -286,6 +286,23 @@ function renderSKUDetails(selectedCode) {
                 setSafeText('predNext2Qty', Math.max(0, Math.round(stockNext2)).toLocaleString() + ' ' + uomText);
                 setSafeText('predNext3Qty', stockNext3 !== null ? Math.max(0, Math.round(stockNext3)).toLocaleString() + ' ' + uomText : '-');
 
+                // Compute auto order suggestions (pure prediction, no user input)
+                const predNextRaw = latestQty - past12WAvg * diffWkNext;
+                const wks12 = diffWkNext2 - diffWkNext;
+                const autoNext = Math.max(0, Math.round(safetyStock + past12WAvg * wks12 - predNextRaw));
+                const pred2ndRaw = predNextRaw + autoNext - past12WAvg * wks12;
+                let autoNext2 = 0, autoNext3 = 0;
+                if (targetNext3) {
+                    const dWk3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
+                    if (dWk3 > 0) {
+                        const wks23 = dWk3 - diffWkNext2;
+                        autoNext2 = Math.max(0, Math.round(safetyStock + past12WAvg * wks23 - pred2ndRaw));
+                        autoNext3 = Math.max(0, Math.round(safetyStock - (pred2ndRaw + autoNext2 - past12WAvg * wks23)));
+                    }
+                }
+                window._shipAutoQtys = { next: autoNext, next2: autoNext2, next3: autoNext3 };
+                _updateShipHints(loadedNextQty, loadedNext2Qty, loadedNext3Qty);
+
                 let html = `<div class="flex gap-4 mt-1">`;
                 if (stockNext < safetyStock) {
                     html += `<div class="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded w-full"><span class="text-xl">🚨</span><div><p class="text-xs font-bold text-red-700">Urgent: Below Safety Stock (${safetyStock}) before ${targetNext}</p><p class="text-[10px] text-red-600">Short by <span class="font-bold text-sm">${Math.ceil(safetyStock - stockNext)}</span> ${uomText}</p></div></div>`;
@@ -378,6 +395,12 @@ function refreshPredictedBalances() {
     setSafeText('predNext2Qty', Math.max(0, Math.round(stockNext2)).toLocaleString() + ' ' + uomText);
     setSafeText('predNext3Qty', stockNext3 !== null ? Math.max(0, Math.round(stockNext3)).toLocaleString() + ' ' + uomText : '-');
 
+    // Update hints with current input values
+    const curNext  = parseInt(document.getElementById('shipOrderNextQty')?.value)  || 0;
+    const curNext2 = parseInt(document.getElementById('shipOrderNext2Qty')?.value) || 0;
+    const curNext3 = parseInt(document.getElementById('shipOrderNext3Qty')?.value) || 0;
+    _updateShipHints(curNext, curNext2, curNext3);
+
     if (predictEl) {
         let html = `<div class="flex gap-4 mt-1">`;
         if (stockNext < safetyStock) {
@@ -393,4 +416,17 @@ function refreshPredictedBalances() {
         html += `</div>`;
         predictEl.innerHTML = html;
     }
+}
+
+function _updateShipHints(qtyNext, qtyNext2, qtyNext3) {
+    const auto = window._shipAutoQtys || { next: 0, next2: 0, next3: 0 };
+    const upd = (id, qty, autoQty) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        if (qty !== autoQty) { el.textContent = `auto: ${autoQty.toLocaleString()}`; el.classList.remove('hidden'); }
+        else el.classList.add('hidden');
+    };
+    upd('hintShipNext',  qtyNext,  auto.next);
+    upd('hintShipNext2', qtyNext2, auto.next2);
+    upd('hintShipNext3', qtyNext3, auto.next3);
 }
