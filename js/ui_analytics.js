@@ -453,6 +453,11 @@ function _buildOrderData() {
             order3rd = Math.max(0, Math.round(safety - pred3rd));
         }
 
+        // Capture auto-calculated values before applying saved overrides
+        const autoOrderNext = orderNext;
+        const autoOrder2nd  = order2nd;
+        const autoOrder3rd  = order3rd;
+
         // Restore saved order quantities from Supabase
         const savedOrders = window.shipmentOrders?.[code] || [];
         const savedByDate = {};
@@ -481,7 +486,8 @@ function _buildOrderData() {
         }
 
         rows.push({ code, name: master.name || code, uom: master.uom || '-', mf: _mfTab, dates,
-            avg, safety, currentQty, predNext, orderNext, pred2nd, order2nd, pred3rd, order3rd });
+            avg, safety, currentQty, predNext,
+            orderNext, autoOrderNext, pred2nd, order2nd, autoOrder2nd, pred3rd, order3rd, autoOrder3rd });
     }
 
     _orderData = rows;
@@ -498,6 +504,8 @@ function switchMfTab(mf) {
     setTimeout(() => {
         _buildOrderData();
         renderOrderTable();
+        const countEl = document.getElementById('categorySkuCount');
+        if (countEl) countEl.textContent = `${_orderData.length} SKUs`;
         if (typeof _hideLoading === 'function') _hideLoading();
     }, 0);
 }
@@ -533,6 +541,7 @@ function renderCategoryScheduleBar() {
             <span class="text-gray-500">Next: ${fmt(cat.next1)}</span>
             <span class="text-gray-500">2nd: ${fmt(cat.next2)}</span>
             <span class="text-gray-500">3rd: ${fmt(cat.next3)}</span>
+            <span id="categorySkuCount" class="ml-auto text-xs font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full"></span>
         </div>`;
 }
 
@@ -599,6 +608,11 @@ function renderOrderTable() {
         return `<span class="${cls}">${rounded.toLocaleString()}</span>`;
     };
 
+    const autoHint = (id, cur, auto) => {
+        const diff = Math.round(cur) !== Math.round(auto);
+        return `<div id="${id}" class="${diff ? '' : 'hidden'} text-[10px] text-gray-400 mt-0.5 whitespace-nowrap">${diff ? `auto: ${Math.round(auto).toLocaleString()}` : ''}</div>`;
+    };
+
     tbody.innerHTML = '';
     rows.forEach(row => {
         const sid = String(row.code).replace(/[^a-zA-Z0-9]/g, '_');
@@ -612,11 +626,11 @@ function renderOrderTable() {
             <td class="p-3 text-right font-mono text-red-500 font-bold">${row.safety.toLocaleString()}</td>
             <td class="p-3 text-right font-mono font-bold text-gray-800">${row.currentQty.toLocaleString()}</td>
             <td class="p-3 text-right bg-blue-50">${fmtPred(row.predNext, row.safety)}</td>
-            <td class="p-3 bg-blue-50"><input type="number" min="0" value="${row.orderNext}" data-sid="${sid}" data-field="orderNext" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-blue-200 rounded px-2 py-1 text-xs font-bold text-blue-800 focus:ring-1 focus:ring-blue-400 outline-none bg-white"></td>
+            <td class="p-3 bg-blue-50"><input type="number" min="0" value="${row.orderNext}" data-sid="${sid}" data-field="orderNext" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-blue-200 rounded px-2 py-1 text-xs font-bold text-blue-800 focus:ring-1 focus:ring-blue-400 outline-none bg-white">${autoHint(`hint_next_${sid}`, row.orderNext, row.autoOrderNext)}</td>
             <td class="p-3 text-right bg-indigo-50" id="op2_${sid}">${fmtPred(row.pred2nd, row.safety)}</td>
-            <td class="p-3 bg-indigo-50"><input type="number" min="0" value="${row.order2nd}" data-sid="${sid}" data-field="order2nd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-indigo-200 rounded px-2 py-1 text-xs font-bold text-indigo-800 focus:ring-1 focus:ring-indigo-400 outline-none bg-white"></td>
+            <td class="p-3 bg-indigo-50"><input type="number" min="0" value="${row.order2nd}" data-sid="${sid}" data-field="order2nd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-indigo-200 rounded px-2 py-1 text-xs font-bold text-indigo-800 focus:ring-1 focus:ring-indigo-400 outline-none bg-white">${autoHint(`hint_2nd_${sid}`, row.order2nd, row.autoOrder2nd)}</td>
             <td class="p-3 text-right bg-violet-50" id="op3_${sid}">${fmtPred(row.pred3rd, row.safety)}</td>
-            <td class="p-3 bg-violet-50"><input type="number" min="0" value="${row.order3rd}" data-sid="${sid}" data-field="order3rd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-violet-200 rounded px-2 py-1 text-xs font-bold text-violet-800 focus:ring-1 focus:ring-violet-400 outline-none bg-white"></td>
+            <td class="p-3 bg-violet-50"><input type="number" min="0" value="${row.order3rd}" data-sid="${sid}" data-field="order3rd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-violet-200 rounded px-2 py-1 text-xs font-bold text-violet-800 focus:ring-1 focus:ring-violet-400 outline-none bg-white">${autoHint(`hint_3rd_${sid}`, row.order3rd, row.autoOrder3rd)}</td>
         `;
         tbody.appendChild(tr);
     });
@@ -669,6 +683,18 @@ function onOrderQtyChange(input) {
     if (p3El) p3El.innerHTML = fmtPred(row.pred3rd, row.safety);
     if (o2In && field === 'orderNext') o2In.value = row.order2nd;
     if (o3In) o3In.value = row.order3rd;
+
+    // Update auto hints
+    const updHint = (hintId, cur, auto) => {
+        const el = document.getElementById(hintId);
+        if (!el) return;
+        const diff = Math.round(cur) !== Math.round(auto);
+        if (diff) { el.textContent = `auto: ${Math.round(auto).toLocaleString()}`; el.classList.remove('hidden'); }
+        else { el.classList.add('hidden'); }
+    };
+    updHint(`hint_next_${sid}`, row.orderNext, row.autoOrderNext);
+    updHint(`hint_2nd_${sid}`,  row.order2nd,  row.autoOrder2nd);
+    updHint(`hint_3rd_${sid}`,  row.order3rd,  row.autoOrder3rd);
 
     // Auto-save with debounce (2.5s)
     _setRowSaveStatus(sid, 'saving');
