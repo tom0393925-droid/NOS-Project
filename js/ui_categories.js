@@ -167,9 +167,11 @@ async function importSkuCategoryExcel() {
             const ws   = wb.Sheets[wb.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-            const skuCodes = rows
-                .map(r => String(r[0] || '').trim())
-                .filter(c => c && !/^(code|sku|item|品番|コード)$/i.test(c));
+            const skuCodes = [...new Set(
+                rows
+                    .map(r => String(r[0] || '').trim())
+                    .filter(c => c && !/^(code|sku|item|品番|コード)$/i.test(c))
+            )];
 
             if (!skuCodes.length) { alert('No SKU codes found in column A.'); return; }
 
