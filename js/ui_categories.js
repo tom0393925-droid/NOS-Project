@@ -167,10 +167,25 @@ async function importSkuCategoryExcel() {
             const ws   = wb.Sheets[wb.SheetNames[0]];
             const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
+            // Auto-detect column containing "SKU" header (search first 5 rows)
+            let skuColIdx = 0;
+            let dataStartRow = 0;
+            outer:
+            for (let ri = 0; ri < Math.min(5, rows.length); ri++) {
+                const row = rows[ri] || [];
+                for (let ci = 0; ci < row.length; ci++) {
+                    if (/^sku$/i.test(String(row[ci] || '').trim())) {
+                        skuColIdx    = ci;
+                        dataStartRow = ri + 1;
+                        break outer;
+                    }
+                }
+            }
+
             const skuCodes = [...new Set(
-                rows
-                    .map(r => String(r[0] || '').trim())
-                    .filter(c => c && !/^(code|sku|item|品番|コード)$/i.test(c))
+                rows.slice(dataStartRow)
+                    .map(r => String(r[skuColIdx] || '').trim())
+                    .filter(c => c)
             )];
 
             if (!skuCodes.length) { alert('No SKU codes found in column A.'); return; }
