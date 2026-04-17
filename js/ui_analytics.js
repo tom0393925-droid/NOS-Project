@@ -730,7 +730,7 @@ function onOrderQtyChange(input) {
 }
 
 function onNewSkuCodeInput() {
-    const code = (document.getElementById('newOrderSkuCode')?.value || '').trim().toUpperCase();
+    const code = (document.getElementById('newOrderSkuCode')?.value || '').trim();
     const nameEl  = document.getElementById('newOrderSkuName');
     const uomEl   = document.getElementById('newOrderSkuUom');
     const badge   = document.getElementById('newSkuExistsBadge');
@@ -773,7 +773,7 @@ async function addNewSkuToOrder() {
     const nameEl   = document.getElementById('newOrderSkuName');
     const uomEl    = document.getElementById('newOrderSkuUom');
     const statusEl = document.getElementById('addOrderSkuStatus');
-    const code = (codeEl?.value || '').trim().toUpperCase();
+    const code = (codeEl?.value || '').trim();
     const name = (nameEl?.value || '').trim();
     const uom  = (uomEl?.value  || '').trim() || 'pcs';
     if (!code) { alert('Please enter a SKU Code.'); return; }
