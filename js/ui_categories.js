@@ -16,6 +16,14 @@ function renderCategoryManagement() {
             + '<option value="__new__">+ New Category...</option>';
     }
 
+    // Update collapsed summary badges
+    const badges = document.getElementById('categorySettingsBadges');
+    if (badges) {
+        badges.innerHTML = ids.map(id =>
+            `<span class="bg-purple-200 text-purple-800 text-xs font-bold px-2 py-0.5 rounded-full">${id}</span>`
+        ).join('');
+    }
+
     if (!area) return;
     area.innerHTML = '';
 
@@ -129,6 +137,14 @@ async function deleteCategory(id) {
     } catch (e) {
         alert('Delete failed: ' + e.message);
     }
+}
+
+function toggleCategorySettings() {
+    const content = document.getElementById('categorySettingsContent');
+    const chevron = document.getElementById('categorySettingsChevron');
+    if (!content) return;
+    const opening = content.classList.toggle('hidden');
+    if (chevron) chevron.textContent = opening ? '▼' : '▲';
 }
 
 function updateCategoryFileName() {
