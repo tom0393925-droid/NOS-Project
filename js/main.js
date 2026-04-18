@@ -320,7 +320,25 @@ if ('scrollRestoration' in history) {
     history.scrollRestoration = 'manual';
 }
 
-window.onload = function() {
+window.onload = async function() {
+    // 認証チェック
+    if (typeof _showLoading === 'function') _showLoading('認証確認中...');
+    const user = await sbCheckAuth();
+    if (typeof _hideLoading === 'function') _hideLoading();
+
+    if (!user) {
+        // 未認証 → ログイン画面を表示して終了
+        document.getElementById('loginOverlay')?.classList.remove('hidden');
+        return;
+    }
+
+    // 認証OK → ログイン画面を隠してユーザー情報を表示
+    document.getElementById('loginOverlay')?.classList.add('hidden');
+    const emailEl = document.getElementById('userEmail');
+    const userBar = document.getElementById('userInfoBar');
+    if (emailEl) emailEl.textContent = user.email;
+    if (userBar) userBar.classList.remove('hidden');
+
     // HTMLのパズルズレを自動修復
     const dashBg = document.querySelector('.bg-gray-100.flex-grow');
     const mapTab = document.getElementById('mapTab');
@@ -335,7 +353,7 @@ window.onload = function() {
     const analyticsBtn = document.querySelector('[onclick*="analyticsTab"]');
     if(analyticsBtn) switchTab('analyticsTab', analyticsBtn);
     if(typeof checkDashboardVisibility === "function") checkDashboardVisibility();
-    
+
     // 画面が描画されると同時に、静かに一番上をセットする（ガクッとならない）
     window.scrollTo(0, 0);
 };

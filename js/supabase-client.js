@@ -9,6 +9,38 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ==========================================
+// 認証 (Google OAuth)
+// ==========================================
+
+async function sbSignInWithGoogle() {
+    const { error } = await _sb.auth.signInWithOAuth({
+        provider: 'google',
+        options: { redirectTo: window.location.origin + window.location.pathname }
+    });
+    if (error) alert('ログインに失敗しました: ' + error.message);
+}
+
+async function sbSignOut() {
+    await _sb.auth.signOut();
+    document.getElementById('loginOverlay')?.classList.remove('hidden');
+    document.getElementById('userInfoBar')?.classList.add('hidden');
+}
+
+async function sbCheckAuth() {
+    const { data: { session } } = await _sb.auth.getSession();
+    if (!session) return null;
+
+    // allowed_emails に自分のメールがあるか確認（RLSで自分の行しか見えない）
+    const { data } = await _sb.from('allowed_emails').select('email').maybeSingle();
+    if (!data) {
+        // 許可されていないアカウント
+        await _sb.auth.signOut();
+        return null;
+    }
+    return session.user;
+}
+
+// ==========================================
 // 接続テスト
 // ==========================================
 async function testSupabaseConnection() {

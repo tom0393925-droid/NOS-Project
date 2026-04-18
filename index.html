@@ -13,6 +13,24 @@
 
 <body class="bg-gray-100">
 
+    <!-- ログインオーバーレイ -->
+    <div id="loginOverlay" class="fixed inset-0 bg-slate-900 bg-opacity-95 z-[100] flex items-center justify-center">
+        <div class="bg-white rounded-2xl shadow-2xl p-10 flex flex-col items-center gap-6 w-[360px]">
+            <div class="text-center">
+                <div class="text-4xl mb-2">📦</div>
+                <h1 class="text-2xl font-black text-gray-800">IM NOS Analysis</h1>
+                <p class="text-gray-400 text-sm mt-1">社内向け在庫管理システム</p>
+            </div>
+            <div id="loginError" class="hidden bg-red-50 border border-red-200 rounded-lg p-3 text-red-700 text-sm w-full text-center"></div>
+            <button onclick="sbSignInWithGoogle()"
+                class="flex items-center justify-center gap-3 bg-white border-2 border-gray-300 hover:border-blue-400 hover:shadow-md text-gray-700 font-bold px-6 py-3 rounded-xl transition-all w-full">
+                <svg width="20" height="20" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.36-8.16 2.36-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+                Googleでサインイン
+            </button>
+            <p class="text-xs text-gray-400 text-center">アクセスは管理者に申請してください</p>
+        </div>
+    </div>
+
     <!-- ローディングオーバーレイ -->
     <div id="loadingOverlay" class="hidden fixed inset-0 bg-black bg-opacity-50 z-50 flex flex-col items-center justify-center">
         <div class="bg-white rounded-2xl shadow-2xl p-8 flex flex-col items-center gap-4 min-w-[300px]">
@@ -25,10 +43,17 @@
         <div class="p-6 pb-4 bg-white border-b border-gray-200">
             <div class="header-top flex justify-between items-center m-0">
                 <h1 class="main-title text-2xl font-black text-gray-800 tracking-tight">IM NOS Analysis</h1>
-                <button onclick="toggleSetupView()" id="btnToggleSetup"
-                    class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold transition-all shadow-md flex items-center gap-2 border border-blue-500">
-                    ⬅️ Back to Dashboard
-                </button>
+                <div class="flex items-center gap-3">
+                    <div id="userInfoBar" class="hidden flex items-center gap-2 text-sm">
+                        <span class="text-gray-400">👤</span>
+                        <span id="userEmail" class="font-medium text-gray-600 text-xs"></span>
+                        <button onclick="sbSignOut()" class="text-xs text-red-500 hover:text-red-700 border border-red-200 hover:border-red-400 px-2 py-1 rounded-lg transition-colors font-bold">サインアウト</button>
+                    </div>
+                    <button onclick="toggleSetupView()" id="btnToggleSetup"
+                        class="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-bold transition-all shadow-md flex items-center gap-2 border border-blue-500">
+                        ⬅️ Back to Dashboard
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -902,7 +927,7 @@
         </div>
     </div>
 
-  <script src="js/supabase-client.js?v=5"></script>
+  <script src="js/supabase-client.js?v=6"></script>
     <script src="js/supabase-upload.js?v=3"></script>
     <script src="js/state.js?v=23"></script>
     <script src="js/utils.js?v=22"></script>
@@ -913,7 +938,7 @@
     <script src="js/ui_analytics.js?v=37"></script>
     <script src="js/ui_map.js?v=22"></script>
     <script src="js/ui.js?v=28"></script>
-    <script src="js/main.js?v=30"></script>
+    <script src="js/main.js?v=31"></script>
 </body>
 
 </html>
