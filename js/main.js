@@ -321,38 +321,20 @@ if ('scrollRestoration' in history) {
 }
 
 window.onload = function() {
-    let _appInited = false;
+    // 認証は一時無効化中
+    document.getElementById('loginOverlay')?.classList.add('hidden');
 
-    sbInitAuth(
-        (user) => {
-            // 認証成功 → ログイン画面を隠してアプリを起動
-            document.getElementById('loginOverlay')?.classList.add('hidden');
-            const emailEl = document.getElementById('userEmail');
-            const userBar = document.getElementById('userInfoBar');
-            if (emailEl) emailEl.textContent = user.email;
-            if (userBar) userBar.classList.remove('hidden');
+    // HTMLのパズルズレを自動修復
+    const dashBg = document.querySelector('.bg-gray-100.flex-grow');
+    const mapTab = document.getElementById('mapTab');
+    if (dashBg && mapTab) dashBg.appendChild(mapTab);
 
-            if (_appInited) return; // TOKEN_REFRESHED等で二重初期化を防止
-            _appInited = true;
-
-            // HTMLのパズルズレを自動修復
-            const dashBg = document.querySelector('.bg-gray-100.flex-grow');
-            const mapTab = document.getElementById('mapTab');
-            if (dashBg && mapTab) dashBg.appendChild(mapTab);
-
-            const swInput = document.getElementById('safetyWeeksInput');
-            if (swInput) swInput.value = safetyWeeks;
-            restoreContainerDates();
-            if (typeof renderMasterList === "function") renderMasterList();
-            const analyticsBtn = document.querySelector('[onclick*="analyticsTab"]');
-            if (analyticsBtn) switchTab('analyticsTab', analyticsBtn);
-            if (typeof checkDashboardVisibility === "function") checkDashboardVisibility();
-            window.scrollTo(0, 0);
-        },
-        () => {
-            // 未認証 → ログイン画面を表示
-            document.getElementById('loginOverlay')?.classList.remove('hidden');
-            document.getElementById('userInfoBar')?.classList.add('hidden');
-        }
-    );
+    const swInput = document.getElementById('safetyWeeksInput');
+    if (swInput) swInput.value = safetyWeeks;
+    restoreContainerDates();
+    if (typeof renderMasterList === "function") renderMasterList();
+    const analyticsBtn = document.querySelector('[onclick*="analyticsTab"]');
+    if (analyticsBtn) switchTab('analyticsTab', analyticsBtn);
+    if (typeof checkDashboardVisibility === "function") checkDashboardVisibility();
+    window.scrollTo(0, 0);
 };
