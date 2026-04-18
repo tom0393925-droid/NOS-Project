@@ -30,8 +30,8 @@ function sbInitAuth(onSuccess, onSignOut) {
     _sb.auth.onAuthStateChange(async (event, session) => {
         console.log('[Auth]', event, session?.user?.email ?? 'no session');
         if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session) {
-            const { data, error } = await _sb.from('allowed_emails').select('email').maybeSingle();
-            console.log('[allowed_emails]', { data, error });
+            const { data, error } = await _sb.from('allowed_emails').select('email').eq('email', session.user.email).maybeSingle();
+            console.log('[allowed_emails]', { data, error, userEmail: session.user.email });
             if (data) {
                 onSuccess(session.user);
             } else {
