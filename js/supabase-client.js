@@ -28,19 +28,23 @@ async function sbSignOut() {
 // onAuthStateChange ベースの認証初期化（OAuthリダイレクト後も確実に動作）
 function sbInitAuth(onSuccess, onSignOut) {
     _sb.auth.onAuthStateChange(async (event, session) => {
+        console.log('[Auth]', event, session?.user?.email ?? 'no session');
         if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session) {
-            // allowed_emails に自分のメールがあるか確認
-            const { data } = await _sb.from('allowed_emails').select('email').maybeSingle();
+            const { data, error } = await _sb.from('allowed_emails').select('email').maybeSingle();
+            console.log('[allowed_emails]', { data, error });
             if (data) {
                 onSuccess(session.user);
             } else {
-                // 許可されていないアカウント
-                await _sb.auth.signOut();
+                // 許可されていないアカウント（サインアウトはせずエラー表示のみ）
+                const email = session.user.email;
                 const errEl = document.getElementById('loginError');
                 if (errEl) {
-                    errEl.textContent = 'このアカウントはアクセス許可されていません。管理者に申請してください。';
+                    errEl.textContent = error
+                        ? `DBエラー: ${error.message}`
+                        : `${email} はアクセス許可されていません。管理者に申請してください。`;
                     errEl.classList.remove('hidden');
                 }
+                await _sb.auth.signOut();
             }
         } else if ((event === 'INITIAL_SESSION' && !session) || event === 'SIGNED_OUT') {
             onSignOut();
