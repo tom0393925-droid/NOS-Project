@@ -22,22 +22,30 @@ async function sbSignInWithGoogle() {
 
 async function sbSignOut() {
     await _sb.auth.signOut();
-    document.getElementById('loginOverlay')?.classList.remove('hidden');
-    document.getElementById('userInfoBar')?.classList.add('hidden');
+    // SIGNED_OUT イベントで UI を更新（onAuthStateChange が処理）
 }
 
-async function sbCheckAuth() {
-    const { data: { session } } = await _sb.auth.getSession();
-    if (!session) return null;
-
-    // allowed_emails に自分のメールがあるか確認（RLSで自分の行しか見えない）
-    const { data } = await _sb.from('allowed_emails').select('email').maybeSingle();
-    if (!data) {
-        // 許可されていないアカウント
-        await _sb.auth.signOut();
-        return null;
-    }
-    return session.user;
+// onAuthStateChange ベースの認証初期化（OAuthリダイレクト後も確実に動作）
+function sbInitAuth(onSuccess, onSignOut) {
+    _sb.auth.onAuthStateChange(async (event, session) => {
+        if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session) {
+            // allowed_emails に自分のメールがあるか確認
+            const { data } = await _sb.from('allowed_emails').select('email').maybeSingle();
+            if (data) {
+                onSuccess(session.user);
+            } else {
+                // 許可されていないアカウント
+                await _sb.auth.signOut();
+                const errEl = document.getElementById('loginError');
+                if (errEl) {
+                    errEl.textContent = 'このアカウントはアクセス許可されていません。管理者に申請してください。';
+                    errEl.classList.remove('hidden');
+                }
+            }
+        } else if ((event === 'INITIAL_SESSION' && !session) || event === 'SIGNED_OUT') {
+            onSignOut();
+        }
+    });
 }
 
 // ==========================================
