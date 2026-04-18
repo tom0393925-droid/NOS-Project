@@ -132,20 +132,70 @@ function updateShipmentOrder(slot, value) {
     const qty = parseInt(value) || 0;
     const masterData = skuMaster[currentSelectedSKU] || {};
     const stType = masterData.storageType || 'Dry';
-    const arrivalDate = slot === 'next'
-        ? (stType === 'Frozen' ? globalFrozenNext  : globalDryNext)
-        : slot === 'next2'
-        ? (stType === 'Frozen' ? globalFrozenNext2 : globalDryNext2)
-        : (stType === 'Frozen' ? globalFrozenNext3 : globalDryNext3);
+
+    const tNext  = stType === 'Frozen' ? globalFrozenNext  : globalDryNext;
+    const tNext2 = stType === 'Frozen' ? globalFrozenNext2 : globalDryNext2;
+    const tNext3 = stType === 'Frozen' ? globalFrozenNext3 : globalDryNext3;
+
+    const arrivalDate = slot === 'next' ? tNext : slot === 'next2' ? tNext2 : tNext3;
     if (!arrivalDate) return;
 
     if (!window.shipmentOrders) window.shipmentOrders = {};
     if (!window.shipmentOrders[currentSelectedSKU]) window.shipmentOrders[currentSelectedSKU] = [];
 
     const orders = window.shipmentOrders[currentSelectedSKU];
-    const existing = orders.find(s => s.arrivalDate === arrivalDate);
-    if (existing) { existing.orderQty = qty; }
-    else { orders.push({ arrivalDate, orderQty: qty, status: 'pending' }); }
+    const setOrder = (date, newQty) => {
+        if (!date) return;
+        const e = orders.find(s => s.arrivalDate === date);
+        if (e) e.orderQty = newQty; else orders.push({ arrivalDate: date, orderQty: newQty, status: 'pending' });
+    };
+    setOrder(arrivalDate, qty);
+
+    // Cascade: recalculate subsequent shipment quantities
+    if (slot !== 'next3' && tNext2) {
+        const targetLots = Object.values(historyData).filter(h => h.code === currentSelectedSKU);
+        if (targetLots.length > 0) {
+            let latestQty = 0;
+            targetLots.forEach(lot => { latestQty += (lot.qtys[loadedWeeks - 1] || 0); });
+            let salesSum = 0;
+            const wks12 = Math.min(12, loadedWeeks);
+            for (let i = loadedWeeks - wks12; i < loadedWeeks; i++) {
+                let w = 0; targetLots.forEach(lot => { w += (lot.sales[i] || 0); }); salesSum += w;
+            }
+            const avg = wks12 > 0 ? salesSum / wks12 : 0;
+            const safety = Math.round(avg * safetyWeeks);
+            const base = getLatestDataDate();
+            const dw2 = tNext2 ? (new Date(tNext2) - base) / 604800000 : 0;
+            const dw3 = tNext3 ? (new Date(tNext3) - base) / 604800000 : 0;
+
+            if (slot === 'next' && dw2 > 0) {
+                // 1st changed → recalculate 2nd
+                const predAt2nd = latestQty - avg * dw2 + qty;
+                const auto2 = tNext3 && dw3 > dw2
+                    ? Math.max(0, Math.round(safety + avg * (dw3 - dw2) - predAt2nd))
+                    : Math.max(0, Math.round(safety - predAt2nd));
+                const el2 = document.getElementById('shipOrderNext2Qty');
+                if (el2 && document.activeElement !== el2) el2.value = auto2 || '';
+                setOrder(tNext2, auto2);
+                // Also cascade to 3rd
+                if (tNext3 && dw3 > dw2) {
+                    const predAt3rd = predAt2nd + auto2 - avg * (dw3 - dw2);
+                    const auto3 = Math.max(0, Math.round(safety - predAt3rd));
+                    const el3 = document.getElementById('shipOrderNext3Qty');
+                    if (el3 && document.activeElement !== el3) el3.value = auto3 || '';
+                    setOrder(tNext3, auto3);
+                }
+            } else if (slot === 'next2' && tNext3 && dw3 > dw2) {
+                // 2nd changed → recalculate 3rd
+                const shipNext = orders.find(s => s.arrivalDate === tNext)?.orderQty || 0;
+                const predAt3rd = latestQty - avg * dw3 + shipNext + qty;
+                const auto3 = Math.max(0, Math.round(safety - predAt3rd));
+                const el3 = document.getElementById('shipOrderNext3Qty');
+                if (el3 && document.activeElement !== el3) el3.value = auto3 || '';
+                setOrder(tNext3, auto3);
+            }
+        }
+    }
 
     // チャートと残高テキストのみ軽量更新（フォーカスを奪わない）
     if (typeof updateChartPeriod === 'function') updateChartPeriod();

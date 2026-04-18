@@ -320,13 +320,16 @@ function renderSKUDetails(selectedCode) {
                 window._shipAutoQtys = { next: autoNext, next2: autoNext2, next3: autoNext3 };
                 _updateShipHints(loadedNextQty, loadedNext2Qty, loadedNext3Qty);
 
+                const cNext  = Math.ceil(Math.max(0, stockNext));
+                const cNext2 = Math.ceil(Math.max(0, stockNext2));
+                const cNext3 = stockNext3 !== null ? Math.ceil(Math.max(0, stockNext3)) : null;
                 let html = `<div class="flex gap-4 mt-1">`;
-                if (stockNext < safetyStock) {
-                    html += `<div class="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded w-full"><span class="text-xl">🚨</span><div><p class="text-xs font-bold text-red-700">Urgent: Below Safety Stock (${safetyStock}) before ${targetNext}</p><p class="text-[10px] text-red-600">Short by <span class="font-bold text-sm">${Math.ceil(safetyStock - stockNext)}</span> ${uomText}</p></div></div>`;
-                } else if (stockNext2 < safetyStock) {
-                    html += `<div class="flex items-center gap-2 bg-yellow-50 border border-yellow-200 px-3 py-1.5 rounded w-full"><span class="text-xl">📦</span><div><p class="text-xs font-bold text-yellow-800">Order Now: Will fall below Safety Stock (${safetyStock}) before ${targetNext2}</p><p class="text-[10px] text-yellow-700">Short by <span class="font-bold text-sm">${Math.ceil(safetyStock - stockNext2)}</span> ${uomText}</p></div></div>`;
-                } else if (stockNext3 !== null && stockNext3 < safetyStock) {
-                    html += `<div class="flex items-center gap-2 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded w-full"><span class="text-xl">⚠️</span><div><p class="text-xs font-bold text-orange-800">Plan Ahead: Will fall below Safety Stock (${safetyStock}) before ${targetNext3}</p><p class="text-[10px] text-orange-700">Short by <span class="font-bold text-sm">${Math.ceil(safetyStock - stockNext3)}</span> ${uomText}</p></div></div>`;
+                if (cNext < safetyStock) {
+                    html += `<div class="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded w-full"><span class="text-xl">🚨</span><div><p class="text-xs font-bold text-red-700">Urgent: Below Safety Stock (${safetyStock}) before ${targetNext}</p><p class="text-[10px] text-red-600">Short by <span class="font-bold text-sm">${safetyStock - cNext}</span> ${uomText}</p></div></div>`;
+                } else if (cNext2 < safetyStock) {
+                    html += `<div class="flex items-center gap-2 bg-yellow-50 border border-yellow-200 px-3 py-1.5 rounded w-full"><span class="text-xl">📦</span><div><p class="text-xs font-bold text-yellow-800">Order Now: Will fall below Safety Stock (${safetyStock}) before ${targetNext2}</p><p class="text-[10px] text-yellow-700">Short by <span class="font-bold text-sm">${safetyStock - cNext2}</span> ${uomText}</p></div></div>`;
+                } else if (cNext3 !== null && cNext3 < safetyStock) {
+                    html += `<div class="flex items-center gap-2 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded w-full"><span class="text-xl">⚠️</span><div><p class="text-xs font-bold text-orange-800">Plan Ahead: Will fall below Safety Stock (${safetyStock}) before ${targetNext3}</p><p class="text-[10px] text-orange-700">Short by <span class="font-bold text-sm">${safetyStock - cNext3}</span> ${uomText}</p></div></div>`;
                 } else {
                     const safeUntil = targetNext3 ? targetNext3 : targetNext2;
                     html += `<div class="flex items-center gap-2 bg-green-50 border border-green-200 px-3 py-1.5 rounded w-full"><span class="text-xl">✅</span><div><p class="text-xs font-bold text-green-700">Safe: No order needed</p><p class="text-[10px] text-green-600">Remains above safety line until 3rd Next Arrival (${safeUntil})</p></div></div>`;
@@ -421,13 +424,16 @@ function refreshPredictedBalances() {
     _updateShipHints(curNext, curNext2, curNext3);
 
     if (predictEl) {
+        const cNext  = Math.ceil(Math.max(0, stockNext));
+        const cNext2 = Math.ceil(Math.max(0, stockNext2));
+        const cNext3 = stockNext3 !== null ? Math.ceil(Math.max(0, stockNext3)) : null;
         let html = `<div class="flex gap-4 mt-1">`;
-        if (stockNext < safetyStock) {
-            html += `<div class="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded w-full"><span class="text-xl">🚨</span><div><p class="text-xs font-bold text-red-700">Urgent: Below Safety Stock (${safetyStock}) before ${targetNext}</p><p class="text-[10px] text-red-600">Short by <span class="font-bold text-sm">${Math.ceil(safetyStock - stockNext)}</span> ${uomText}</p></div></div>`;
-        } else if (stockNext2 < safetyStock) {
-            html += `<div class="flex items-center gap-2 bg-yellow-50 border border-yellow-200 px-3 py-1.5 rounded w-full"><span class="text-xl">📦</span><div><p class="text-xs font-bold text-yellow-800">Order Now: Will fall below Safety Stock (${safetyStock}) before ${targetNext2}</p><p class="text-[10px] text-yellow-700">Short by <span class="font-bold text-sm">${Math.ceil(safetyStock - stockNext2)}</span> ${uomText}</p></div></div>`;
-        } else if (stockNext3 !== null && stockNext3 < safetyStock) {
-            html += `<div class="flex items-center gap-2 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded w-full"><span class="text-xl">⚠️</span><div><p class="text-xs font-bold text-orange-800">Plan Ahead: Will fall below Safety Stock (${safetyStock}) before ${targetNext3}</p><p class="text-[10px] text-orange-700">Short by <span class="font-bold text-sm">${Math.ceil(safetyStock - stockNext3)}</span> ${uomText}</p></div></div>`;
+        if (cNext < safetyStock) {
+            html += `<div class="flex items-center gap-2 bg-red-50 border border-red-200 px-3 py-1.5 rounded w-full"><span class="text-xl">🚨</span><div><p class="text-xs font-bold text-red-700">Urgent: Below Safety Stock (${safetyStock}) before ${targetNext}</p><p class="text-[10px] text-red-600">Short by <span class="font-bold text-sm">${safetyStock - cNext}</span> ${uomText}</p></div></div>`;
+        } else if (cNext2 < safetyStock) {
+            html += `<div class="flex items-center gap-2 bg-yellow-50 border border-yellow-200 px-3 py-1.5 rounded w-full"><span class="text-xl">📦</span><div><p class="text-xs font-bold text-yellow-800">Order Now: Will fall below Safety Stock (${safetyStock}) before ${targetNext2}</p><p class="text-[10px] text-yellow-700">Short by <span class="font-bold text-sm">${safetyStock - cNext2}</span> ${uomText}</p></div></div>`;
+        } else if (cNext3 !== null && cNext3 < safetyStock) {
+            html += `<div class="flex items-center gap-2 bg-orange-50 border border-orange-200 px-3 py-1.5 rounded w-full"><span class="text-xl">⚠️</span><div><p class="text-xs font-bold text-orange-800">Plan Ahead: Will fall below Safety Stock (${safetyStock}) before ${targetNext3}</p><p class="text-[10px] text-orange-700">Short by <span class="font-bold text-sm">${safetyStock - cNext3}</span> ${uomText}</p></div></div>`;
         } else {
             const safeUntil = targetNext3 ? targetNext3 : targetNext2;
             html += `<div class="flex items-center gap-2 bg-green-50 border border-green-200 px-3 py-1.5 rounded w-full"><span class="text-xl">✅</span><div><p class="text-xs font-bold text-green-700">Safe: No order needed</p><p class="text-[10px] text-green-600">Remains above safety line until 3rd Next Arrival (${safeUntil})</p></div></div>`;
