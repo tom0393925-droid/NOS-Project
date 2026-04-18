@@ -33,12 +33,12 @@ function sbInitAuth(onSuccess, onSignOut) {
             const userEmail = session.user.email;
             console.log('[Auth SIGNED_IN]', userEmail);
             // allowed_emails をサービス側でチェック（RLSをbypassするため countを使用）
-            const { count, error } = await _sb
+            const { data, error } = await _sb
                 .from('allowed_emails')
-                .select('email', { count: 'exact', head: true })
+                .select('email')
                 .eq('email', userEmail);
-            console.log('[allowed_emails count]', count, error);
-            if (count > 0) {
+            console.log('[allowed_emails]', data, error);
+            if (data && data.length > 0) {
                 onSuccess(session.user);
             } else {
                 const errEl = document.getElementById('loginError');
