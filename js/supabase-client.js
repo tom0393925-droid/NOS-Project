@@ -30,18 +30,22 @@ function sbInitAuth(onSuccess, onSignOut) {
     _sb.auth.onAuthStateChange(async (event, session) => {
         console.log('[Auth]', event, session?.user?.email ?? 'no session');
         if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session) {
-            const { data, error } = await _sb.from('allowed_emails').select('email').eq('email', session.user.email).maybeSingle();
-            console.log('[allowed_emails]', { data, error, userEmail: session.user.email });
-            if (data) {
+            const userEmail = session.user.email;
+            console.log('[Auth SIGNED_IN]', userEmail);
+            // allowed_emails をサービス側でチェック（RLSをbypassするため countを使用）
+            const { count, error } = await _sb
+                .from('allowed_emails')
+                .select('email', { count: 'exact', head: true })
+                .eq('email', userEmail);
+            console.log('[allowed_emails count]', count, error);
+            if (count > 0) {
                 onSuccess(session.user);
             } else {
-                // 許可されていないアカウント（サインアウトはせずエラー表示のみ）
-                const email = session.user.email;
                 const errEl = document.getElementById('loginError');
                 if (errEl) {
                     errEl.textContent = error
                         ? `DBエラー: ${error.message}`
-                        : `${email} はアクセス許可されていません。管理者に申請してください。`;
+                        : `${userEmail} はアクセス許可されていません。管理者に申請してください。`;
                     errEl.classList.remove('hidden');
                 }
                 await _sb.auth.signOut();
