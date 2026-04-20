@@ -45,11 +45,12 @@ async function handleTcExcelUpload(event) {
             const uom = colIdx.unit !== -1 && row[colIdx.unit] ? String(row[colIdx.unit]).trim() : "-";
 
             if (code && !isNaN(tc)) {
+                const normalizedUom = ['G', 'g'].includes(uom) ? 'KG' : uom;
                 if (!skuMaster[code]) {
-                    skuMaster[code] = { name: "", tc: tc, price: 0, uom: uom, storageType: "Dry", safetyStock: 0, isFF: false };
+                    skuMaster[code] = { name: "", tc: tc, price: 0, uom: normalizedUom, storageType: "Dry", safetyStock: 0, isFF: false };
                 } else {
                     skuMaster[code].tc = tc;
-                    if (uom !== "-") skuMaster[code].uom = uom; 
+                    if (uom !== "-") skuMaster[code].uom = normalizedUom;
                 }
                 updatedCount++;
             }
@@ -129,7 +130,9 @@ async function runAnalysis() {
             }
             
             const key = `${currentParent.code}_${dateStr}_${isDamaged ? 'dmg' : 'norm'}`;
-            currentWeekData[key] = { code: currentParent.code, name: currentParent.name, expiry: isValidDate ? expDate : null, expiryStr: lotVal || "No Date", isDamaged: isDamaged, qty: qtyVal, sales: currentParent.sales };
+            const _isKgSku = ['KG', 'kg'].includes(skuMaster[currentParent.code]?.uom);
+            const _f = _isKgSku ? 1000 : 1;
+            currentWeekData[key] = { code: currentParent.code, name: currentParent.name, expiry: isValidDate ? expDate : null, expiryStr: lotVal || "No Date", isDamaged: isDamaged, qty: qtyVal / _f, sales: currentParent.sales / _f };
         }
 
         for (const key in historyData) {
