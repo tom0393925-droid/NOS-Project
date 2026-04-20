@@ -44,8 +44,8 @@ function sbInitAuth(onSuccess, onSignOut) {
                 const errEl = document.getElementById('loginError');
                 if (errEl) {
                     errEl.textContent = error
-                        ? `DBエラー: ${error.message}`
-                        : `${userEmail} はアクセス許可されていません。管理者に申請してください。`;
+                        ? `DB Error: ${error.message}`
+                        : `${userEmail} is not authorized. Please contact your administrator.`;
                     errEl.classList.remove('hidden');
                 }
                 await _sb.auth.signOut();
