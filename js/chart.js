@@ -4,7 +4,8 @@
 
 // ── Simulation state ──
 let _simAvg = null;          // null = use real avg; number = user override
-let _realAvg = 0;            // computed 12-week average
+let _realAvg = 0;            // computed average (excludes stockout weeks)
+let _isStockoutChart = false; // true when some weeks were excluded due to zero inventory
 let _simNumFutureWeeks = 0;  // how many future weeks are extended on the chart
 let _simLatestQty = 0;       // inventory qty at the last historical week
 let _simBaseDate = null;     // Date object for the last historical week
@@ -115,10 +116,13 @@ function updateChartPeriod() {
         }
     }
 
-    let past12WSalesSum = 0;
+    let past12WSalesSum = 0; let past12WEffectiveWeeks = 0;
     const checkWeeks12 = Math.min(12, loadedWeeks);
-    for(let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) past12WSalesSum += (totalSalesTrend[i] || 0);
-    const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
+    for(let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
+        if ((totalQtysTrend[i] || 0) > 0) { past12WSalesSum += (totalSalesTrend[i] || 0); past12WEffectiveWeeks++; }
+    }
+    const past12WAvg = past12WEffectiveWeeks > 0 ? (past12WSalesSum / past12WEffectiveWeeks) : 0;
+    _isStockoutChart = past12WEffectiveWeeks > 0 && past12WEffectiveWeeks < checkWeeks12;
 
     // Reset sim when switching SKUs; keep sim avg when just changing zoom
     if (currentSelectedSKU !== _prevChartSKU) {
@@ -261,6 +265,8 @@ function _syncSimUI(currentAvg) {
     const input   = document.getElementById('simAvgInput');
     const deltaEl = document.getElementById('simAvgDelta');
     const realEl  = document.getElementById('simRealAvg');
+    const labelEl = document.getElementById('simRealAvgLabel');
+    if (labelEl) labelEl.textContent = _isStockoutChart ? 'Est. Avg:' : 'Real Avg:';
     if (realEl)  realEl.textContent  = _realAvg.toFixed(1);
     if (input)   input.value         = currentAvg.toFixed(1);
     if (deltaEl) {

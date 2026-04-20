@@ -40,9 +40,12 @@ function renderActionList() {
         let past4WSalesSum = 0; const checkWeeks4 = Math.min(4, loadedWeeks);
         for(let i = loadedWeeks - checkWeeks4; i < loadedWeeks; i++) past4WSalesSum += (item.sales[i] || 0);
 
-        let past12WSalesSum = 0; const checkWeeks12 = Math.min(12, loadedWeeks);
-        for(let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) past12WSalesSum += (item.sales[i] || 0);
-        const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
+        let past12WSalesSum = 0; let past12WEffectiveWeeks = 0;
+        const checkWeeks12 = Math.min(12, loadedWeeks);
+        for(let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
+            if ((item.qtys[i] || 0) > 0) { past12WSalesSum += (item.sales[i] || 0); past12WEffectiveWeeks++; }
+        }
+        const past12WAvg = past12WEffectiveWeeks > 0 ? (past12WSalesSum / past12WEffectiveWeeks) : 0;
 
         let isNewArrival = true;
         for(let i = 0; i < loadedWeeks - 1; i++) { if (item.qtys[i] > 0) { isNewArrival = false; break; } }
@@ -216,12 +219,15 @@ function renderSKUDetails(selectedCode) {
     const uomText = masterData.uom || "-";
 
     // past12WAvg を先に計算してデフォルトの安全在庫（2ヶ月 = 8週分）に使う
-    let past12WSalesSum = 0; const checkWeeks12 = Math.min(12, loadedWeeks);
+    let past12WSalesSum = 0; let past12WEffectiveWeeks = 0;
+    const checkWeeks12 = Math.min(12, loadedWeeks);
     for (let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
-        let weeklySum = 0; targetLots.forEach(lot => { weeklySum += (lot.sales[i] || 0); });
-        past12WSalesSum += weeklySum;
+        let weeklyQty = 0; let weeklySum = 0;
+        targetLots.forEach(lot => { weeklyQty += (lot.qtys[i] || 0); weeklySum += (lot.sales[i] || 0); });
+        if (weeklyQty > 0) { past12WSalesSum += weeklySum; past12WEffectiveWeeks++; }
     }
-    const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
+    const past12WAvg = past12WEffectiveWeeks > 0 ? (past12WSalesSum / past12WEffectiveWeeks) : 0;
+    const isStockoutSku = past12WEffectiveWeeks > 0 && past12WEffectiveWeeks < checkWeeks12;
 
     // ★ セーフティストックは常に週平均×8週（約2ヶ月）で統一
     const safetyStock = Math.round(past12WAvg * safetyWeeks);
@@ -252,7 +258,9 @@ function renderSKUDetails(selectedCode) {
     setSafeText('skuDetailWos', wos === 999 ? "∞" : wos.toFixed(1) + " Wks");
     const wosEl = document.getElementById('skuDetailWos');
     if (wosEl) wosEl.className = `font-black text-4xl ${wosColor}`;
-    setSafeText('skuDetailAvg', `(Recent Avg: ${past12WAvg.toFixed(1)} pcs/wk)`);
+    setSafeText('skuDetailAvg', isStockoutSku
+        ? `(Est. Avg: ${past12WAvg.toFixed(1)} pcs/wk | Stockout excl.)`
+        : `(Recent Avg: ${past12WAvg.toFixed(1)} pcs/wk)`);
 
     const predictEl = document.getElementById('skuDetailOrderPredict');
     if (predictEl) {
