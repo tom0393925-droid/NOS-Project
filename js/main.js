@@ -321,9 +321,6 @@ if ('scrollRestoration' in history) {
 }
 
 window.onload = function() {
-    // 認証は一時無効化中
-    document.getElementById('loginOverlay')?.classList.add('hidden');
-
     // HTMLのパズルズレを自動修復
     const dashBg = document.querySelector('.bg-gray-100.flex-grow');
     const mapTab = document.getElementById('mapTab');
