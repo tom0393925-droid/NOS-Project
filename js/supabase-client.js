@@ -32,22 +32,20 @@ function sbInitAuth(onSuccess, onSignOut) {
         if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session) {
             const userEmail = session.user.email;
             console.log('[Auth SIGNED_IN]', userEmail);
-            // allowed_emails をサービス側でチェック（RLSをbypassするため countを使用）
-            const { data, error } = await _sb
-                .from('allowed_emails')
-                .select('email')
-                .eq('email', userEmail);
-            console.log('[allowed_emails]', data, error);
-            if (data && data.length > 0) {
-                onSuccess(session.user);
-            } else {
-                const errEl = document.getElementById('loginError');
-                if (errEl) {
-                    errEl.textContent = error
-                        ? `DB Error: ${error.message}`
-                        : `${userEmail} is not authorized. Please contact your administrator.`;
-                    errEl.classList.remove('hidden');
+            try {
+                const { data, error } = await _sb
+                    .from('allowed_emails')
+                    .select('email')
+                    .eq('email', userEmail);
+                console.log('[allowed_emails]', data, error);
+                if (data && data.length > 0) {
+                    onSuccess(session.user);
+                } else {
+                    console.warn('[Auth] Not authorized or query failed:', error?.message);
+                    await _sb.auth.signOut();
                 }
+            } catch (e) {
+                console.error('[Auth] allowed_emails check threw:', e);
                 await _sb.auth.signOut();
             }
         } else if ((event === 'INITIAL_SESSION' && !session) || event === 'SIGNED_OUT') {
