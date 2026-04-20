@@ -40,13 +40,22 @@ function renderActionList() {
         let past4WSalesSum = 0; const checkWeeks4 = Math.min(4, loadedWeeks);
         for(let i = loadedWeeks - checkWeeks4; i < loadedWeeks; i++) past4WSalesSum += (item.sales[i] || 0);
 
-        let past12WSalesSum = 0; let past12WEffectiveWeeks = 0; let recentZeroQtyWeeks = 0;
         const checkWeeks12 = Math.min(12, loadedWeeks);
-        for(let i = 0; i < loadedWeeks; i++) {
-            if ((item.qtys[i] || 0) > 0) { past12WSalesSum += (item.sales[i] || 0); past12WEffectiveWeeks++; }
+        let _hasStockItem = false, recentZeroQtyWeeks = 0;
+        for (let i = 0; i < loadedWeeks; i++) {
+            if ((item.qtys[i] || 0) > 0) _hasStockItem = true;
             if (i >= loadedWeeks - checkWeeks12 && (item.qtys[i] || 0) === 0) recentZeroQtyWeeks++;
         }
-        const past12WAvg = past12WEffectiveWeeks > 0 ? (past12WSalesSum / past12WEffectiveWeeks) : 0;
+        let past12WAvg;
+        if (_hasStockItem && recentZeroQtyWeeks > 0) {
+            past12WAvg = _calcStockoutAvg(item.qtys, item.sales, loadedWeeks);
+        } else {
+            let _s = 0, _w = 0;
+            for (let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
+                if ((item.qtys[i] || 0) > 0) { _s += (item.sales[i] || 0); _w++; }
+            }
+            past12WAvg = _w > 0 ? _s / _w : 0;
+        }
 
         let isNewArrival = true;
         for(let i = 0; i < loadedWeeks - 1; i++) { if (item.qtys[i] > 0) { isNewArrival = false; break; } }
@@ -220,16 +229,28 @@ function renderSKUDetails(selectedCode) {
     const uomText = masterData.uom || "-";
 
     // past12WAvg を先に計算してデフォルトの安全在庫（2ヶ月 = 8週分）に使う
-    let past12WSalesSum = 0; let past12WEffectiveWeeks = 0; let recentZeroQtyWeeksDetail = 0;
-    const checkWeeks12 = Math.min(12, loadedWeeks);
+    const _aggQtys = new Array(loadedWeeks).fill(0);
+    const _aggSales = new Array(loadedWeeks).fill(0);
     for (let i = 0; i < loadedWeeks; i++) {
-        let weeklyQty = 0; let weeklySum = 0;
-        targetLots.forEach(lot => { weeklyQty += (lot.qtys[i] || 0); weeklySum += (lot.sales[i] || 0); });
-        if (weeklyQty > 0) { past12WSalesSum += weeklySum; past12WEffectiveWeeks++; }
-        if (i >= loadedWeeks - checkWeeks12 && weeklyQty === 0) recentZeroQtyWeeksDetail++;
+        targetLots.forEach(lot => { _aggQtys[i] += (lot.qtys[i] || 0); _aggSales[i] += (lot.sales[i] || 0); });
     }
-    const past12WAvg = past12WEffectiveWeeks > 0 ? (past12WSalesSum / past12WEffectiveWeeks) : 0;
-    const isStockoutSku = past12WEffectiveWeeks > 0 && recentZeroQtyWeeksDetail > 0;
+    const checkWeeks12 = Math.min(12, loadedWeeks);
+    let _hasStockDetail = false, recentZeroQtyWeeksDetail = 0;
+    for (let i = 0; i < loadedWeeks; i++) {
+        if (_aggQtys[i] > 0) _hasStockDetail = true;
+        if (i >= loadedWeeks - checkWeeks12 && _aggQtys[i] === 0) recentZeroQtyWeeksDetail++;
+    }
+    const isStockoutSku = _hasStockDetail && recentZeroQtyWeeksDetail > 0;
+    let past12WAvg;
+    if (isStockoutSku) {
+        past12WAvg = _calcStockoutAvg(_aggQtys, _aggSales, loadedWeeks);
+    } else {
+        let _s = 0, _w = 0;
+        for (let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
+            if (_aggQtys[i] > 0) { _s += _aggSales[i]; _w++; }
+        }
+        past12WAvg = _w > 0 ? _s / _w : 0;
+    }
 
     // ★ セーフティストックは常に週平均×8週（約2ヶ月）で統一
     const safetyStock = Math.round(past12WAvg * safetyWeeks);
@@ -261,7 +282,7 @@ function renderSKUDetails(selectedCode) {
     const wosEl = document.getElementById('skuDetailWos');
     if (wosEl) wosEl.className = `font-black text-4xl ${wosColor}`;
     setSafeText('skuDetailAvg', isStockoutSku
-        ? `(Est. Avg: ${past12WAvg.toFixed(1)} pcs/wk | Stockout excl.)`
+        ? `(Est. Avg: ${past12WAvg.toFixed(1)} pcs/wk)`
         : `(Recent Avg: ${past12WAvg.toFixed(1)} pcs/wk)`);
 
     const predictEl = document.getElementById('skuDetailOrderPredict');

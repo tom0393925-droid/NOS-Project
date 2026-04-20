@@ -15,6 +15,33 @@ let _dragStartClientY = 0;
 let _dragStartAvg = 0;
 let _chartDragInitialized = false;
 
+// 欠品SKUの需要推定: 直近の連続在庫期間（最大12週）から消費量を逆算
+function _calcStockoutAvg(qtysArr, salesArr, totalWeeks) {
+    let lastInStockIdx = -1;
+    for (let i = totalWeeks - 1; i >= 0; i--) {
+        if ((qtysArr[i] || 0) > 0) { lastInStockIdx = i; break; }
+    }
+    if (lastInStockIdx === -1) return 0;
+
+    let windowStart = lastInStockIdx;
+    let windowWeeks = 1;
+    for (let i = lastInStockIdx - 1; i >= 0 && windowWeeks < 12; i--) {
+        if ((qtysArr[i] || 0) === 0) break;
+        windowStart = i;
+        windowWeeks++;
+    }
+
+    // consumed = 開始時在庫 + 期間中の追加入荷 - 終了時在庫
+    let consumed = qtysArr[windowStart] || 0;
+    for (let i = windowStart + 1; i <= lastInStockIdx; i++) {
+        const shipment = Math.max(0, (qtysArr[i] || 0) - (qtysArr[i - 1] || 0) + (salesArr[i] || 0));
+        consumed += shipment;
+    }
+    consumed -= (qtysArr[lastInStockIdx] || 0);
+
+    return windowWeeks > 0 ? consumed / windowWeeks : 0;
+}
+
 const futureLinesPlugin = {
     id: 'futureLines',
     afterDraw: (chart) => {
@@ -116,14 +143,23 @@ function updateChartPeriod() {
         }
     }
 
-    let past12WSalesSum = 0; let past12WEffectiveWeeks = 0; let recentZeroQtyWeeks = 0;
     const checkWeeks12 = Math.min(12, loadedWeeks);
-    for(let i = 0; i < loadedWeeks; i++) {
-        if ((totalQtysTrend[i] || 0) > 0) { past12WSalesSum += (totalSalesTrend[i] || 0); past12WEffectiveWeeks++; }
+    let _hasStockChart = false, recentZeroQtyWeeks = 0;
+    for (let i = 0; i < loadedWeeks; i++) {
+        if ((totalQtysTrend[i] || 0) > 0) _hasStockChart = true;
         if (i >= loadedWeeks - checkWeeks12 && (totalQtysTrend[i] || 0) === 0) recentZeroQtyWeeks++;
     }
-    const past12WAvg = past12WEffectiveWeeks > 0 ? (past12WSalesSum / past12WEffectiveWeeks) : 0;
-    _isStockoutChart = past12WEffectiveWeeks > 0 && recentZeroQtyWeeks > 0;
+    _isStockoutChart = _hasStockChart && recentZeroQtyWeeks > 0;
+    let past12WAvg;
+    if (_isStockoutChart) {
+        past12WAvg = _calcStockoutAvg(totalQtysTrend, totalSalesTrend, loadedWeeks);
+    } else {
+        let _s = 0, _w = 0;
+        for (let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
+            if ((totalQtysTrend[i] || 0) > 0) { _s += (totalSalesTrend[i] || 0); _w++; }
+        }
+        past12WAvg = _w > 0 ? _s / _w : 0;
+    }
 
     // Reset sim when switching SKUs; keep sim avg when just changing zoom
     if (currentSelectedSKU !== _prevChartSKU) {
