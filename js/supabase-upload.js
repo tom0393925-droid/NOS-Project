@@ -42,8 +42,10 @@ function _parseInventoryExcel(file) {
                     const code = String(row[1] || '').trim();
                     if (!code) continue;
 
-                    const beginQty  = parseFloat(row[7]) || 0;
-                    const endQty    = parseFloat(row[8]) || 0;
+                    const uom       = String(row[4] || '').trim();
+                    const _f        = ['G', 'g'].includes(uom) ? 1000 : 1;
+                    const beginQty  = (parseFloat(row[7]) || 0) / _f;
+                    const endQty    = (parseFloat(row[8]) || 0) / _f;
                     const salesQty  = Math.max(0, beginQty - endQty);
 
                     records.push({
