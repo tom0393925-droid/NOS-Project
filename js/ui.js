@@ -282,7 +282,7 @@ function renderSKUDetails(selectedCode) {
     const wosEl = document.getElementById('skuDetailWos');
     if (wosEl) wosEl.className = `font-black text-4xl ${wosColor}`;
     setSafeText('skuDetailAvg', isStockoutSku
-        ? `(Est. Avg: ${past12WAvg.toFixed(1)} pcs/wk)`
+        ? `(Est. Avg: ${past12WAvg.toFixed(1)} pcs/wk | Stockout)`
         : `(Recent Avg: ${past12WAvg.toFixed(1)} pcs/wk)`);
 
     const predictEl = document.getElementById('skuDetailOrderPredict');
