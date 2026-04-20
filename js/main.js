@@ -321,6 +321,17 @@ if ('scrollRestoration' in history) {
 }
 
 window.onload = function() {
+    sbInitAuth(
+        function(user) {
+            document.getElementById('authOverlay')?.classList.add('hidden');
+            document.getElementById('userEmail').textContent = user.email;
+            document.getElementById('userInfoBar').classList.remove('hidden');
+        },
+        function() {
+            window.location.href = 'login.html';
+        }
+    );
+
     // HTMLのパズルズレを自動修復
     const dashBg = document.querySelector('.bg-gray-100.flex-grow');
     const mapTab = document.getElementById('mapTab');
