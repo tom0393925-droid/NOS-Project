@@ -31,13 +31,12 @@ function _calcStockoutAvg(qtysArr, salesArr, totalWeeks) {
         windowWeeks++;
     }
 
-    // consumed = 開始時在庫 + 期間中の追加入荷 - 終了時在庫
+    // consumed = 開始時在庫 + 期間中の追加入荷 (在庫切れなので終了時在庫は引かない)
     let consumed = qtysArr[windowStart] || 0;
     for (let i = windowStart + 1; i <= lastInStockIdx; i++) {
         const shipment = Math.max(0, (qtysArr[i] || 0) - (qtysArr[i - 1] || 0) + (salesArr[i] || 0));
         consumed += shipment;
     }
-    consumed -= (qtysArr[lastInStockIdx] || 0);
 
     return windowWeeks > 0 ? consumed / windowWeeks : 0;
 }
