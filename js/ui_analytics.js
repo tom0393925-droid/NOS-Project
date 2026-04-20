@@ -429,13 +429,32 @@ function _buildOrderData() {
         let currentQty = 0;
         for (const lot of lots) currentQty += (lot.qtys[loadedWeeks - 1] || 0);
 
-        // avg weekly sales (past 12 weeks)
-        let salesSum = 0;
-        for (let i = loadedWeeks - wks; i < loadedWeeks; i++) {
-            for (const lot of lots) salesSum += (lot.sales[i] || 0);
+        // Aggregate qtys/sales across lots
+        const aggQtys  = new Array(loadedWeeks).fill(0);
+        const aggSales = new Array(loadedWeeks).fill(0);
+        for (const lot of lots) {
+            for (let i = 0; i < loadedWeeks; i++) {
+                aggQtys[i]  += (lot.qtys[i]  || 0);
+                aggSales[i] += (lot.sales[i] || 0);
+            }
         }
-        const avg = wks > 0 ? salesSum / wks : 0;
-        const safety = Math.round(avg * safetyWeeks); 
+
+        // avg weekly sales — use stockout formula if stocked out recently
+        let hasStock = false, recentZero = 0;
+        for (let i = 0; i < loadedWeeks; i++) {
+            if (aggQtys[i] > 0) hasStock = true;
+            if (i >= loadedWeeks - wks && aggQtys[i] === 0) recentZero++;
+        }
+        const isStockout = hasStock && recentZero > 0;
+        let avg;
+        if (isStockout && typeof _calcStockoutAvg === 'function') {
+            avg = _calcStockoutAvg(aggQtys, aggSales, loadedWeeks);
+        } else {
+            let salesSum = 0;
+            for (let i = loadedWeeks - wks; i < loadedWeeks; i++) salesSum += aggSales[i];
+            avg = wks > 0 ? salesSum / wks : 0;
+        }
+        const safety = Math.round(avg * safetyWeeks);
 
         // predictions
         const predNext = dates.weeksToNext !== null ? currentQty - avg * dates.weeksToNext : null;
