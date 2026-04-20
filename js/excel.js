@@ -71,7 +71,7 @@ async function runAnalysis() {
 
     try {
         const workbook = await readExcelWorkbookAsync(file);
-        let startRow = -1; let col = { code: -1, name: -1, lot: -1, sales: -1, qty: -1 }; let targetJson = null;
+        let startRow = -1; let col = { code: -1, name: -1, lot: -1, sales: -1, qty: -1, uom: -1 }; let targetJson = null;
 
         for (const sheetName of workbook.SheetNames) {
             const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
@@ -84,6 +84,7 @@ async function runAnalysis() {
                     if (val === 'lot' || val === 'expiry' || val.includes('expire')) col.lot = c;
                     if (val.includes('sale') && val.includes('total')) col.sales = c;
                     if (val.includes('qty') && val.includes('end')) col.qty = c;
+                    if (val === 'uom' || val === 'unit') col.uom = c;
                 }
                 if (col.code !== -1 && col.qty !== -1) { startRow = r + 1; targetJson = json; break; }
             }
@@ -109,7 +110,8 @@ async function runAnalysis() {
             
             if (codeVal !== "" && codeVal.toLowerCase() !== "code") {
                 const nameVal = col.name !== -1 && row[col.name] ? String(row[col.name]).trim() : "";
-                currentParent = { code: codeVal, name: nameVal, sales: salesVal };
+                const uomVal = col.uom !== -1 && row[col.uom] ? String(row[col.uom]).trim() : "-";
+                currentParent = { code: codeVal, name: nameVal, sales: salesVal, uom: uomVal };
                 
                 if (nameVal) {
                     if (!skuMaster[codeVal]) {
@@ -130,8 +132,7 @@ async function runAnalysis() {
             }
             
             const key = `${currentParent.code}_${dateStr}_${isDamaged ? 'dmg' : 'norm'}`;
-            const _isKgSku = ['KG', 'kg'].includes(skuMaster[currentParent.code]?.uom);
-            const _f = _isKgSku ? 1000 : 1;
+            const _f = ['G', 'g'].includes(currentParent.uom) ? 1000 : 1;
             currentWeekData[key] = { code: currentParent.code, name: currentParent.name, expiry: isValidDate ? expDate : null, expiryStr: lotVal || "No Date", isDamaged: isDamaged, qty: qtyVal / _f, sales: currentParent.sales / _f };
         }
 
