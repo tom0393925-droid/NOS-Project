@@ -116,13 +116,14 @@ function updateChartPeriod() {
         }
     }
 
-    let past12WSalesSum = 0; let past12WEffectiveWeeks = 0;
+    let past12WSalesSum = 0; let past12WEffectiveWeeks = 0; let recentZeroQtyWeeks = 0;
     const checkWeeks12 = Math.min(12, loadedWeeks);
-    for(let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
+    for(let i = 0; i < loadedWeeks; i++) {
         if ((totalQtysTrend[i] || 0) > 0) { past12WSalesSum += (totalSalesTrend[i] || 0); past12WEffectiveWeeks++; }
+        if (i >= loadedWeeks - checkWeeks12 && (totalQtysTrend[i] || 0) === 0) recentZeroQtyWeeks++;
     }
     const past12WAvg = past12WEffectiveWeeks > 0 ? (past12WSalesSum / past12WEffectiveWeeks) : 0;
-    _isStockoutChart = past12WEffectiveWeeks > 0 && past12WEffectiveWeeks < checkWeeks12;
+    _isStockoutChart = past12WEffectiveWeeks > 0 && recentZeroQtyWeeks > 0;
 
     // Reset sim when switching SKUs; keep sim avg when just changing zoom
     if (currentSelectedSKU !== _prevChartSKU) {

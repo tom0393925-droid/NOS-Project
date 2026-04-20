@@ -40,10 +40,11 @@ function renderActionList() {
         let past4WSalesSum = 0; const checkWeeks4 = Math.min(4, loadedWeeks);
         for(let i = loadedWeeks - checkWeeks4; i < loadedWeeks; i++) past4WSalesSum += (item.sales[i] || 0);
 
-        let past12WSalesSum = 0; let past12WEffectiveWeeks = 0;
+        let past12WSalesSum = 0; let past12WEffectiveWeeks = 0; let recentZeroQtyWeeks = 0;
         const checkWeeks12 = Math.min(12, loadedWeeks);
-        for(let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
+        for(let i = 0; i < loadedWeeks; i++) {
             if ((item.qtys[i] || 0) > 0) { past12WSalesSum += (item.sales[i] || 0); past12WEffectiveWeeks++; }
+            if (i >= loadedWeeks - checkWeeks12 && (item.qtys[i] || 0) === 0) recentZeroQtyWeeks++;
         }
         const past12WAvg = past12WEffectiveWeeks > 0 ? (past12WSalesSum / past12WEffectiveWeeks) : 0;
 
@@ -219,15 +220,16 @@ function renderSKUDetails(selectedCode) {
     const uomText = masterData.uom || "-";
 
     // past12WAvg を先に計算してデフォルトの安全在庫（2ヶ月 = 8週分）に使う
-    let past12WSalesSum = 0; let past12WEffectiveWeeks = 0;
+    let past12WSalesSum = 0; let past12WEffectiveWeeks = 0; let recentZeroQtyWeeksDetail = 0;
     const checkWeeks12 = Math.min(12, loadedWeeks);
-    for (let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
+    for (let i = 0; i < loadedWeeks; i++) {
         let weeklyQty = 0; let weeklySum = 0;
         targetLots.forEach(lot => { weeklyQty += (lot.qtys[i] || 0); weeklySum += (lot.sales[i] || 0); });
         if (weeklyQty > 0) { past12WSalesSum += weeklySum; past12WEffectiveWeeks++; }
+        if (i >= loadedWeeks - checkWeeks12 && weeklyQty === 0) recentZeroQtyWeeksDetail++;
     }
     const past12WAvg = past12WEffectiveWeeks > 0 ? (past12WSalesSum / past12WEffectiveWeeks) : 0;
-    const isStockoutSku = past12WEffectiveWeeks > 0 && past12WEffectiveWeeks < checkWeeks12;
+    const isStockoutSku = past12WEffectiveWeeks > 0 && recentZeroQtyWeeksDetail > 0;
 
     // ★ セーフティストックは常に週平均×8週（約2ヶ月）で統一
     const safetyStock = Math.round(past12WAvg * safetyWeeks);

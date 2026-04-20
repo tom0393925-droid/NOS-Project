@@ -45,7 +45,7 @@ async function handleTcExcelUpload(event) {
             const uom = colIdx.unit !== -1 && row[colIdx.unit] ? String(row[colIdx.unit]).trim() : "-";
 
             if (code && !isNaN(tc)) {
-                const normalizedUom = ['G', 'g'].includes(uom) ? 'KG' : uom;
+                const normalizedUom = ['G', 'g'].includes(uom) ? 'KG' : (uom === 'Kg' ? 'KG' : uom);
                 if (!skuMaster[code]) {
                     skuMaster[code] = { name: "", tc: tc, price: 0, uom: normalizedUom, storageType: "Dry", safetyStock: 0, isFF: false };
                 } else {
