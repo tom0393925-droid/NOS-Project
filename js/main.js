@@ -177,6 +177,7 @@ function updateShipmentOrder(slot, value) {
                 const el2 = document.getElementById('shipOrderNext2Qty');
                 if (el2 && document.activeElement !== el2) el2.value = auto2 || '';
                 setOrder(tNext2, auto2);
+                if (window._shipAutoQtys) window._shipAutoQtys.next2 = auto2;
                 // Also cascade to 3rd
                 if (tNext3 && dw3 > dw2) {
                     const predAt3rd = predAt2nd + auto2 - avg * (dw3 - dw2);
@@ -184,6 +185,7 @@ function updateShipmentOrder(slot, value) {
                     const el3 = document.getElementById('shipOrderNext3Qty');
                     if (el3 && document.activeElement !== el3) el3.value = auto3 || '';
                     setOrder(tNext3, auto3);
+                    if (window._shipAutoQtys) window._shipAutoQtys.next3 = auto3;
                 }
             } else if (slot === 'next2' && tNext3 && dw3 > dw2) {
                 // 2nd changed → recalculate 3rd
@@ -193,6 +195,7 @@ function updateShipmentOrder(slot, value) {
                 const el3 = document.getElementById('shipOrderNext3Qty');
                 if (el3 && document.activeElement !== el3) el3.value = auto3 || '';
                 setOrder(tNext3, auto3);
+                if (window._shipAutoQtys) window._shipAutoQtys.next3 = auto3;
             }
         }
     }
