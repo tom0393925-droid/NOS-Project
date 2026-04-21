@@ -545,7 +545,8 @@ function renderOrderCategoryTabs() {
         btn.className = `px-5 py-2.5 font-bold text-sm border-b-2 transition-colors ${
             isActive ? 'border-purple-600 text-purple-700 bg-white' : 'border-transparent text-gray-500 hover:text-gray-700'
         }`;
-        btn.textContent = id;
+        const catName = (cats[id] && cats[id].name) ? cats[id].name : id;
+        btn.textContent = catName;
         btn.onclick     = () => switchMfTab(id);
         container.appendChild(btn);
     }
@@ -560,7 +561,7 @@ function renderCategoryScheduleBar() {
         : `<span class="text-gray-400">—</span>`;
     bar.innerHTML = `
         <div class="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 py-2.5 bg-purple-50 border-b border-purple-100 text-sm">
-            <span class="font-bold text-purple-700">${_mfTab} Container Schedule</span>
+            <span class="font-bold text-purple-700">${(cat.name || _mfTab)} Container Schedule</span>
             <span class="text-gray-500">Next: ${fmt(cat.next1)}</span>
             <span class="text-gray-500">2nd: ${fmt(cat.next2)}</span>
             <span class="text-gray-500">3rd: ${fmt(cat.next3)}</span>

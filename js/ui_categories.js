@@ -12,16 +12,20 @@ function renderCategoryManagement() {
     if (select) {
         const prev = select.value;
         select.innerHTML = '<option value="">-- Select Category --</option>'
-            + ids.map(id => `<option value="${id}"${id === prev ? ' selected' : ''}>${id}</option>`).join('')
+            + ids.map(id => {
+                const n = (cats[id] && cats[id].name) ? cats[id].name : id;
+                return `<option value="${id}"${id === prev ? ' selected' : ''}>${_escHtml(n)}</option>`;
+            }).join('')
             + '<option value="__new__">+ New Category...</option>';
     }
 
     // Update collapsed summary badges
     const badges = document.getElementById('categorySettingsBadges');
     if (badges) {
-        badges.innerHTML = ids.map(id =>
-            `<span class="bg-purple-200 text-purple-800 text-xs font-bold px-2 py-0.5 rounded-full">${id}</span>`
-        ).join('');
+        badges.innerHTML = ids.map(id => {
+            const n = (cats[id] && cats[id].name) ? cats[id].name : id;
+            return `<span class="bg-purple-200 text-purple-800 text-xs font-bold px-2 py-0.5 rounded-full">${_escHtml(n)}</span>`;
+        }).join('');
     }
 
     if (!area) return;
@@ -34,12 +38,27 @@ function renderCategoryManagement() {
 
     for (const id of ids) {
         const cat = cats[id];
+        const displayName = cat.name && cat.name !== id ? cat.name : id;
         const isBuiltin = id === 'CFJP' || id === 'RFJP';
         const div = document.createElement('div');
         div.className = 'bg-white border border-gray-200 rounded-lg px-4 py-3';
         div.innerHTML = `
             <div class="flex flex-wrap items-center gap-3">
-                <span class="font-black text-gray-800 w-14 shrink-0">${id}</span>
+                <div id="catNameDisplay_${id}" class="flex items-center gap-1 shrink-0 min-w-[3.5rem]">
+                    <span class="font-black text-gray-800">${_escHtml(displayName)}</span>
+                    ${cat.name && cat.name !== id ? `<span class="text-gray-400 text-xs">(${id})</span>` : ''}
+                    <button onclick="startRenameCategory('${id}')" title="Rename"
+                        class="text-gray-400 hover:text-purple-600 text-xs px-1 transition-colors">✏️</button>
+                </div>
+                <div id="catNameEdit_${id}" class="hidden items-center gap-1 shrink-0">
+                    <input type="text" id="catNameInput_${id}" value="${_escHtml(displayName)}" maxlength="20"
+                        class="border border-purple-400 rounded px-2 py-1 text-xs font-bold w-28 focus:ring-1 outline-none"
+                        onkeydown="if(event.key==='Enter')saveCategoryName('${id}');if(event.key==='Escape')cancelRenameCategory('${id}')">
+                    <button onclick="saveCategoryName('${id}')"
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-xs font-bold transition-colors">OK</button>
+                    <button onclick="cancelRenameCategory('${id}')"
+                        class="text-gray-500 hover:text-gray-700 px-2 py-1 rounded text-xs font-bold transition-colors">✕</button>
+                </div>
                 <div class="flex items-center gap-1 text-xs">
                     <span class="text-gray-500 font-semibold">Next:</span>
                     <input type="date" id="catDate_${id}_1" value="${cat.next1 || ''}"
@@ -70,6 +89,43 @@ function renderCategoryManagement() {
     }
 }
 
+function _escHtml(str) {
+    return String(str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function startRenameCategory(id) {
+    document.getElementById(`catNameDisplay_${id}`)?.classList.add('hidden');
+    const edit = document.getElementById(`catNameEdit_${id}`);
+    if (edit) { edit.classList.remove('hidden'); edit.classList.add('flex'); }
+    document.getElementById(`catNameInput_${id}`)?.focus();
+}
+
+function cancelRenameCategory(id) {
+    document.getElementById(`catNameEdit_${id}`)?.classList.add('hidden');
+    document.getElementById(`catNameEdit_${id}`)?.classList.remove('flex');
+    document.getElementById(`catNameDisplay_${id}`)?.classList.remove('hidden');
+}
+
+async function saveCategoryName(id) {
+    const input = document.getElementById(`catNameInput_${id}`);
+    const newName = (input?.value || '').trim();
+    if (!newName) { alert('Name cannot be empty.'); return; }
+
+    if (!window.orderCategories) window.orderCategories = {};
+    const cat = window.orderCategories[id] || { id, name: id };
+    cat.name = newName;
+    window.orderCategories[id] = cat;
+
+    try {
+        await sbSaveOrderCategory({ id, name: newName, next1: cat.next1 || null, next2: cat.next2 || null, next3: cat.next3 || null });
+        renderCategoryManagement();
+        if (typeof renderOrderCategoryTabs === 'function') renderOrderCategoryTabs();
+        if (typeof renderCategoryScheduleBar === 'function') renderCategoryScheduleBar();
+    } catch (e) {
+        alert('Rename failed: ' + e.message);
+    }
+}
+
 async function saveCategoryDates(id) {
     const next1 = document.getElementById(`catDate_${id}_1`)?.value || null;
     const next2 = document.getElementById(`catDate_${id}_2`)?.value || null;
@@ -81,7 +137,7 @@ async function saveCategoryDates(id) {
     window.orderCategories[id] = cat;
 
     try {
-        await sbSaveOrderCategory({ id, name: id, next1, next2, next3 });
+        await sbSaveOrderCategory({ id, name: cat.name || id, next1, next2, next3 });
 
         // Keep global date vars in sync for chart.js
         if (id === 'CFJP') {
