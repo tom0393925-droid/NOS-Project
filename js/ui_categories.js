@@ -40,20 +40,41 @@ function renderCategoryManagement() {
         const cat = cats[id];
         const displayName = cat.name && cat.name !== id ? cat.name : id;
         const isBuiltin = id === 'CFJP' || id === 'RFJP';
+        // parentId candidates: categories that are not themselves a filtered view and not the current id
+        const parentOptions = ids
+            .filter(oid => oid !== id && !cats[oid].parentId)
+            .map(oid => `<option value="${oid}"${cat.parentId === oid ? ' selected' : ''}>${_escHtml(cats[oid].name || oid)}</option>`)
+            .join('');
+        const filterLabel = cat.parentId
+            ? `<span class="text-xs text-purple-600 font-semibold bg-purple-50 px-1.5 py-0.5 rounded">→ ${cat.parentId}${cat.prefixes ? ' [' + cat.prefixes.join(', ') + ']' : ''}</span>`
+            : '';
         const div = document.createElement('div');
         div.className = 'bg-white border border-gray-200 rounded-lg px-4 py-3';
         div.innerHTML = `
             <div class="flex flex-wrap items-center gap-3">
                 <div id="catNameDisplay_${id}" class="flex items-center gap-1 shrink-0 min-w-[3.5rem]">
                     <span class="font-black text-gray-800">${_escHtml(displayName)}</span>
-                    ${cat.name && cat.name !== id ? `<span class="text-gray-400 text-xs">(${id})</span>` : ''}
-                    <button onclick="startRenameCategory('${id}')" title="Rename"
+                    ${!cat.parentId && cat.name && cat.name !== id ? `<span class="text-gray-400 text-xs">(${id})</span>` : ''}
+                    ${filterLabel}
+                    <button onclick="startRenameCategory('${id}')" title="Rename / Configure filter"
                         class="text-gray-400 hover:text-purple-600 text-xs px-1 transition-colors">✏️</button>
                 </div>
-                <div id="catNameEdit_${id}" class="hidden items-center gap-1 shrink-0">
-                    <input type="text" id="catNameInput_${id}" value="${_escHtml(displayName)}" maxlength="20"
-                        class="border border-purple-400 rounded px-2 py-1 text-xs font-bold w-28 focus:ring-1 outline-none"
-                        onkeydown="if(event.key==='Enter')saveCategoryName('${id}');if(event.key==='Escape')cancelRenameCategory('${id}')">
+                <div id="catNameEdit_${id}" class="hidden items-center gap-2 shrink-0 flex-wrap">
+                    <input type="text" id="catNameInput_${id}" value="${_escHtml(displayName)}" maxlength="30"
+                        class="border border-purple-400 rounded px-2 py-1 text-xs font-bold w-32 focus:ring-1 outline-none"
+                        placeholder="Display name">
+                    <select id="catParentInput_${id}"
+                        class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none"
+                        onchange="document.getElementById('catPrefixWrap_${id}').style.display=this.value?'flex':'none'">
+                        <option value="">No filter (standalone)</option>
+                        ${parentOptions}
+                    </select>
+                    <div id="catPrefixWrap_${id}" class="items-center gap-1" style="display:${cat.parentId ? 'flex' : 'none'}">
+                        <span class="text-xs text-gray-500">Prefixes:</span>
+                        <input type="text" id="catPrefixInput_${id}" value="${_escHtml((cat.prefixes || []).join(','))}"
+                            placeholder="e.g. AZ,KU,TMR" maxlength="100"
+                            class="border border-gray-300 rounded px-2 py-1 text-xs w-32 focus:ring-1 outline-none">
+                    </div>
                     <button onclick="saveCategoryName('${id}')"
                         class="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-xs font-bold transition-colors">OK</button>
                     <button onclick="cancelRenameCategory('${id}')"
@@ -107,22 +128,30 @@ function cancelRenameCategory(id) {
 }
 
 async function saveCategoryName(id) {
-    const input = document.getElementById(`catNameInput_${id}`);
-    const newName = (input?.value || '').trim();
+    const newName   = (document.getElementById(`catNameInput_${id}`)?.value || '').trim();
+    const parentVal = (document.getElementById(`catParentInput_${id}`)?.value || '').trim();
+    const prefixRaw = (document.getElementById(`catPrefixInput_${id}`)?.value || '').trim();
+    const prefixes  = prefixRaw ? prefixRaw.split(',').map(p => p.trim()).filter(Boolean) : [];
     if (!newName) { alert('Name cannot be empty.'); return; }
 
     if (!window.orderCategories) window.orderCategories = {};
     const cat = window.orderCategories[id] || { id, name: id };
-    cat.name = newName;
+    cat.name     = newName;
+    cat.parentId = parentVal || null;
+    cat.prefixes = prefixes.length ? prefixes : null;
     window.orderCategories[id] = cat;
 
+    const encodedName = typeof _encodeCategoryConfig === 'function'
+        ? _encodeCategoryConfig(newName, parentVal || null, prefixes.length ? prefixes : null)
+        : newName;
+
     try {
-        await sbSaveOrderCategory({ id, name: newName, next1: cat.next1 || null, next2: cat.next2 || null, next3: cat.next3 || null });
+        await sbSaveOrderCategory({ id, name: encodedName, next1: cat.next1 || null, next2: cat.next2 || null, next3: cat.next3 || null });
         renderCategoryManagement();
         if (typeof renderOrderCategoryTabs === 'function') renderOrderCategoryTabs();
         if (typeof renderCategoryScheduleBar === 'function') renderCategoryScheduleBar();
     } catch (e) {
-        alert('Rename failed: ' + e.message);
+        alert('Save failed: ' + e.message);
     }
 }
 

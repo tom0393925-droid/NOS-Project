@@ -386,10 +386,12 @@ function _setRowSaveStatus(sid, state) {
 }
 
 function _getArrivalDates() {
-    const cat   = (window.orderCategories && window.orderCategories[_mfTab]) || {};
-    const next  = cat.next1 || '';
-    const next2 = cat.next2 || '';
-    const next3 = cat.next3 || '';
+    const cat = (window.orderCategories && window.orderCategories[_mfTab]) || {};
+    // フィルタービューが自分の日付を持っていない場合は親カテゴリの日付を使用
+    const parentCat = cat.parentId ? ((window.orderCategories && window.orderCategories[cat.parentId]) || {}) : {};
+    const next  = cat.next1 || parentCat.next1 || '';
+    const next2 = cat.next2 || parentCat.next2 || '';
+    const next3 = cat.next3 || parentCat.next3 || '';
     const baseDate = getLatestDataDate();
     const dNext  = next  ? new Date(next)  : null;
     const dNext2 = next2 ? new Date(next2) : null;
@@ -415,11 +417,18 @@ function _buildOrderData() {
     }
     const wks = Math.min(12, loadedWeeks);
 
+    const _activeCat = (window.orderCategories && window.orderCategories[_mfTab]) || {};
+    const _lookupId  = _activeCat.parentId || _mfTab;
+
     for (const code in skuMaster) {
         const master = skuMaster[code];
-        // skuCategoryMap でフィルター（多対多対応）
+        // skuCategoryMap でフィルター（parentId があれば親カテゴリで照合）
         const skuCats = (window.skuCategoryMap && window.skuCategoryMap[code]) || [];
-        if (!skuCats.includes(_mfTab)) continue;
+        if (!skuCats.includes(_lookupId)) continue;
+        // prefix filter（フィルタービューの場合）
+        if (_activeCat.prefixes && _activeCat.prefixes.length > 0) {
+            if (!_activeCat.prefixes.some(p => code.startsWith(p))) continue;
+        }
 
         const dates = _getArrivalDates();
 
@@ -556,15 +565,23 @@ function renderCategoryScheduleBar() {
     const bar = document.getElementById('categoryScheduleBar');
     if (!bar) return;
     const cat = (window.orderCategories && window.orderCategories[_mfTab]) || {};
+    const parentCat = cat.parentId ? ((window.orderCategories && window.orderCategories[cat.parentId]) || {}) : {};
+    const d1 = cat.next1 || parentCat.next1 || '';
+    const d2 = cat.next2 || parentCat.next2 || '';
+    const d3 = cat.next3 || parentCat.next3 || '';
     const fmt = d => d
         ? `<span class="font-bold text-gray-800">${d}</span>`
         : `<span class="text-gray-400">—</span>`;
+    const prefixBadge = (cat.prefixes && cat.prefixes.length)
+        ? `<span class="text-xs text-purple-500 font-semibold bg-purple-100 px-2 py-0.5 rounded-full">${cat.prefixes.join(', ')}</span>`
+        : '';
     bar.innerHTML = `
         <div class="flex flex-wrap items-center gap-x-5 gap-y-1 px-5 py-2.5 bg-purple-50 border-b border-purple-100 text-sm">
             <span class="font-bold text-purple-700">${(cat.name || _mfTab)} Container Schedule</span>
-            <span class="text-gray-500">Next: ${fmt(cat.next1)}</span>
-            <span class="text-gray-500">2nd: ${fmt(cat.next2)}</span>
-            <span class="text-gray-500">3rd: ${fmt(cat.next3)}</span>
+            ${prefixBadge}
+            <span class="text-gray-500">Next: ${fmt(d1)}</span>
+            <span class="text-gray-500">2nd: ${fmt(d2)}</span>
+            <span class="text-gray-500">3rd: ${fmt(d3)}</span>
             <span id="categorySkuCount" class="ml-auto text-xs font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full"></span>
         </div>`;
 }
@@ -783,11 +800,13 @@ function onNewSkuCodeInput() {
 }
 
 async function deleteSkuFromOrderPlan(code) {
-    if (!confirm(`Remove "${code}" from ${_mfTab}?`)) return;
+    const _cat = (window.orderCategories && window.orderCategories[_mfTab]) || {};
+    const _targetId = _cat.parentId || _mfTab;
+    if (!confirm(`Remove "${code}" from ${_targetId}?`)) return;
     try {
-        await sbRemoveSkuFromCategory(code, _mfTab);
+        await sbRemoveSkuFromCategory(code, _targetId);
         if (window.skuCategoryMap?.[code]) {
-            window.skuCategoryMap[code] = window.skuCategoryMap[code].filter(c => c !== _mfTab);
+            window.skuCategoryMap[code] = window.skuCategoryMap[code].filter(c => c !== _targetId);
         }
         _buildOrderData();
         renderOrderTable();
@@ -815,11 +834,13 @@ async function addNewSkuToOrder() {
             await sbSaveSkuMaster(code, { name, uom });
             skuMaster[code] = { name, uom, price: 0, tc: 0, weight: 0, storageType: 'Dry', manufacture: '', location: '-', isFF: false, safetyStock: 0 };
         }
-        // Add to current category
-        await sbBulkUpsertSkuCategory([code], _mfTab);
+        // フィルタービューの場合は親カテゴリに追加
+        const _addCat = (window.orderCategories && window.orderCategories[_mfTab]) || {};
+        const _addId  = _addCat.parentId || _mfTab;
+        await sbBulkUpsertSkuCategory([code], _addId);
         if (!window.skuCategoryMap) window.skuCategoryMap = {};
         if (!window.skuCategoryMap[code]) window.skuCategoryMap[code] = [];
-        if (!window.skuCategoryMap[code].includes(_mfTab)) window.skuCategoryMap[code].push(_mfTab);
+        if (!window.skuCategoryMap[code].includes(_addId)) window.skuCategoryMap[code].push(_addId);
 
         if (codeEl) codeEl.value = '';
         if (nameEl) nameEl.value = '';

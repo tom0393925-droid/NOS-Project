@@ -259,17 +259,33 @@ async function sbSaveContainerDates(dates) {
 // ==========================================
 // Order Categories
 // ==========================================
+function _parseCategoryConfig(raw) {
+    if (!raw) return { displayName: '', parentId: null, prefixes: null };
+    const parts = raw.split('§');
+    if (parts.length < 2) return { displayName: raw, parentId: null, prefixes: null };
+    const prefixes = parts[2] ? parts[2].split(',').map(p => p.trim()).filter(Boolean) : null;
+    return { displayName: parts[0], parentId: parts[1] || null, prefixes: prefixes && prefixes.length ? prefixes : null };
+}
+
+function _encodeCategoryConfig(displayName, parentId, prefixes) {
+    if (!parentId) return displayName;
+    return `${displayName}§${parentId}§${(prefixes || []).join(',')}`;
+}
+
 async function sbLoadOrderCategories() {
     const { data, error } = await _sb.from('order_categories').select('*').order('id');
     if (error) throw error;
     const result = {};
     for (const row of data) {
+        const parsed = _parseCategoryConfig(row.name || row.id);
         result[row.id] = {
-            id:    row.id,
-            name:  row.name || row.id,
-            next1: row.next1 || '',
-            next2: row.next2 || '',
-            next3: row.next3 || '',
+            id:       row.id,
+            name:     parsed.displayName || row.id,
+            parentId: parsed.parentId || null,
+            prefixes: parsed.prefixes || null,
+            next1:    row.next1 || '',
+            next2:    row.next2 || '',
+            next3:    row.next3 || '',
         };
     }
     return result;
