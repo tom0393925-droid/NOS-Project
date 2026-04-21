@@ -60,21 +60,15 @@ function renderCategoryManagement() {
                         class="text-gray-400 hover:text-purple-600 text-xs px-1 transition-colors">✏️</button>
                 </div>
                 <div id="catNameEdit_${id}" class="hidden items-center gap-2 shrink-0 flex-wrap">
-                    <input type="text" id="catNameInput_${id}" value="${_escHtml(displayName)}" maxlength="30"
-                        class="border border-purple-400 rounded px-2 py-1 text-xs font-bold w-32 focus:ring-1 outline-none"
-                        placeholder="Display name">
+                    <input type="text" id="catNameInput_${id}" value="${_escHtml(displayName)}" maxlength="40"
+                        class="border border-purple-400 rounded px-2 py-1 text-xs font-bold w-44 focus:ring-1 outline-none"
+                        placeholder="e.g. RFJP (AZ, KU, TMR)"
+                        onkeydown="if(event.key==='Enter')saveCategoryName('${id}');if(event.key==='Escape')cancelRenameCategory('${id}')">
                     <select id="catParentInput_${id}"
-                        class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none"
-                        onchange="document.getElementById('catPrefixWrap_${id}').style.display=this.value?'flex':'none'">
-                        <option value="">No filter (standalone)</option>
+                        class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none">
+                        <option value="">Standalone</option>
                         ${parentOptions}
                     </select>
-                    <div id="catPrefixWrap_${id}" class="items-center gap-1" style="display:${cat.parentId ? 'flex' : 'none'}">
-                        <span class="text-xs text-gray-500">Prefixes:</span>
-                        <input type="text" id="catPrefixInput_${id}" value="${_escHtml((cat.prefixes || []).join(','))}"
-                            placeholder="e.g. AZ,KU,TMR" maxlength="100"
-                            class="border border-gray-300 rounded px-2 py-1 text-xs w-32 focus:ring-1 outline-none">
-                    </div>
                     <button onclick="saveCategoryName('${id}')"
                         class="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-xs font-bold transition-colors">OK</button>
                     <button onclick="cancelRenameCategory('${id}')"
@@ -127,11 +121,18 @@ function cancelRenameCategory(id) {
     document.getElementById(`catNameDisplay_${id}`)?.classList.remove('hidden');
 }
 
+function _extractPrefixesFromName(name) {
+    const match = name.match(/\(([^)]+)\)/);
+    if (!match) return null;
+    const parts = match[1].split(/[,\s]+/).map(p => p.trim()).filter(p => /^[A-Z0-9]+$/i.test(p));
+    return parts.length ? parts.map(p => p.toUpperCase()) : null;
+}
+
 async function saveCategoryName(id) {
     const newName   = (document.getElementById(`catNameInput_${id}`)?.value || '').trim();
     const parentVal = (document.getElementById(`catParentInput_${id}`)?.value || '').trim();
-    const prefixRaw = (document.getElementById(`catPrefixInput_${id}`)?.value || '').trim();
-    const prefixes  = prefixRaw ? prefixRaw.split(',').map(p => p.trim()).filter(Boolean) : [];
+    // カッコ内から自動的に prefix を抽出
+    const prefixes  = parentVal ? (_extractPrefixesFromName(newName) || []) : [];
     if (!newName) { alert('Name cannot be empty.'); return; }
 
     if (!window.orderCategories) window.orderCategories = {};
