@@ -568,6 +568,17 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = false) {
         } catch(e) { console.error('RFJP rename migration failed:', e); }
     }
 
+    // One-time migration: create "RFJP ALL" and "CFJP ALL" view categories if missing
+    for (const [parentId, viewId] of [['RFJP', 'RFJP ALL'], ['CFJP', 'CFJP ALL']]) {
+        if (orderCats[parentId] && !orderCats[viewId]) {
+            try {
+                const encoded = `${viewId}§${parentId}§`;
+                await sbSaveOrderCategory({ id: viewId, name: encoded, next1: null, next2: null, next3: null });
+                orderCats[viewId] = { id: viewId, name: viewId, parentId, prefixes: null, next1: '', next2: '', next3: '' };
+            } catch(e) { console.error(`${viewId} creation migration failed:`, e); }
+        }
+    }
+
     window.orderCategories = orderCats;
     window.skuCategoryMap  = skuCatMap;
 
