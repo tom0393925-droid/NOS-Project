@@ -2,6 +2,115 @@
 // js/ui_categories.js: Order Category Management UI
 // ==========================================
 
+// ── Add-category UI state ──
+let _newCatPrefixes = [];
+
+function _getSkuSupplierPrefixes() {
+    const prefixes = new Set();
+    for (const code in (window.skuMaster || {})) {
+        const m = code.match(/^([A-Za-z]+)/);
+        if (m) prefixes.add(m[1].toUpperCase());
+    }
+    return [...prefixes].sort();
+}
+
+function _newCatGenerateName() {
+    const parentSel = document.getElementById('newCatParent');
+    const parentId  = parentSel?.value || '';
+    if (!parentId || parentId === '__new__') return '';
+    const cats = window.orderCategories || {};
+    const parentName = (cats[parentId]?.name) || parentId;
+    if (_newCatPrefixes.length === 0) return parentName + ' ALL';
+    return parentName + ' (' + _newCatPrefixes.join(', ') + ')';
+}
+
+function _updateNewCatUI() {
+    // Tags
+    const tagsEl = document.getElementById('newCatPrefixTags');
+    if (tagsEl) {
+        tagsEl.innerHTML = _newCatPrefixes.map(p =>
+            `<span class="bg-purple-100 text-purple-700 text-xs font-semibold px-2 py-0.5 rounded-full flex items-center gap-1">
+                ${_escHtml(p)}<button type="button" onclick="_removeNewCatPrefix('${_escHtml(p)}')" class="hover:text-red-500 leading-none">×</button>
+            </span>`
+        ).join('');
+    }
+    // Preview
+    const preview = document.getElementById('newCatNamePreview');
+    if (preview) preview.textContent = _newCatGenerateName();
+}
+
+function _onNewCatParentChange() {
+    const sel = document.getElementById('newCatParent');
+    if (sel?.value === '__new__') {
+        const name = prompt('新しい親カテゴリのID を入力（例: USJP）:');
+        sel.value = '';
+        if (name) _createNewParentCategory(name.trim().toUpperCase());
+        return;
+    }
+    _updateNewCatUI();
+}
+
+async function _createNewParentCategory(id) {
+    if (!id) return;
+    if (window.orderCategories?.[id]) { alert(`"${id}" は既に存在します`); return; }
+    try {
+        await sbSaveOrderCategory({ id, name: id, next1: null, next2: null, next3: null });
+        if (!window.orderCategories) window.orderCategories = {};
+        window.orderCategories[id] = { id, name: id, parentId: null, prefixes: null, next1: '', next2: '', next3: '' };
+        renderCategoryManagement();
+        if (typeof renderOrderCategoryTabs === 'function') renderOrderCategoryTabs();
+        const sel = document.getElementById('newCatParent');
+        if (sel) sel.value = id;
+        _updateNewCatUI();
+    } catch(e) { alert('作成失敗: ' + e.message); }
+}
+
+function _onNewCatPrefixInput(val) {
+    const suggestions = document.getElementById('newCatPrefixSuggestions');
+    if (!suggestions) return;
+    const q = (val || '').trim().toUpperCase();
+    const all = _getSkuSupplierPrefixes().filter(p => !_newCatPrefixes.includes(p));
+    const matches = q ? all.filter(p => p.startsWith(q)) : all;
+    if (matches.length === 0) { suggestions.classList.add('hidden'); return; }
+    suggestions.innerHTML = matches.map(p =>
+        `<div class="px-3 py-1.5 hover:bg-purple-50 cursor-pointer" onmousedown="_addNewCatPrefix('${_escHtml(p)}')">${_escHtml(p)}</div>`
+    ).join('');
+    suggestions.classList.remove('hidden');
+}
+
+function _onNewCatPrefixKeydown(event) {
+    if (event.key === 'Enter' || event.key === ',') {
+        event.preventDefault();
+        const input = document.getElementById('newCatPrefixInput');
+        const val = (input?.value || '').trim().toUpperCase().replace(/[^A-Z]/g, '');
+        if (val) _addNewCatPrefix(val);
+    } else if (event.key === 'Escape') {
+        document.getElementById('newCatPrefixSuggestions')?.classList.add('hidden');
+    }
+}
+
+function _addNewCatPrefix(prefix) {
+    if (!prefix || _newCatPrefixes.includes(prefix)) return;
+    _newCatPrefixes.push(prefix);
+    _newCatPrefixes.sort();
+    const input = document.getElementById('newCatPrefixInput');
+    if (input) input.value = '';
+    document.getElementById('newCatPrefixSuggestions')?.classList.add('hidden');
+    _updateNewCatUI();
+}
+
+function _removeNewCatPrefix(prefix) {
+    _newCatPrefixes = _newCatPrefixes.filter(p => p !== prefix);
+    _updateNewCatUI();
+}
+
+// Close suggestions when clicking outside
+document.addEventListener('click', e => {
+    if (!document.getElementById('newCatPrefixWrapper')?.contains(e.target)) {
+        document.getElementById('newCatPrefixSuggestions')?.classList.add('hidden');
+    }
+});
+
 function renderCategoryManagement() {
     const area   = document.getElementById('categoryListArea');
     const select = document.getElementById('categoryImportSelect');
@@ -19,16 +128,15 @@ function renderCategoryManagement() {
             + '<option value="__new__">+ New Category...</option>';
     }
 
-    // Populate the new-category parent dropdown
-    const newParentSel = document.getElementById('newCategoryParent');
-    if (newParentSel) {
-        const prevParent = newParentSel.value;
-        newParentSel.innerHTML = '<option value="">Standalone</option>'
+    // Populate the new-category parent dropdown (only true parents = no parentId)
+    const newCatParentSel = document.getElementById('newCatParent');
+    if (newCatParentSel) {
+        const prevParent = newCatParentSel.value;
+        newCatParentSel.innerHTML = '<option value="">-- 親カテゴリ --</option>'
             + ids.filter(id => !cats[id].parentId)
-                 .map(id => {
-                     const n = (cats[id] && cats[id].name) ? cats[id].name : id;
-                     return `<option value="${id}"${id === prevParent ? ' selected' : ''}>${_escHtml(n)}</option>`;
-                 }).join('');
+                 .map(id => `<option value="${id}"${id === prevParent ? ' selected' : ''}>${_escHtml(id)}</option>`)
+                 .join('')
+            + '<option value="__new__">＋ 新しい親を作成...</option>';
     }
 
     // Update collapsed summary badges
@@ -206,24 +314,29 @@ async function saveCategoryDates(id) {
 }
 
 async function addNewCategory() {
-    const input     = document.getElementById('newCategoryId');
-    const parentSel = document.getElementById('newCategoryParent');
-    const id        = (input?.value || '').trim().toUpperCase();
-    const parentVal = (parentSel?.value || '').trim();
-    if (!id) { alert('Please enter a Category ID.'); return; }
-    if (window.orderCategories?.[id]) { alert(`Category "${id}" already exists.`); return; }
+    const parentSel = document.getElementById('newCatParent');
+    const parentId  = (parentSel?.value || '').trim();
+    if (!parentId || parentId === '__new__') { alert('親カテゴリを選択してください。'); return; }
 
-    const prefixes   = parentVal ? (_extractPrefixesFromName(id) || []) : [];
-    const encodedName = parentVal
-        ? _encodeCategoryConfig(id, parentVal, prefixes.length ? prefixes : null)
-        : id;
+    const cats      = window.orderCategories || {};
+    const parentName = (cats[parentId]?.name) || parentId;
+    const prefixes  = [..._newCatPrefixes];
+    const name      = prefixes.length === 0
+        ? parentName + ' ALL'
+        : parentName + ' (' + prefixes.join(', ') + ')';
+    const id = name;
+
+    if (cats[id]) { alert(`"${id}" は既に存在します。`); return; }
+
+    const encodedName = _encodeCategoryConfig(name, parentId, prefixes.length ? prefixes : null);
 
     try {
         await sbSaveOrderCategory({ id, name: encodedName, next1: null, next2: null, next3: null });
         if (!window.orderCategories) window.orderCategories = {};
-        window.orderCategories[id] = { id, name: id, parentId: parentVal || null, prefixes: prefixes.length ? prefixes : null, next1: '', next2: '', next3: '' };
-        if (input) input.value = '';
+        window.orderCategories[id] = { id, name, parentId, prefixes: prefixes.length ? prefixes : null, next1: '', next2: '', next3: '' };
         if (parentSel) parentSel.value = '';
+        _newCatPrefixes = [];
+        _updateNewCatUI();
         renderCategoryManagement();
         if (typeof renderOrderCategoryTabs === 'function') renderOrderCategoryTabs();
     } catch (e) {

@@ -559,6 +559,15 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = false) {
     loadedInvoiceWeeks   = weekKeys.length;
     loadedInvoiceFiles   = weekLabels.map(w => 'Picking ' + w);
     window.shipmentOrders  = ordersData;
+    // One-time migration: rename "RFJP ALL" display name back to "RFJP"
+    if (orderCats['RFJP'] && orderCats['RFJP'].name === 'RFJP ALL') {
+        try {
+            const r = orderCats['RFJP'];
+            await sbSaveOrderCategory({ id: 'RFJP', name: 'RFJP', next1: r.next1 || null, next2: r.next2 || null, next3: r.next3 || null });
+            orderCats['RFJP'].name = 'RFJP';
+        } catch(e) { console.error('RFJP rename migration failed:', e); }
+    }
+
     window.orderCategories = orderCats;
     window.skuCategoryMap  = skuCatMap;
 
