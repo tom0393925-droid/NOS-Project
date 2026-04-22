@@ -37,18 +37,30 @@ function _updateNewCatUI() {
 }
 
 function _onNewCatParentChange() {
-    const parentId = document.getElementById('newCatParent')?.value || '';
-    const nameInput = document.getElementById('newCatName');
-    const prefixWrapper = document.getElementById('newCatPrefixWrapper');
-    if (parentId) {
-        if (nameInput) nameInput.classList.add('hidden');
-        if (prefixWrapper) prefixWrapper.classList.remove('hidden');
-    } else {
-        if (nameInput) nameInput.classList.remove('hidden');
-        if (prefixWrapper) prefixWrapper.classList.add('hidden');
+    const sel = document.getElementById('newCatParent');
+    if (sel?.value === '__new__') {
+        const name = prompt('Enter new parent category ID (e.g. USJP):');
+        sel.value = '';
+        if (name) _createNewParentCategory(name.trim().toUpperCase());
+        return;
     }
     _newCatPrefixes = [];
     _updateNewCatUI();
+}
+
+async function _createNewParentCategory(id) {
+    if (!id) return;
+    if (window.orderCategories?.[id]) { alert(`"${id}" already exists.`); return; }
+    try {
+        await sbSaveOrderCategory({ id, name: id, next1: null, next2: null, next3: null });
+        if (!window.orderCategories) window.orderCategories = {};
+        window.orderCategories[id] = { id, name: id, parentId: null, prefixes: null, next1: '', next2: '', next3: '' };
+        renderCategoryManagement();
+        if (typeof renderOrderCategoryTabs === 'function') renderOrderCategoryTabs();
+        const sel = document.getElementById('newCatParent');
+        if (sel) sel.value = id;
+        _updateNewCatUI();
+    } catch(e) { alert('Failed to create: ' + e.message); }
 }
 
 function _onNewCatPrefixInput(val) {
@@ -299,42 +311,28 @@ async function saveCategoryDates(id) {
 async function addNewCategory() {
     const parentSel = document.getElementById('newCatParent');
     const parentId  = (parentSel?.value || '').trim();
+    if (!parentId || parentId === '__new__') { alert('Please select a parent category.'); return; }
 
-    if (!parentId) {
-        // ── Standalone parent (ALL) ──
-        const nameInput = document.getElementById('newCatName');
-        const id = (nameInput?.value || '').trim().toUpperCase();
-        if (!id) { alert('Please enter a category name.'); return; }
-        if (window.orderCategories?.[id]) { alert(`"${id}" already exists.`); return; }
-        try {
-            await sbSaveOrderCategory({ id, name: id, next1: null, next2: null, next3: null });
-            if (!window.orderCategories) window.orderCategories = {};
-            window.orderCategories[id] = { id, name: id, parentId: null, prefixes: null, next1: '', next2: '', next3: '' };
-            if (nameInput) nameInput.value = '';
-            renderCategoryManagement();
-            if (typeof renderOrderCategoryTabs === 'function') renderOrderCategoryTabs();
-        } catch (e) { alert('Failed to add category: ' + e.message); }
-    } else {
-        // ── Filtered view ──
-        const prefixes = [..._newCatPrefixes];
-        if (prefixes.length === 0) { alert('Please specify at least one supplier prefix.'); return; }
-        const cats = window.orderCategories || {};
-        const parentName = (cats[parentId]?.name) || parentId;
-        const name = parentName + ' (' + prefixes.join(', ') + ')';
-        const id   = name;
-        if (cats[id]) { alert(`"${id}" already exists.`); return; }
-        const encodedName = _encodeCategoryConfig(name, parentId, prefixes);
-        try {
-            await sbSaveOrderCategory({ id, name: encodedName, next1: null, next2: null, next3: null });
-            if (!window.orderCategories) window.orderCategories = {};
-            window.orderCategories[id] = { id, name, parentId, prefixes, next1: '', next2: '', next3: '' };
-            if (parentSel) parentSel.value = '';
-            _newCatPrefixes = [];
-            _onNewCatParentChange();
-            renderCategoryManagement();
-            if (typeof renderOrderCategoryTabs === 'function') renderOrderCategoryTabs();
-        } catch (e) { alert('Failed to add category: ' + e.message); }
-    }
+    const prefixes = [..._newCatPrefixes];
+    if (prefixes.length === 0) { alert('Please specify at least one supplier prefix.'); return; }
+
+    const cats = window.orderCategories || {};
+    const parentName = (cats[parentId]?.name) || parentId;
+    const name = parentName + ' (' + prefixes.join(', ') + ')';
+    const id   = name;
+    if (cats[id]) { alert(`"${id}" already exists.`); return; }
+
+    const encodedName = _encodeCategoryConfig(name, parentId, prefixes);
+    try {
+        await sbSaveOrderCategory({ id, name: encodedName, next1: null, next2: null, next3: null });
+        if (!window.orderCategories) window.orderCategories = {};
+        window.orderCategories[id] = { id, name, parentId, prefixes, next1: '', next2: '', next3: '' };
+        if (parentSel) parentSel.value = '';
+        _newCatPrefixes = [];
+        _updateNewCatUI();
+        renderCategoryManagement();
+        if (typeof renderOrderCategoryTabs === 'function') renderOrderCategoryTabs();
+    } catch (e) { alert('Failed to add category: ' + e.message); }
 }
 
 async function deleteCategory(id) {
