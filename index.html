@@ -531,11 +531,19 @@
                                             <p class="text-sm text-gray-400 italic">Load data from Supabase to manage categories.</p>
                                         </div>
                                         <div class="pt-3 border-t border-purple-200">
+                                            <div class="flex flex-wrap items-center gap-2 mb-2">
+                                                <input type="text" id="newParentCatId" placeholder="New parent category ID (e.g. USJP)"
+                                                    class="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none" style="min-width:220px"
+                                                    onkeydown="if(event.key==='Enter') addNewParentCategory()">
+                                                <button onclick="addNewParentCategory()"
+                                                    class="bg-gray-700 hover:bg-gray-900 text-white px-3 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors">
+                                                    + Add Parent
+                                                </button>
+                                            </div>
                                             <div class="flex flex-wrap items-center gap-2">
                                                 <select id="newCatParent" onchange="_onNewCatParentChange()"
                                                     class="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none">
                                                     <option value="">-- Parent Category --</option>
-                                                    <option value="__new__">+ New Parent...</option>
                                                 </select>
                                                 <div class="relative" id="newCatPrefixWrapper">
                                                     <div class="flex flex-wrap items-center gap-1 border border-gray-300 rounded-lg px-2 py-1 bg-white focus-within:ring-2 focus-within:ring-purple-400" style="min-width:180px">

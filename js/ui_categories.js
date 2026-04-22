@@ -37,15 +37,16 @@ function _updateNewCatUI() {
 }
 
 function _onNewCatParentChange() {
-    const sel = document.getElementById('newCatParent');
-    if (sel?.value === '__new__') {
-        const name = prompt('Enter new parent category ID (e.g. USJP):');
-        sel.value = '';
-        if (name) _createNewParentCategory(name.trim().toUpperCase());
-        return;
-    }
     _newCatPrefixes = [];
     _updateNewCatUI();
+}
+
+async function addNewParentCategory() {
+    const input = document.getElementById('newParentCatId');
+    const id = (input?.value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g, '');
+    if (!id) { alert('Please enter a category ID.'); return; }
+    await _createNewParentCategory(id);
+    if (input) input.value = '';
 }
 
 async function _createNewParentCategory(id) {
