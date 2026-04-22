@@ -532,12 +532,17 @@
                                         </div>
                                         <div class="pt-3 border-t border-purple-200">
                                             <div class="flex flex-wrap items-center gap-2">
+                                                <!-- Standalone parent: name input (shown when no parent selected) -->
+                                                <input type="text" id="newCatName" placeholder="New category name (e.g. USJP)"
+                                                    maxlength="30"
+                                                    class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none" style="min-width:200px">
+                                                <!-- Filtered view: parent dropdown -->
                                                 <select id="newCatParent" onchange="_onNewCatParentChange()"
                                                     class="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none">
-                                                    <option value="">-- Parent Category --</option>
-                                                    <option value="__new__">+ New Parent...</option>
+                                                    <option value="">-- or select parent to filter --</option>
                                                 </select>
-                                                <div class="relative" id="newCatPrefixWrapper">
+                                                <!-- Supplier prefix input (shown when parent is selected) -->
+                                                <div class="relative hidden" id="newCatPrefixWrapper">
                                                     <div class="flex flex-wrap items-center gap-1 border border-gray-300 rounded-lg px-2 py-1 bg-white focus-within:ring-2 focus-within:ring-purple-400" style="min-width:180px">
                                                         <div id="newCatPrefixTags" class="flex flex-wrap gap-1"></div>
                                                         <input type="text" id="newCatPrefixInput" placeholder="Supplier (AZ, KU...)"
