@@ -19,6 +19,18 @@ function renderCategoryManagement() {
             + '<option value="__new__">+ New Category...</option>';
     }
 
+    // Populate the new-category parent dropdown
+    const newParentSel = document.getElementById('newCategoryParent');
+    if (newParentSel) {
+        const prevParent = newParentSel.value;
+        newParentSel.innerHTML = '<option value="">Standalone</option>'
+            + ids.filter(id => !cats[id].parentId)
+                 .map(id => {
+                     const n = (cats[id] && cats[id].name) ? cats[id].name : id;
+                     return `<option value="${id}"${id === prevParent ? ' selected' : ''}>${_escHtml(n)}</option>`;
+                 }).join('');
+    }
+
     // Update collapsed summary badges
     const badges = document.getElementById('categorySettingsBadges');
     if (badges) {
@@ -191,16 +203,24 @@ async function saveCategoryDates(id) {
 }
 
 async function addNewCategory() {
-    const input = document.getElementById('newCategoryId');
-    const id    = (input?.value || '').trim().toUpperCase();
+    const input     = document.getElementById('newCategoryId');
+    const parentSel = document.getElementById('newCategoryParent');
+    const id        = (input?.value || '').trim().toUpperCase();
+    const parentVal = (parentSel?.value || '').trim();
     if (!id) { alert('Please enter a Category ID.'); return; }
     if (window.orderCategories?.[id]) { alert(`Category "${id}" already exists.`); return; }
 
+    const prefixes   = parentVal ? (_extractPrefixesFromName(id) || []) : [];
+    const encodedName = parentVal
+        ? _encodeCategoryConfig(id, parentVal, prefixes.length ? prefixes : null)
+        : id;
+
     try {
-        await sbSaveOrderCategory({ id, name: id, next1: null, next2: null, next3: null });
+        await sbSaveOrderCategory({ id, name: encodedName, next1: null, next2: null, next3: null });
         if (!window.orderCategories) window.orderCategories = {};
-        window.orderCategories[id] = { id, name: id, next1: '', next2: '', next3: '' };
+        window.orderCategories[id] = { id, name: id, parentId: parentVal || null, prefixes: prefixes.length ? prefixes : null, next1: '', next2: '', next3: '' };
         if (input) input.value = '';
+        if (parentSel) parentSel.value = '';
         renderCategoryManagement();
         if (typeof renderOrderCategoryTabs === 'function') renderOrderCategoryTabs();
     } catch (e) {

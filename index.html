@@ -530,9 +530,13 @@
                                         <div id="categoryListArea" class="space-y-2 mt-4 mb-4">
                                             <p class="text-sm text-gray-400 italic">Load data from Supabase to manage categories.</p>
                                         </div>
-                                        <div class="flex items-center gap-3 pt-3 border-t border-purple-200">
+                                        <div class="flex flex-wrap items-center gap-3 pt-3 border-t border-purple-200">
                                             <input type="text" id="newCategoryId" maxlength="50" placeholder="e.g. CFJP2 or RFJP ALL (AZ, KU)"
                                                 class="border border-gray-300 rounded-lg px-3 py-2 text-sm w-64 focus:ring-2 focus:ring-purple-400 outline-none">
+                                            <select id="newCategoryParent"
+                                                class="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none">
+                                                <option value="">Standalone</option>
+                                            </select>
                                             <button onclick="addNewCategory()"
                                                 class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition-colors">
                                                 + Add Category
