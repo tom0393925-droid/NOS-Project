@@ -389,9 +389,19 @@ function _getArrivalDates() {
     const cat = (window.orderCategories && window.orderCategories[_mfTab]) || {};
     // フィルタービューが自分の日付を持っていない場合は親カテゴリの日付を使用
     const parentCat = cat.parentId ? ((window.orderCategories && window.orderCategories[cat.parentId]) || {}) : {};
-    const next  = cat.next1 || parentCat.next1 || '';
-    const next2 = cat.next2 || parentCat.next2 || '';
-    const next3 = cat.next3 || parentCat.next3 || '';
+    let next  = cat.next1 || parentCat.next1 || '';
+    let next2 = cat.next2 || parentCat.next2 || '';
+    let next3 = cat.next3 || parentCat.next3 || '';
+
+    // Date shifting: if 1st shipment date has passed, shift 2nd→1st, 3rd→2nd
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    if (next && new Date(next) < today) {
+        next  = next2;
+        next2 = next3;
+        next3 = '';
+    }
+
     const baseDate = getLatestDataDate();
     const dNext  = next  ? new Date(next)  : null;
     const dNext2 = next2 ? new Date(next2) : null;
@@ -616,7 +626,6 @@ function renderOrderTable() {
     };
     setOrderTh('thOrderNext', 'Order (Next)', dates.next);
     setOrderTh('thOrder2nd',  'Order (2nd)',  dates.next2);
-    setOrderTh('thOrder3rd',  'Order (3rd)',  dates.next3);
 
     // filter
     const q = (document.getElementById('orderTableSearch')?.value || '').toLowerCase();
@@ -636,7 +645,7 @@ function renderOrderTable() {
     }
 
     if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="13" class="p-8 text-center text-gray-400 font-bold">No SKUs found. Make sure container arrival dates are set above.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="12" class="p-8 text-center text-gray-400 font-bold">No SKUs found. Make sure container arrival dates are set above.</td></tr>`;
         return;
     }
 
@@ -671,7 +680,6 @@ function renderOrderTable() {
             <td class="p-3 text-right bg-indigo-50" id="op2_${sid}">${fmtPred(row.pred2nd, row.safety)}</td>
             <td class="p-3 bg-indigo-50"><input type="text" inputmode="numeric" value="${row.order2nd.toLocaleString()}" data-sid="${sid}" data-field="order2nd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-indigo-200 rounded px-2 py-1 text-xs font-bold text-indigo-800 focus:ring-1 focus:ring-indigo-400 outline-none bg-white">${autoHint(`hint_2nd_${sid}`, row.order2nd, row.autoOrder2nd)}</td>
             <td class="p-3 text-right bg-violet-50" id="op3_${sid}">${fmtPred(row.pred3rd, row.safety)}</td>
-            <td class="p-3 bg-violet-50"><input type="text" inputmode="numeric" value="${row.order3rd.toLocaleString()}" data-sid="${sid}" data-field="order3rd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-violet-200 rounded px-2 py-1 text-xs font-bold text-violet-800 focus:ring-1 focus:ring-violet-400 outline-none bg-white">${autoHint(`hint_3rd_${sid}`, row.order3rd, row.autoOrder3rd)}</td>
             <td class="p-3 text-center"><button onclick="deleteSkuFromOrderPlan('${row.code.replace(/'/g, "\\'")}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 rounded px-1.5 py-1 text-xs transition-colors" title="Remove from ${_mfTab}">✕</button></td>
         `;
         tbody.appendChild(tr);
@@ -726,11 +734,9 @@ function onOrderQtyChange(input) {
     const p2El = document.getElementById(`op2_${sid}`);
     const p3El = document.getElementById(`op3_${sid}`);
     const o2In = document.querySelector(`input[data-sid="${sid}"][data-field="order2nd"]`);
-    const o3In = document.querySelector(`input[data-sid="${sid}"][data-field="order3rd"]`);
     if (p2El) p2El.innerHTML = fmtPred(row.pred2nd, row.safety);
     if (p3El) p3El.innerHTML = fmtPred(row.pred3rd, row.safety);
     if (o2In && field === 'orderNext') o2In.value = row.order2nd.toLocaleString();
-    if (o3In) o3In.value = row.order3rd.toLocaleString();
 
     // Update auto hints
     const updHint = (hintId, cur, auto) => {
@@ -742,18 +748,15 @@ function onOrderQtyChange(input) {
     };
     updHint(`hint_next_${sid}`, row.orderNext, row.autoOrderNext);
     updHint(`hint_2nd_${sid}`,  row.order2nd,  row.autoOrder2nd);
-    updHint(`hint_3rd_${sid}`,  row.order3rd,  row.autoOrder3rd);
 
     // Auto-save with debounce (2.5s)
     _setRowSaveStatus(sid, 'saving');
     if (_saveTimers[sid]) clearTimeout(_saveTimers[sid]);
     _saveTimers[sid] = setTimeout(async () => {
         try {
-            const cat = window.orderCategories?.[row.mf] || {};
             const saves = [];
-            if (cat.next1) saves.push(sbSaveShipmentOrder(row.code, cat.next1, row.orderNext));
-            if (cat.next2) saves.push(sbSaveShipmentOrder(row.code, cat.next2, row.order2nd));
-            if (cat.next3) saves.push(sbSaveShipmentOrder(row.code, cat.next3, row.order3rd));
+            if (dates.next)  saves.push(sbSaveShipmentOrder(row.code, dates.next,  row.orderNext));
+            if (dates.next2) saves.push(sbSaveShipmentOrder(row.code, dates.next2, row.order2nd));
             await Promise.all(saves);
             // Update in-memory cache
             if (!window.shipmentOrders) window.shipmentOrders = {};
@@ -764,9 +767,8 @@ function onOrderQtyChange(input) {
                 if (entry) entry.orderQty = qty;
                 else window.shipmentOrders[row.code].push({ arrivalDate: date, orderQty: qty, status: 'pending' });
             };
-            updateLocal(cat.next1, row.orderNext);
-            updateLocal(cat.next2, row.order2nd);
-            updateLocal(cat.next3, row.order3rd);
+            updateLocal(dates.next,  row.orderNext);
+            updateLocal(dates.next2, row.order2nd);
             _setRowSaveStatus(sid, 'saved');
             setTimeout(() => _setRowSaveStatus(sid, ''), 2500);
         } catch (e) {
