@@ -534,13 +534,13 @@
                                             <div class="flex flex-wrap items-center gap-2">
                                                 <select id="newCatParent" onchange="_onNewCatParentChange()"
                                                     class="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none">
-                                                    <option value="">-- 親カテゴリ --</option>
-                                                    <option value="__new__">＋ 新しい親を作成...</option>
+                                                    <option value="">-- Parent Category --</option>
+                                                    <option value="__new__">+ New Parent...</option>
                                                 </select>
                                                 <div class="relative" id="newCatPrefixWrapper">
                                                     <div class="flex flex-wrap items-center gap-1 border border-gray-300 rounded-lg px-2 py-1 bg-white focus-within:ring-2 focus-within:ring-purple-400" style="min-width:180px">
                                                         <div id="newCatPrefixTags" class="flex flex-wrap gap-1"></div>
-                                                        <input type="text" id="newCatPrefixInput" placeholder="サプライヤー (AZ, KU...)"
+                                                        <input type="text" id="newCatPrefixInput" placeholder="Supplier (AZ, KU...)"
                                                             autocomplete="off"
                                                             oninput="_onNewCatPrefixInput(this.value)"
                                                             onkeydown="_onNewCatPrefixKeydown(event)"
@@ -601,11 +601,11 @@
                                     class="flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white px-3 py-2 rounded-lg text-xs font-bold transition-colors whitespace-nowrap">+ Add SKU</button>
                             </div>
                             <div id="addSkuFormRow" class="hidden px-4 py-3 border-b border-purple-100 bg-purple-50 flex flex-wrap gap-2 items-center">
-                                <input id="newOrderSkuCode" placeholder="SKUコード *" oninput="onNewSkuCodeInput()" class="border border-gray-300 rounded px-2 py-1.5 text-xs w-28 focus:ring-1 focus:ring-purple-400 outline-none">
+                                <input id="newOrderSkuCode" placeholder="SKU Code *" oninput="onNewSkuCodeInput()" class="border border-gray-300 rounded px-2 py-1.5 text-xs w-28 focus:ring-1 focus:ring-purple-400 outline-none">
                                 <span id="newSkuExistsBadge" class="text-xs font-bold px-2 py-0.5 rounded hidden"></span>
-                                <input id="newOrderSkuName" placeholder="商品名" class="border border-gray-300 rounded px-2 py-1.5 text-xs flex-grow min-w-[140px] focus:ring-1 focus:ring-purple-400 outline-none">
-                                <input id="newOrderSkuUom" placeholder="単位 (例: pcs)" class="border border-gray-300 rounded px-2 py-1.5 text-xs w-24 focus:ring-1 focus:ring-purple-400 outline-none">
-                                <button onclick="addNewSkuToOrder()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">リストに追加</button>
+                                <input id="newOrderSkuName" placeholder="Item Name" class="border border-gray-300 rounded px-2 py-1.5 text-xs flex-grow min-w-[140px] focus:ring-1 focus:ring-purple-400 outline-none">
+                                <input id="newOrderSkuUom" placeholder="Unit (e.g. pcs)" class="border border-gray-300 rounded px-2 py-1.5 text-xs w-24 focus:ring-1 focus:ring-purple-400 outline-none">
+                                <button onclick="addNewSkuToOrder()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">Add to List</button>
                                 <span id="addOrderSkuStatus" class="text-xs font-bold text-green-700"></span>
                             </div>
                             <div class="overflow-x-auto overflow-y-auto max-h-[500px] custom-scrollbar">

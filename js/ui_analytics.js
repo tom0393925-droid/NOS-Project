@@ -791,11 +791,11 @@ function onNewSkuCodeInput() {
     if (master) {
         if (nameEl) nameEl.value = master.name || '';
         if (uomEl)  uomEl.value  = master.uom  || '';
-        if (badge)  { badge.textContent = '既存SKU'; badge.className = 'text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700'; }
+        if (badge)  { badge.textContent = 'Existing SKU'; badge.className = 'text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700'; }
     } else {
         if (nameEl) nameEl.value = '';
         if (uomEl)  uomEl.value  = '';
-        if (badge)  { badge.textContent = '新規SKU'; badge.className = 'text-xs font-bold px-2 py-0.5 rounded bg-green-100 text-green-700'; }
+        if (badge)  { badge.textContent = 'New SKU'; badge.className = 'text-xs font-bold px-2 py-0.5 rounded bg-green-100 text-green-700'; }
     }
 }
 

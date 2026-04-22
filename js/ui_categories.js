@@ -42,7 +42,7 @@ function _updateNewCatUI() {
 function _onNewCatParentChange() {
     const sel = document.getElementById('newCatParent');
     if (sel?.value === '__new__') {
-        const name = prompt('新しい親カテゴリのID を入力（例: USJP）:');
+        const name = prompt('Enter new parent category ID (e.g. USJP):');
         sel.value = '';
         if (name) _createNewParentCategory(name.trim().toUpperCase());
         return;
@@ -52,7 +52,7 @@ function _onNewCatParentChange() {
 
 async function _createNewParentCategory(id) {
     if (!id) return;
-    if (window.orderCategories?.[id]) { alert(`"${id}" は既に存在します`); return; }
+    if (window.orderCategories?.[id]) { alert(`"${id}" already exists.`); return; }
     try {
         await sbSaveOrderCategory({ id, name: id, next1: null, next2: null, next3: null });
         if (!window.orderCategories) window.orderCategories = {};
@@ -62,7 +62,7 @@ async function _createNewParentCategory(id) {
         const sel = document.getElementById('newCatParent');
         if (sel) sel.value = id;
         _updateNewCatUI();
-    } catch(e) { alert('作成失敗: ' + e.message); }
+    } catch(e) { alert('Failed to create: ' + e.message); }
 }
 
 function _onNewCatPrefixInput(val) {
@@ -132,11 +132,11 @@ function renderCategoryManagement() {
     const newCatParentSel = document.getElementById('newCatParent');
     if (newCatParentSel) {
         const prevParent = newCatParentSel.value;
-        newCatParentSel.innerHTML = '<option value="">-- 親カテゴリ --</option>'
+        newCatParentSel.innerHTML = '<option value="">-- Parent Category --</option>'
             + ids.filter(id => !cats[id].parentId)
                  .map(id => `<option value="${id}"${id === prevParent ? ' selected' : ''}>${_escHtml(id)}</option>`)
                  .join('')
-            + '<option value="__new__">＋ 新しい親を作成...</option>';
+            + '<option value="__new__">+ New Parent...</option>';
     }
 
     // Update collapsed summary badges
@@ -316,7 +316,7 @@ async function saveCategoryDates(id) {
 async function addNewCategory() {
     const parentSel = document.getElementById('newCatParent');
     const parentId  = (parentSel?.value || '').trim();
-    if (!parentId || parentId === '__new__') { alert('親カテゴリを選択してください。'); return; }
+    if (!parentId || parentId === '__new__') { alert('Please select a parent category.'); return; }
 
     const cats      = window.orderCategories || {};
     const parentName = (cats[parentId]?.name) || parentId;
@@ -326,7 +326,7 @@ async function addNewCategory() {
         : parentName + ' (' + prefixes.join(', ') + ')';
     const id = name;
 
-    if (cats[id]) { alert(`"${id}" は既に存在します。`); return; }
+    if (cats[id]) { alert(`"${id}" already exists.`); return; }
 
     const encodedName = _encodeCategoryConfig(name, parentId, prefixes.length ? prefixes : null);
 

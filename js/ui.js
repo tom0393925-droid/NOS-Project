@@ -206,7 +206,7 @@ function renderSKUDetails(selectedCode) {
         if (bodyEl) bodyEl.style.display = 'none';
 
         if (typeof sbLoadSkuHistory === 'function') {
-            if (typeof _showLoading === 'function') _showLoading('履歴データを読み込み中...');
+            if (typeof _showLoading === 'function') _showLoading('Loading history...');
             sbLoadSkuHistory(selectedCode).then(lots => {
                 if (typeof _hideLoading === 'function') _hideLoading();
                 if (lots.length > 0) {
