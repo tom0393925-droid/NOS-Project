@@ -118,7 +118,7 @@ function renderCategoryManagement() {
     const newCatParentSel = document.getElementById('newCatParent');
     if (newCatParentSel) {
         const prevParent = newCatParentSel.value;
-        newCatParentSel.innerHTML = '<option value="">-- or select parent to filter --</option>'
+        newCatParentSel.innerHTML = '<option value="">-- Parent Category --</option>'
             + ids.filter(id => !cats[id].parentId)
                  .map(id => `<option value="${id}"${id === prevParent ? ' selected' : ''}>${_escHtml(id)}</option>`)
                  .join('');
@@ -188,7 +188,7 @@ function renderCategoryManagement() {
                         onkeydown="if(event.key==='Enter')saveCategoryName('${id}');if(event.key==='Escape')cancelRenameCategory('${id}')">
                     <select id="catParentInput_${id}"
                         class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none">
-                        <option value="">Standalone</option>
+                        <option value="">-- Parent Category --</option>
                         ${parentOptions}
                     </select>
                     <button onclick="saveCategoryName('${id}')"
