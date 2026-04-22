@@ -367,7 +367,7 @@ function renderCrossAnalysis() {
 // ==========================================
 
 let _mfTab = 'CFJP'; // 'CFJP', 'RFJP'
-let _orderSort = { col: null, asc: true };
+let _orderSort = { col: 'code', asc: true };
 let _orderData = [];
 const _saveTimers = {};
 
@@ -537,7 +537,7 @@ function _buildOrderData() {
 
 function switchMfTab(mf) {
     _mfTab = mf;
-    _orderSort = { col: null, asc: true };
+    _orderSort = { col: 'code', asc: true };
     renderOrderCategoryTabs();
     renderCategoryScheduleBar();
     const section = document.getElementById('orderActionSection');
