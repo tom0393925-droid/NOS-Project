@@ -57,8 +57,11 @@ function renderCategoryManagement() {
             .filter(oid => oid !== id && !cats[oid].parentId)
             .map(oid => `<option value="${oid}"${cat.parentId === oid ? ' selected' : ''}>${_escHtml(cats[oid].name || oid)}</option>`)
             .join('');
+        const parentDisplayName = cat.parentId
+            ? _escHtml((cats[cat.parentId] && cats[cat.parentId].name) || cat.parentId)
+            : null;
         const filterLabel = cat.parentId
-            ? `<span class="text-xs text-purple-600 font-semibold bg-purple-50 px-1.5 py-0.5 rounded">→ ${cat.parentId}${cat.prefixes ? ' [' + cat.prefixes.join(', ') + ']' : ''}</span>`
+            ? `<span class="text-xs text-purple-600 font-semibold bg-purple-50 px-1.5 py-0.5 rounded">→ ${parentDisplayName}${cat.prefixes ? ' [' + cat.prefixes.join(', ') + ']' : ''}</span>`
             : '';
         const div = document.createElement('div');
         div.className = 'bg-white border border-gray-200 rounded-lg px-4 py-3';
