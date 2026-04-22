@@ -156,65 +156,49 @@ function renderCategoryManagement() {
     for (const id of ids) {
         const cat = cats[id];
         const displayName = cat.name && cat.name !== id ? cat.name : id;
-        const isBuiltin = id === 'CFJP' || id === 'RFJP';
-        // parentId candidates: categories that are not themselves a filtered view and not the current id
-        const parentOptions = ids
-            .filter(oid => oid !== id && !cats[oid].parentId)
-            .map(oid => `<option value="${oid}"${cat.parentId === oid ? ' selected' : ''}>${_escHtml(cats[oid].name || oid)}</option>`)
-            .join('');
         const parentCat = cat.parentId ? (cats[cat.parentId] || null) : null;
-        const inheritedDates = parentCat
-            ? `<span class="text-xs text-gray-400 italic">Schedule inherited from ${_escHtml(parentCat.name || cat.parentId)}</span>`
-            : `
-                <div class="flex items-center gap-1 text-xs">
-                    <span class="text-gray-500 font-semibold">Next:</span>
-                    <input type="date" id="catDate_${id}_1" value="${cat.next1 || ''}"
-                        class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none">
-                </div>
-                <div class="flex items-center gap-1 text-xs">
-                    <span class="text-gray-500 font-semibold">2nd:</span>
-                    <input type="date" id="catDate_${id}_2" value="${cat.next2 || ''}"
-                        class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none">
-                </div>
-                <div class="flex items-center gap-1 text-xs">
-                    <span class="text-gray-500 font-semibold">3rd:</span>
-                    <input type="date" id="catDate_${id}_3" value="${cat.next3 || ''}"
-                        class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none">
-                </div>
-                <button onclick="saveCategoryDates('${id}')"
-                    class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">Save</button>
-                <span id="catSaveStatus_${id}" class="text-xs text-green-700 font-bold"></span>`;
         const div = document.createElement('div');
         div.className = 'bg-white border border-gray-200 rounded-lg px-4 py-3';
-        div.innerHTML = `
-            <div class="flex flex-wrap items-center gap-3">
-                <div id="catNameDisplay_${id}" class="flex items-center gap-1 shrink-0 min-w-[3.5rem]">
+
+        if (!cat.parentId) {
+            // ── Parent category row ──
+            div.innerHTML = `
+                <div class="flex flex-wrap items-center gap-3">
+                    <input type="text" id="catName_${id}" value="${_escHtml(displayName)}" maxlength="40"
+                        class="border border-gray-300 rounded px-2 py-1.5 text-sm font-bold w-32 focus:ring-2 focus:ring-purple-400 outline-none">
+                    <div class="flex items-center gap-1 text-xs">
+                        <span class="text-gray-500 font-semibold">Next:</span>
+                        <input type="date" id="catDate_${id}_1" value="${cat.next1 || ''}"
+                            class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none">
+                    </div>
+                    <div class="flex items-center gap-1 text-xs">
+                        <span class="text-gray-500 font-semibold">2nd:</span>
+                        <input type="date" id="catDate_${id}_2" value="${cat.next2 || ''}"
+                            class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none">
+                    </div>
+                    <div class="flex items-center gap-1 text-xs">
+                        <span class="text-gray-500 font-semibold">3rd:</span>
+                        <input type="date" id="catDate_${id}_3" value="${cat.next3 || ''}"
+                            class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none">
+                    </div>
+                    <button onclick="saveCategoryDates('${id}')"
+                        class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">Save</button>
+                    <button onclick="deleteCategory('${id}')"
+                        class="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 bg-red-50 rounded transition-colors">Delete</button>
+                    <span id="catSaveStatus_${id}" class="text-xs text-green-700 font-bold"></span>
+                </div>
+            `;
+        } else {
+            // ── View category row ──
+            div.innerHTML = `
+                <div class="flex flex-wrap items-center gap-3">
                     <span class="font-black text-gray-800">${_escHtml(displayName)}</span>
-                    <button onclick="startRenameCategory('${id}')" title="Rename / Configure filter"
-                        class="text-gray-400 hover:text-purple-600 text-xs px-1 transition-colors">✏️</button>
+                    <span class="text-xs text-gray-400 italic">Schedule inherited from ${_escHtml(parentCat ? (parentCat.name || cat.parentId) : cat.parentId)}</span>
+                    <button onclick="deleteCategory('${id}')"
+                        class="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 bg-red-50 rounded transition-colors">Delete</button>
                 </div>
-                <div id="catNameEdit_${id}" class="hidden items-center gap-2 shrink-0 flex-wrap">
-                    <input type="text" id="catNameInput_${id}" value="${_escHtml(displayName)}" maxlength="40"
-                        class="border border-purple-400 rounded px-2 py-1 text-xs font-bold w-44 focus:ring-1 outline-none"
-                        placeholder="e.g. RFJP (AZ, KU, TMR)"
-                        onkeydown="if(event.key==='Enter')saveCategoryName('${id}');if(event.key==='Escape')cancelRenameCategory('${id}')">
-                    <select id="catParentInput_${id}"
-                        class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none">
-                        <option value="">-- Parent Category --</option>
-                        ${parentOptions}
-                    </select>
-                    <button onclick="saveCategoryName('${id}')"
-                        class="bg-purple-600 hover:bg-purple-700 text-white px-2 py-1 rounded text-xs font-bold transition-colors">OK</button>
-                    <button onclick="cancelRenameCategory('${id}')"
-                        class="text-gray-500 hover:text-gray-700 px-2 py-1 rounded text-xs font-bold transition-colors">✕</button>
-                </div>
-                ${inheritedDates}
-                ${!isBuiltin ? `<button onclick="deleteCategory('${id}')"
-                    class="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 bg-red-50 rounded transition-colors">
-                    Delete
-                </button>` : ''}
-            </div>
-        `;
+            `;
+        }
         area.appendChild(div);
     }
 }
@@ -278,6 +262,13 @@ async function saveCategoryDates(id) {
 
     if (!window.orderCategories) window.orderCategories = {};
     const cat = window.orderCategories[id] || { id, name: id };
+
+    // For parent categories, also read the name input
+    if (!cat.parentId) {
+        const nameEl = document.getElementById(`catName_${id}`);
+        if (nameEl) cat.name = nameEl.value.trim() || id;
+    }
+
     cat.next1 = next1 || ''; cat.next2 = next2 || ''; cat.next3 = next3 || '';
     window.orderCategories[id] = cat;
 
