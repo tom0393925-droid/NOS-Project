@@ -391,14 +391,30 @@ function refreshPredictedBalances() {
     let latestQty = 0;
     targetLots.forEach(lot => { latestQty += (lot.qtys[loadedWeeks - 1] || 0); });
 
-    let past12WSalesSum = 0;
-    const checkWeeks12 = Math.min(12, loadedWeeks);
-    for (let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
-        let weeklySum = 0;
-        targetLots.forEach(lot => { weeklySum += (lot.sales[i] || 0); });
-        past12WSalesSum += weeklySum;
+    // Aggregate qtys and sales across all lots for avg calculation
+    const aggQtys  = new Array(loadedWeeks).fill(0);
+    const aggSales = new Array(loadedWeeks).fill(0);
+    for (let i = 0; i < loadedWeeks; i++) {
+        targetLots.forEach(lot => {
+            aggQtys[i]  += (lot.qtys[i]  || 0);
+            aggSales[i] += (lot.sales[i] || 0);
+        });
     }
-    const past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
+
+    // Use _calcStockoutAvg for stockout SKUs (has historical stock but recent weeks all zero)
+    const hasHistoricalStock = aggQtys.some(q => q > 0);
+    const isCurrentlyStockout = hasHistoricalStock && (aggQtys[loadedWeeks - 1] || 0) === 0;
+    let past12WAvg;
+    if (isCurrentlyStockout && typeof _calcStockoutAvg === 'function') {
+        past12WAvg = _calcStockoutAvg(aggQtys, aggSales, loadedWeeks);
+    } else {
+        let past12WSalesSum = 0;
+        const checkWeeks12 = Math.min(12, loadedWeeks);
+        for (let i = loadedWeeks - checkWeeks12; i < loadedWeeks; i++) {
+            past12WSalesSum += aggSales[i];
+        }
+        past12WAvg = checkWeeks12 > 0 ? (past12WSalesSum / checkWeeks12) : 0;
+    }
 
     // ★ セーフティストックは常に週平均×8週（約2ヶ月）で統一
     const safetyStock = Math.round(past12WAvg * safetyWeeks);

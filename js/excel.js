@@ -111,8 +111,7 @@ async function runAnalysis() {
             if (codeVal !== "" && codeVal.toLowerCase() !== "code") {
                 const nameVal = col.name !== -1 && row[col.name] ? String(row[col.name]).trim() : "";
                 const uomVal = col.uom !== -1 && row[col.uom] ? String(row[col.uom]).trim() : "-";
-                console.log(`[UOM] col.uom=${col.uom} code=${codeVal} uom="${uomVal}" willDivide=${['G','g'].includes(uomVal)}`);
-                currentParent = { code: codeVal, name: nameVal, sales: salesVal, uom: uomVal };
+currentParent = { code: codeVal, name: nameVal, sales: salesVal, uom: uomVal };
                 
                 if (nameVal) {
                     if (!skuMaster[codeVal]) {
