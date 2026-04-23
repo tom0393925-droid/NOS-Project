@@ -165,12 +165,15 @@ function updateShipmentOrder(slot, value) {
             const avg = wks12 > 0 ? salesSum / wks12 : 0;
             const safety = Math.round(avg * safetyWeeks);
             const base = getLatestDataDate();
+            const dw1 = tNext  ? (new Date(tNext)  - base) / 604800000 : 0;
             const dw2 = tNext2 ? (new Date(tNext2) - base) / 604800000 : 0;
             const dw3 = tNext3 ? (new Date(tNext3) - base) / 604800000 : 0;
 
             if (slot === 'next' && dw2 > 0) {
                 // 1st changed → recalculate 2nd
-                const predAt2nd = latestQty - avg * dw2 + qty;
+                // Stock when 1st container arrives (clamped: can't go below 0 before arrival)
+                const depletedAtNext = Math.max(0, latestQty - avg * dw1);
+                const predAt2nd = Math.max(0, depletedAtNext + qty - avg * (dw2 - dw1));
                 const auto2 = tNext3 && dw3 > dw2
                     ? Math.max(0, Math.round(safety + avg * (dw3 - dw2) - predAt2nd))
                     : Math.max(0, Math.round(safety - predAt2nd));
@@ -180,7 +183,7 @@ function updateShipmentOrder(slot, value) {
                 if (window._shipAutoQtys) window._shipAutoQtys.next2 = auto2;
                 // Also cascade to 3rd
                 if (tNext3 && dw3 > dw2) {
-                    const predAt3rd = predAt2nd + auto2 - avg * (dw3 - dw2);
+                    const predAt3rd = Math.max(0, predAt2nd + auto2 - avg * (dw3 - dw2));
                     const auto3 = Math.max(0, Math.round(safety - predAt3rd));
                     const el3 = document.getElementById('shipOrderNext3Qty');
                     if (el3 && document.activeElement !== el3) el3.value = auto3 || '';
@@ -190,7 +193,9 @@ function updateShipmentOrder(slot, value) {
             } else if (slot === 'next2' && tNext3 && dw3 > dw2) {
                 // 2nd changed → recalculate 3rd
                 const shipNext = orders.find(s => s.arrivalDate === tNext)?.orderQty || 0;
-                const predAt3rd = latestQty - avg * dw3 + shipNext + qty;
+                const depletedAtNext = Math.max(0, latestQty - avg * dw1);
+                const stockAt2nd = Math.max(0, depletedAtNext + shipNext - avg * (dw2 - dw1)) + qty;
+                const predAt3rd = Math.max(0, stockAt2nd - avg * (dw3 - dw2));
                 const auto3 = Math.max(0, Math.round(safety - predAt3rd));
                 const el3 = document.getElementById('shipOrderNext3Qty');
                 if (el3 && document.activeElement !== el3) el3.value = auto3 || '';

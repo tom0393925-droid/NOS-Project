@@ -322,12 +322,15 @@ function renderSKUDetails(selectedCode) {
                 const shipNext  = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext).reduce((a, s) => a + s.orderQty, 0);
                 const shipNext2 = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext2).reduce((a, s) => a + s.orderQty, 0);
                 const shipNext3 = targetNext3 ? skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext3).reduce((a, s) => a + s.orderQty, 0) : 0;
-                const stockNext  = latestQty - (past12WAvg * diffWkNext)  + shipNext;
-                const stockNext2 = latestQty - (past12WAvg * diffWkNext2) + shipNext + shipNext2;
+                // Clamp depletion to 0: stock can't go negative before a shipment arrives
+                const depletedAtNext  = Math.max(0, latestQty - past12WAvg * diffWkNext);
+                const depletedAtNext2 = Math.max(0, latestQty - past12WAvg * diffWkNext2);
+                const stockNext  = depletedAtNext  + shipNext;
+                const stockNext2 = depletedAtNext2 + shipNext + shipNext2;
                 let stockNext3 = null;
                 if (targetNext3) {
                     const diffWkNext3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
-                    if (diffWkNext3 > 0) stockNext3 = latestQty - (past12WAvg * diffWkNext3) + shipNext + shipNext2 + shipNext3;
+                    if (diffWkNext3 > 0) stockNext3 = Math.max(0, latestQty - past12WAvg * diffWkNext3) + shipNext + shipNext2 + shipNext3;
                 }
 
                 setSafeText('predNextQty',  Math.max(0, Math.round(stockNext)).toLocaleString()  + ' ' + uomText);
@@ -335,7 +338,7 @@ function renderSKUDetails(selectedCode) {
                 setSafeText('predNext3Qty', stockNext3 !== null ? Math.max(0, Math.round(stockNext3)).toLocaleString() + ' ' + uomText : '-');
 
                 // Compute auto order suggestions (pure prediction, no user input)
-                const predNextRaw = latestQty - past12WAvg * diffWkNext;
+                const predNextRaw = depletedAtNext;
                 const wks12 = diffWkNext2 - diffWkNext;
                 const autoNext = Math.max(0, Math.round(safetyStock + past12WAvg * wks12 - predNextRaw));
                 const pred2ndRaw = predNextRaw + autoNext - past12WAvg * wks12;
@@ -452,12 +455,14 @@ function refreshPredictedBalances() {
     const shipNext  = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext).reduce((a, s) => a + s.orderQty, 0);
     const shipNext2 = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext2).reduce((a, s) => a + s.orderQty, 0);
     const shipNext3 = targetNext3 ? skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext3).reduce((a, s) => a + s.orderQty, 0) : 0;
-    const stockNext  = latestQty - (past12WAvg * diffWkNext)  + shipNext;
-    const stockNext2 = latestQty - (past12WAvg * diffWkNext2) + shipNext + shipNext2;
+    const depletedAtNext  = Math.max(0, latestQty - past12WAvg * diffWkNext);
+    const depletedAtNext2 = Math.max(0, latestQty - past12WAvg * diffWkNext2);
+    const stockNext  = depletedAtNext  + shipNext;
+    const stockNext2 = depletedAtNext2 + shipNext + shipNext2;
     let stockNext3 = null;
     if (targetNext3) {
         const diffWkNext3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
-        if (diffWkNext3 > 0) stockNext3 = latestQty - (past12WAvg * diffWkNext3) + shipNext + shipNext2 + shipNext3;
+        if (diffWkNext3 > 0) stockNext3 = Math.max(0, latestQty - past12WAvg * diffWkNext3) + shipNext + shipNext2 + shipNext3;
     }
 
     setSafeText('predNextQty',  Math.max(0, Math.round(stockNext)).toLocaleString()  + ' ' + uomText);

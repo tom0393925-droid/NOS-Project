@@ -124,6 +124,39 @@ const futureLinesPlugin = {
         drawVerticalLine(options.tNext,  'Next',     'rgba(147, 51, 234, 0.8)');
         drawVerticalLine(options.tNext2, '2nd Next', 'rgba(37, 99, 235, 0.8)');
         drawVerticalLine(options.tNext3, '3rd Next', 'rgba(234, 88, 12, 0.8)');
+
+        // Stockout zone: red fill from last historical bar to Next arrival
+        if (options.isStockout && options.tNext) {
+            const historicalEndIdx = (options.historicalWeeks || 1) - 1;
+            const xStart = xAxis.getPixelForValue(historicalEndIdx);
+            let xEnd = null;
+            const tNextMs = new Date(options.tNext).getTime();
+            for (let i = 0; i < chart.data.labels.length; i++) {
+                const l = chart.data.labels[i];
+                if (!l.includes('/')) continue;
+                const parts = l.split('/');
+                const lMs = new Date(`20${parts[0]}/${parts[1]}/${parts[2]}`).getTime();
+                if (i < chart.data.labels.length - 1) {
+                    const np = chart.data.labels[i+1].split('/');
+                    const nMs = new Date(`20${np[0]}/${np[1]}/${np[2]}`).getTime();
+                    if (tNextMs >= lMs && tNextMs <= nMs) {
+                        const ratio = (tNextMs - lMs) / (nMs - lMs);
+                        xEnd = xAxis.getPixelForValue(i) + (xAxis.getPixelForValue(i+1) - xAxis.getPixelForValue(i)) * ratio;
+                        break;
+                    }
+                }
+            }
+            if (xEnd && xStart < xEnd) {
+                ctx.save();
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.08)';
+                ctx.fillRect(xStart, yAxis.top, xEnd - xStart, yAxis.bottom - yAxis.top);
+                ctx.fillStyle = 'rgba(239, 68, 68, 0.7)';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.fillText('STOCKOUT', (xStart + xEnd) / 2, yAxis.top + 14);
+                ctx.restore();
+            }
+        }
     }
 };
 
@@ -258,7 +291,7 @@ function updateChartPeriod() {
             labels: extendedLabels, 
             datasets: [
                 { label: 'Sales', data: totalSalesTrend, borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', yAxisID: 'y', fill: true, tension: 0.3 },
-                { label: 'Inventory', data: totalQtysTrend, borderColor: '#10b981', backgroundColor: 'rgba(16, 185, 129, 0.1)', yAxisID: 'y1', fill: true, tension: 0.3 },
+                { label: 'Inventory', data: totalQtysTrend, borderColor: latestQty === 0 ? '#ef4444' : '#10b981', backgroundColor: latestQty === 0 ? 'rgba(239, 68, 68, 0.1)' : 'rgba(16, 185, 129, 0.1)', yAxisID: 'y1', fill: true, tension: 0.3 },
                 { label: 'Prediction', data: predictionData, borderColor: '#f59e0b', borderDash: [5, 5], yAxisID: 'y1', fill: false, tension: 0, pointRadius: 0 }
             ]
         },
@@ -267,7 +300,7 @@ function updateChartPeriod() {
             interaction: { mode: 'index', intersect: false },
             plugins: { 
                 legend: { display: false },
-                futureLines: { safetyStock: safetyStock, tNext: tNext, tNext2: tNext2, tNext3: tNext3 }
+                futureLines: { safetyStock: safetyStock, tNext: tNext, tNext2: tNext2, tNext3: tNext3, isStockout: latestQty === 0, historicalWeeks: loadedWeeks }
             },
             scales: {
                 x: { ticks: { maxRotation: 45, minRotation: 45, autoSkip: true, maxTicksLimit: 50 } }, 
