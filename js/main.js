@@ -157,12 +157,25 @@ function updateShipmentOrder(slot, value) {
         if (targetLots.length > 0) {
             let latestQty = 0;
             targetLots.forEach(lot => { latestQty += (lot.qtys[loadedWeeks - 1] || 0); });
-            let salesSum = 0;
             const wks12 = Math.min(12, loadedWeeks);
-            for (let i = loadedWeeks - wks12; i < loadedWeeks; i++) {
-                let w = 0; targetLots.forEach(lot => { w += (lot.sales[i] || 0); }); salesSum += w;
+            const aggQtys  = new Array(loadedWeeks).fill(0);
+            const aggSales = new Array(loadedWeeks).fill(0);
+            for (let i = 0; i < loadedWeeks; i++) {
+                targetLots.forEach(lot => { aggQtys[i] += (lot.qtys[i] || 0); aggSales[i] += (lot.sales[i] || 0); });
             }
-            const avg = wks12 > 0 ? salesSum / wks12 : 0;
+            let hasStk = false, recentZero = 0;
+            for (let i = 0; i < loadedWeeks; i++) {
+                if (aggQtys[i] > 0) hasStk = true;
+                if (i >= loadedWeeks - wks12 && aggQtys[i] === 0) recentZero++;
+            }
+            let avg;
+            if (hasStk && recentZero > 0 && typeof _calcStockoutAvg === 'function') {
+                avg = _calcStockoutAvg(aggQtys, aggSales, loadedWeeks);
+            } else {
+                let salesSum = 0;
+                for (let i = loadedWeeks - wks12; i < loadedWeeks; i++) salesSum += aggSales[i];
+                avg = wks12 > 0 ? salesSum / wks12 : 0;
+            }
             const safety = Math.round(avg * safetyWeeks);
             const base = getLatestDataDate();
             const dw1 = tNext  ? (new Date(tNext)  - base) / 604800000 : 0;
