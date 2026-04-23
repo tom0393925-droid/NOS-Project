@@ -476,19 +476,32 @@ function _buildOrderData() {
         const safety = Math.round(avg * safetyWeeks);
 
         // predictions
-        const predNext = dates.weeksToNext !== null ? currentQty - avg * dates.weeksToNext : null;
+        // Zero-stock: clamp predNext to 0; arrival week has no sales
+        const isZeroStock = currentQty === 0;
+        const predNext = dates.weeksToNext !== null ? Math.max(0, currentQty - avg * dates.weeksToNext) : null;
+
+        // chartWks12: for zero-stock exclude arrival week from depletion count
+        let chartWks12 = dates.weeks1to2;
+        if (isZeroStock && dates.next && dates.next2) {
+            const _base = getLatestDataDate();
+            const _ms = 7 * 24 * 3600 * 1000;
+            chartWks12 = Math.ceil((new Date(dates.next2) - _base) / _ms) - Math.ceil((new Date(dates.next) - _base) / _ms) - 1;
+        }
+
         let orderNext = 0, pred2nd = null, order2nd = 0, pred3rd = null, order3rd = 0;
 
-        if (predNext !== null && dates.weeks1to2 !== null) {
-            orderNext = Math.max(0, Math.round(safety + avg * dates.weeks1to2 - predNext));
-            pred2nd   = predNext + orderNext - avg * dates.weeks1to2;
+        if (predNext !== null && chartWks12 !== null) {
+            orderNext = Math.max(0, Math.ceil(safety + avg * chartWks12 - predNext));
+            pred2nd   = isZeroStock
+                ? Math.max(0, orderNext - avg * chartWks12)
+                : Math.max(0, predNext + orderNext - avg * chartWks12);
         }
         if (pred2nd !== null && dates.weeks2to3 !== null) {
-            order2nd = Math.max(0, Math.round(safety + avg * dates.weeks2to3 - pred2nd));
-            pred3rd  = pred2nd + order2nd - avg * dates.weeks2to3;
+            order2nd = Math.max(0, Math.ceil(safety + avg * dates.weeks2to3 - pred2nd));
+            pred3rd  = Math.max(0, pred2nd + order2nd - avg * dates.weeks2to3);
         }
         if (pred3rd !== null) {
-            order3rd = Math.max(0, Math.round(safety - pred3rd));
+            order3rd = Math.max(0, Math.ceil(safety - pred3rd));
         }
 
         // auto for 1st = system calc before any saved override
@@ -501,12 +514,14 @@ function _buildOrderData() {
 
         if (dates.next && savedByDate[dates.next] !== undefined) {
             orderNext = savedByDate[dates.next];
-            if (predNext !== null && dates.weeks1to2 !== null) {
-                pred2nd = predNext + orderNext - avg * dates.weeks1to2;
+            if (predNext !== null && chartWks12 !== null) {
+                pred2nd = isZeroStock
+                    ? Math.max(0, orderNext - avg * chartWks12)
+                    : Math.max(0, predNext + orderNext - avg * chartWks12);
                 if (dates.weeks2to3 !== null) {
-                    order2nd = Math.max(0, Math.round(safety + avg * dates.weeks2to3 - pred2nd));
-                    pred3rd  = pred2nd + order2nd - avg * dates.weeks2to3;
-                    order3rd = Math.max(0, Math.round(safety - pred3rd));
+                    order2nd = Math.max(0, Math.ceil(safety + avg * dates.weeks2to3 - pred2nd));
+                    pred3rd  = Math.max(0, pred2nd + order2nd - avg * dates.weeks2to3);
+                    order3rd = Math.max(0, Math.ceil(safety - pred3rd));
                 } else { order2nd = 0; pred3rd = null; order3rd = 0; }
             }
         }
@@ -516,8 +531,8 @@ function _buildOrderData() {
         if (dates.next2 && savedByDate[dates.next2] !== undefined) {
             order2nd = savedByDate[dates.next2];
             if (pred2nd !== null && dates.weeks2to3 !== null) {
-                pred3rd  = pred2nd + order2nd - avg * dates.weeks2to3;
-                order3rd = Math.max(0, Math.round(safety - pred3rd));
+                pred3rd  = Math.max(0, pred2nd + order2nd - avg * dates.weeks2to3);
+                order3rd = Math.max(0, Math.ceil(safety - pred3rd));
             }
         }
         // auto for 3rd = cascade from (possibly saved) 1st+2nd orders, before any saved 3rd override
@@ -528,7 +543,7 @@ function _buildOrderData() {
         }
 
         rows.push({ code, name: master.name || code, uom: master.uom || '-', mf: _mfTab, dates,
-            avg, safety, currentQty, predNext,
+            avg, safety, currentQty, predNext, chartWks12,
             orderNext, autoOrderNext, pred2nd, order2nd, autoOrder2nd, pred3rd, order3rd, autoOrder3rd });
     }
 
@@ -708,12 +723,15 @@ function onOrderQtyChange(input) {
 
     if (field === 'orderNext') {
         row.orderNext = val;
-        if (row.predNext !== null && dates.weeks1to2 !== null) {
-            row.pred2nd  = row.predNext + val - row.avg * dates.weeks1to2;
+        const cw12 = row.chartWks12 ?? dates.weeks1to2;
+        if (row.predNext !== null && cw12 !== null) {
+            row.pred2nd = row.currentQty === 0
+                ? Math.max(0, val - row.avg * cw12)
+                : Math.max(0, row.predNext + val - row.avg * cw12);
             if (dates.weeks2to3 !== null) {
-                row.order2nd = Math.max(0, Math.round(row.safety + row.avg * dates.weeks2to3 - row.pred2nd));
-                row.pred3rd  = row.pred2nd + row.order2nd - row.avg * dates.weeks2to3;
-                row.order3rd = Math.max(0, Math.round(row.safety - row.pred3rd));
+                row.order2nd = Math.max(0, Math.ceil(row.safety + row.avg * dates.weeks2to3 - row.pred2nd));
+                row.pred3rd  = Math.max(0, row.pred2nd + row.order2nd - row.avg * dates.weeks2to3);
+                row.order3rd = Math.max(0, Math.ceil(row.safety - row.pred3rd));
             } else {
                 row.order2nd = 0; row.pred3rd = null; row.order3rd = 0;
             }
@@ -724,8 +742,8 @@ function onOrderQtyChange(input) {
     } else if (field === 'order2nd') {
         row.order2nd = val;
         if (row.pred2nd !== null && dates.weeks2to3 !== null) {
-            row.pred3rd  = row.pred2nd + val - row.avg * dates.weeks2to3;
-            row.order3rd = Math.max(0, Math.round(row.safety - row.pred3rd));
+            row.pred3rd  = Math.max(0, row.pred2nd + val - row.avg * dates.weeks2to3);
+            row.order3rd = Math.max(0, Math.ceil(row.safety - row.pred3rd));
         }
         // auto hint for 3rd reflects the newly derived value
         row.autoOrder3rd = row.order3rd;
