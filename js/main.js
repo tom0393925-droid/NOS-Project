@@ -171,9 +171,13 @@ function updateShipmentOrder(slot, value) {
 
             if (slot === 'next' && dw2 > 0) {
                 // 1st changed → recalculate 2nd
-                // Stock when 1st container arrives (clamped: can't go below 0 before arrival)
                 const depletedAtNext = Math.max(0, latestQty - avg * dw1);
-                const predAt2nd = Math.max(0, depletedAtNext + qty - avg * (dw2 - dw1));
+                // Zero-stock: arrival week has no sales; use chart-aligned week count
+                const isZeroStock = latestQty === 0;
+                const chartWks12 = isZeroStock ? Math.ceil(dw2) - Math.ceil(dw1) - 1 : dw2 - dw1;
+                const predAt2nd = isZeroStock
+                    ? Math.max(0, qty - avg * chartWks12)
+                    : Math.max(0, depletedAtNext + qty - avg * (dw2 - dw1));
                 const auto2 = tNext3 && dw3 > dw2
                     ? Math.max(0, Math.ceil(safety + avg * (dw3 - dw2) - predAt2nd))
                     : Math.max(0, Math.ceil(safety - predAt2nd));

@@ -323,9 +323,13 @@ function renderSKUDetails(selectedCode) {
                 const shipNext2 = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext2).reduce((a, s) => a + s.orderQty, 0);
                 const shipNext3 = targetNext3 ? skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext3).reduce((a, s) => a + s.orderQty, 0) : 0;
                 // Sequential depletion: each period starts from the previous period's ending balance
+                // Zero-stock: arrival week has no sales (nothing to sell before shipment came)
+                const isZeroStock = latestQty === 0;
                 const stockNext  = Math.max(0, latestQty - past12WAvg * diffWkNext) + shipNext;
                 const wks12 = diffWkNext2 - diffWkNext;
-                const stockNext2 = Math.max(0, stockNext - past12WAvg * wks12) + shipNext2;
+                // For zero-stock, use chart-aligned week count (exclude no-sales arrival week)
+                const chartWks12 = isZeroStock ? Math.ceil(diffWkNext2) - Math.ceil(diffWkNext) - 1 : wks12;
+                const stockNext2 = Math.max(0, stockNext - past12WAvg * chartWks12) + shipNext2;
                 let stockNext3 = null;
                 if (targetNext3) {
                     const diffWkNext3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
@@ -339,10 +343,10 @@ function renderSKUDetails(selectedCode) {
                 setSafeText('predNext2Qty', Math.max(0, Math.round(stockNext2)).toLocaleString() + ' ' + uomText);
                 setSafeText('predNext3Qty', stockNext3 !== null ? Math.max(0, Math.round(stockNext3)).toLocaleString() + ' ' + uomText : '-');
 
-                // Compute auto order suggestions: use Math.ceil to ensure safety stock is never undershot
+                // Compute auto order suggestions
                 const predNextRaw = Math.max(0, latestQty - past12WAvg * diffWkNext);
-                const autoNext = Math.max(0, Math.ceil(safetyStock + past12WAvg * wks12 - predNextRaw));
-                const pred2ndRaw = Math.max(0, predNextRaw + autoNext - past12WAvg * wks12);
+                const autoNext = Math.max(0, Math.ceil(safetyStock + past12WAvg * chartWks12 - predNextRaw));
+                const pred2ndRaw = Math.max(0, autoNext - past12WAvg * chartWks12);
                 let autoNext2 = 0, autoNext3 = 0;
                 if (targetNext3) {
                     const dWk3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
@@ -457,9 +461,11 @@ function refreshPredictedBalances() {
     const shipNext  = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext).reduce((a, s) => a + s.orderQty, 0);
     const shipNext2 = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext2).reduce((a, s) => a + s.orderQty, 0);
     const shipNext3 = targetNext3 ? skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext3).reduce((a, s) => a + s.orderQty, 0) : 0;
+    const isZeroStock = latestQty === 0;
     const stockNext  = Math.max(0, latestQty - past12WAvg * diffWkNext) + shipNext;
     const wks12 = diffWkNext2 - diffWkNext;
-    const stockNext2 = Math.max(0, stockNext - past12WAvg * wks12) + shipNext2;
+    const chartWks12 = isZeroStock ? Math.ceil(diffWkNext2) - Math.ceil(diffWkNext) - 1 : wks12;
+    const stockNext2 = Math.max(0, stockNext - past12WAvg * chartWks12) + shipNext2;
     let stockNext3 = null;
     if (targetNext3) {
         const diffWkNext3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);

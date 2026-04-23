@@ -246,13 +246,17 @@ function updateChartPeriod() {
                 const wStart = new Date(baseDate); wStart.setDate(baseDate.getDate() + ((i - 1) * 7));
                 const wEnd   = new Date(baseDate); wEnd.setDate(baseDate.getDate() + (i * 7));
                 // 発注済み分を加算（未入荷のみ）
+                const qtyBeforeOrder = runningQty;
+                let shipArrivedThisWeek = false;
                 skuShipments.forEach(s => {
                     if (s.status === 'arrived') return;
                     const sd = new Date(s.arrivalDate);
-                    if (sd > wStart && sd <= wEnd) runningQty += s.orderQty;
+                    if (sd > wStart && sd <= wEnd) { runningQty += s.orderQty; shipArrivedThisWeek = true; }
                 });
-                // 週平均販売分を減算（simAvgまたはreal avgを使用）
-                runningQty = Math.max(0, runningQty - avgToUse);
+                // Zero-stock arrival week: no sales (nothing to sell before shipment arrived)
+                if (!(shipArrivedThisWeek && qtyBeforeOrder === 0)) {
+                    runningQty = Math.max(0, runningQty - avgToUse);
+                }
                 extendedLabels.push(`${wEnd.getFullYear().toString().slice(-2)}/${('0'+(wEnd.getMonth()+1)).slice(-2)}/${('0'+wEnd.getDate()).slice(-2)}`);
                 predictionData.push(runningQty);
             }
