@@ -864,7 +864,8 @@ async function addNewSkuToOrder() {
 function exportOrderTable() {
     if (!_orderData || _orderData.length === 0) { alert('No data to export.'); return; }
     const q = (document.getElementById('orderTableSearch')?.value || '').toLowerCase();
-    const rows = q ? _orderData.filter(r => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)) : _orderData;
+    const rows = (q ? _orderData.filter(r => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q)) : _orderData)
+        .slice().sort((a, b) => a.code.localeCompare(b.code));
     const hd = _getArrivalDates();
     const n  = hd.next  || 'Next';
     const n2 = hd.next2 || '2nd';
