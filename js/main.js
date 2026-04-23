@@ -175,8 +175,8 @@ function updateShipmentOrder(slot, value) {
                 const depletedAtNext = Math.max(0, latestQty - avg * dw1);
                 const predAt2nd = Math.max(0, depletedAtNext + qty - avg * (dw2 - dw1));
                 const auto2 = tNext3 && dw3 > dw2
-                    ? Math.max(0, Math.round(safety + avg * (dw3 - dw2) - predAt2nd))
-                    : Math.max(0, Math.round(safety - predAt2nd));
+                    ? Math.max(0, Math.ceil(safety + avg * (dw3 - dw2) - predAt2nd))
+                    : Math.max(0, Math.ceil(safety - predAt2nd));
                 const el2 = document.getElementById('shipOrderNext2Qty');
                 if (el2 && document.activeElement !== el2) el2.value = auto2 || '';
                 setOrder(tNext2, auto2);
@@ -184,7 +184,7 @@ function updateShipmentOrder(slot, value) {
                 // Also cascade to 3rd
                 if (tNext3 && dw3 > dw2) {
                     const predAt3rd = Math.max(0, predAt2nd + auto2 - avg * (dw3 - dw2));
-                    const auto3 = Math.max(0, Math.round(safety - predAt3rd));
+                    const auto3 = Math.max(0, Math.ceil(safety - predAt3rd));
                     const el3 = document.getElementById('shipOrderNext3Qty');
                     if (el3 && document.activeElement !== el3) el3.value = auto3 || '';
                     setOrder(tNext3, auto3);
@@ -196,7 +196,7 @@ function updateShipmentOrder(slot, value) {
                 const depletedAtNext = Math.max(0, latestQty - avg * dw1);
                 const stockAt2nd = Math.max(0, depletedAtNext + shipNext - avg * (dw2 - dw1)) + qty;
                 const predAt3rd = Math.max(0, stockAt2nd - avg * (dw3 - dw2));
-                const auto3 = Math.max(0, Math.round(safety - predAt3rd));
+                const auto3 = Math.max(0, Math.ceil(safety - predAt3rd));
                 const el3 = document.getElementById('shipOrderNext3Qty');
                 if (el3 && document.activeElement !== el3) el3.value = auto3 || '';
                 setOrder(tNext3, auto3);
