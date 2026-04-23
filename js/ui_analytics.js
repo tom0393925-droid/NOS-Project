@@ -593,6 +593,8 @@ function renderCategoryScheduleBar() {
             <span class="text-gray-500">2nd: ${fmt(d2)}</span>
             <span class="text-gray-500">3rd: ${fmt(d3)}</span>
             <span id="categorySkuCount" class="ml-auto text-xs font-bold text-purple-600 bg-purple-100 px-2 py-0.5 rounded-full"></span>
+            <button onclick="document.getElementById('addSkuFormRow').classList.toggle('hidden')"
+                class="flex-shrink-0 bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap">+ Add SKU</button>
         </div>`;
 }
 
