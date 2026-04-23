@@ -207,6 +207,12 @@ function updateShipmentOrder(slot, value) {
                     setOrder(tNext3, auto3);
                     if (window._shipAutoQtys) window._shipAutoQtys.next3 = auto3;
                 }
+                // Refresh hint labels to reflect new auto values
+                if (typeof _updateShipHints === 'function') {
+                    const v2 = parseInt(document.getElementById('shipOrderNext2Qty')?.value) || 0;
+                    const v3 = parseInt(document.getElementById('shipOrderNext3Qty')?.value) || 0;
+                    _updateShipHints(qty, v2, v3);
+                }
             } else if (slot === 'next2' && tNext3 && dw3 > dw2) {
                 // 2nd changed → recalculate 3rd
                 const shipNext = orders.find(s => s.arrivalDate === tNext)?.orderQty || 0;
@@ -218,6 +224,12 @@ function updateShipmentOrder(slot, value) {
                 if (el3 && document.activeElement !== el3) el3.value = auto3 || '';
                 setOrder(tNext3, auto3);
                 if (window._shipAutoQtys) window._shipAutoQtys.next3 = auto3;
+                // Refresh hint labels
+                if (typeof _updateShipHints === 'function') {
+                    const v1 = parseInt(document.getElementById('shipOrderNextQty')?.value) || 0;
+                    const v3 = parseInt(document.getElementById('shipOrderNext3Qty')?.value) || 0;
+                    _updateShipHints(v1, qty, v3);
+                }
             }
         }
     }
