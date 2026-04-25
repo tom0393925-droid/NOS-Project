@@ -601,11 +601,6 @@
 
                             <!-- テーブル部分：カテゴリ選択時のみ表示 -->
                             <div id="orderActionSection" class="hidden">
-                            <div class="px-4 py-3 border-b border-gray-100 flex gap-2 items-center">
-                                <input type="text" id="orderTableSearch" placeholder="Search SKU Code or Item Name..."
-                                    class="flex-grow p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400 outline-none shadow-inner"
-                                    oninput="renderOrderTable()">
-                            </div>
                             <div id="addSkuFormRow" class="hidden px-4 py-3 border-b border-purple-100 bg-purple-50 flex flex-wrap gap-2 items-center">
                                 <input id="newOrderSkuCode" placeholder="SKU Code *" oninput="onNewSkuCodeInput()" class="border border-gray-300 rounded px-2 py-1.5 text-xs w-28 focus:ring-1 focus:ring-purple-400 outline-none">
                                 <span id="newSkuExistsBadge" class="text-xs font-bold px-2 py-0.5 rounded hidden"></span>
@@ -613,6 +608,11 @@
                                 <input id="newOrderSkuUom" placeholder="Unit (e.g. pcs)" class="border border-gray-300 rounded px-2 py-1.5 text-xs w-24 focus:ring-1 focus:ring-purple-400 outline-none">
                                 <button onclick="addNewSkuToOrder()" class="bg-purple-600 hover:bg-purple-700 text-white px-3 py-1.5 rounded text-xs font-bold transition-colors">Add to List</button>
                                 <span id="addOrderSkuStatus" class="text-xs font-bold text-green-700"></span>
+                            </div>
+                            <div class="px-4 py-3 border-b border-gray-100 flex gap-2 items-center">
+                                <input type="text" id="orderTableSearch" placeholder="Search SKU Code or Item Name..."
+                                    class="flex-grow p-2.5 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-purple-400 outline-none shadow-inner"
+                                    oninput="renderOrderTable()">
                             </div>
                             <div class="overflow-x-auto overflow-y-auto max-h-[500px] custom-scrollbar">
                                 <table class="w-full text-left text-sm whitespace-nowrap">
