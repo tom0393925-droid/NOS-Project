@@ -54,9 +54,10 @@ function sbInitAuth(onSuccess, onSignOut) {
             const userEmail = session.user.email;
             console.log('[Auth SIGNED_IN]', userEmail);
 
-            // キャッシュが有効なら即座に通過
+            // キャッシュが有効なら即座に通過（期限を1ヶ月延長）
             if (_getAllowedCache(userEmail)) {
                 console.log('[Auth] Cache hit - skipping DB check');
+                _setAllowedCache(userEmail);
                 onSuccess(session.user);
                 return;
             }
