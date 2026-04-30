@@ -93,24 +93,90 @@ ALTER TABLE sample_picking_data DISABLE ROW LEVEL SECURITY;
 
 -- ============================================================
 -- SKUマスター（7品目）
--- location はラックID（A〜P）に合わせる
 -- ============================================================
 INSERT INTO sample_sku_master (code, name, uom, price, tc, weight, storage_type, manufacture, location, is_ff) VALUES
-('DEMO001', 'Demo Fresh Pasta 500g',      'pkt', 0,  3.50,  0.5,  'Dry',    'Demo Foods', 'A', false),
-('DEMO002', 'Demo Soy Sauce 1L',          'btl', 0,  8.00,  1.0,  'Dry',    'Demo Foods', 'A', false),
-('DEMO003', 'Demo Seafood Sauce 500ml',   'btl', 0, 12.00,  0.6,  'Dry',    'Demo Foods', 'B', false),
-('DEMO004', 'Demo Rice 25kg',             'bag', 0, 45.00, 25.0,  'Dry',    'Demo Foods', 'C', false),
-('DEMO005', 'Demo Kitchen Towel 12pk',    'pkt', 0, 15.00,  2.0,  'Dry',    'Demo Foods', 'D', false),
-('DEMO006', 'Demo Frozen Shrimp 1kg',     'kg',  0, 25.00,  1.0,  'Frozen', 'Demo Foods', 'F', true),
-('DEMO007', 'Demo Expired Vinegar 750ml', 'btl', 0,  6.00,  0.8,  'Dry',    'Demo Foods', 'B', false);
+('DEMO001', 'Demo Fresh Pasta 500g',      'pkt', 3.50, 3.50,  0.5,  'Dry',    'Demo Foods', 'A', false),
+('DEMO002', 'Demo Soy Sauce 1L',          'btl', 0,    8.00,  1.0,  'Dry',    'Demo Foods', 'A', false),
+('DEMO003', 'Demo Seafood Sauce 500ml',   'btl', 0,   12.00,  0.6,  'Dry',    'Demo Foods', 'B', false),
+('DEMO004', 'Demo Rice 25kg',             'bag', 0,   45.00, 25.0,  'Dry',    'Demo Foods', 'C', false),
+('DEMO005', 'Demo Kitchen Towel 12pk',    'pkt', 0,   15.00,  2.0,  'Dry',    'Demo Foods', 'D', false),
+('DEMO006', 'Demo Frozen Shrimp 1kg',     'kg',  0,   25.00,  1.0,  'Frozen', 'Demo Foods', 'F', true),
+('DEMO007', 'Demo Expired Vinegar 750ml', 'btl', 0,    6.00,  0.8,  'Dry',    'Demo Foods', 'B', false);
 
 -- ============================================================
--- 週次在庫データ（8週分: 2026-03-09 〜 2026-04-27）
+-- DEMO001 週次在庫データ（52週分・3バッチ）
+-- Batch 1: expiry 2025-12-31 / 2025-05-05〜2025-08-04（14週）
+-- Batch 2: expiry 2026-09-30 / 2025-08-04〜2026-01-19（25週）
+-- Batch 3: expiry 2027-03-01 / 2026-01-19〜2026-04-27（15週）
+-- 平均販売: ~20 pkt/週 / 現在庫: 76 pkt
 -- ============================================================
 
--- DEMO001: Section 1 - New Arrival
+-- Batch 1 (expiry 2025-12-31): 280pkt入荷
 INSERT INTO sample_weekly_sales (code, expiry_date, location, week_start, ending_qty, total_sales) VALUES
-('DEMO001', '2027-03-01', 'A', '2026-04-27', 48, 0);
+('DEMO001', '2025-12-31', 'A', '2025-05-05', 260, 20),
+('DEMO001', '2025-12-31', 'A', '2025-05-12', 238, 22),
+('DEMO001', '2025-12-31', 'A', '2025-05-19', 218, 20),
+('DEMO001', '2025-12-31', 'A', '2025-05-26', 198, 20),
+('DEMO001', '2025-12-31', 'A', '2025-06-02', 178, 20),
+('DEMO001', '2025-12-31', 'A', '2025-06-09', 156, 22),
+('DEMO001', '2025-12-31', 'A', '2025-06-16', 136, 20),
+('DEMO001', '2025-12-31', 'A', '2025-06-23', 116, 20),
+('DEMO001', '2025-12-31', 'A', '2025-06-30',  96, 20),
+('DEMO001', '2025-12-31', 'A', '2025-07-07',  76, 20),
+('DEMO001', '2025-12-31', 'A', '2025-07-14',  56, 20),
+('DEMO001', '2025-12-31', 'A', '2025-07-21',  36, 20),
+('DEMO001', '2025-12-31', 'A', '2025-07-28',  14, 22),
+('DEMO001', '2025-12-31', 'A', '2025-08-04',   0, 14);
+
+-- Batch 2 (expiry 2026-09-30): 480pkt入荷
+INSERT INTO sample_weekly_sales (code, expiry_date, location, week_start, ending_qty, total_sales) VALUES
+('DEMO001', '2026-09-30', 'A', '2025-08-04', 480,  0),
+('DEMO001', '2026-09-30', 'A', '2025-08-11', 460, 20),
+('DEMO001', '2026-09-30', 'A', '2025-08-18', 440, 20),
+('DEMO001', '2026-09-30', 'A', '2025-08-25', 418, 22),
+('DEMO001', '2026-09-30', 'A', '2025-09-01', 398, 20),
+('DEMO001', '2026-09-30', 'A', '2025-09-08', 378, 20),
+('DEMO001', '2026-09-30', 'A', '2025-09-15', 358, 20),
+('DEMO001', '2026-09-30', 'A', '2025-09-22', 338, 20),
+('DEMO001', '2026-09-30', 'A', '2025-09-29', 316, 22),
+('DEMO001', '2026-09-30', 'A', '2025-10-06', 296, 20),
+('DEMO001', '2026-09-30', 'A', '2025-10-13', 276, 20),
+('DEMO001', '2026-09-30', 'A', '2025-10-20', 256, 20),
+('DEMO001', '2026-09-30', 'A', '2025-10-27', 234, 22),
+('DEMO001', '2026-09-30', 'A', '2025-11-03', 214, 20),
+('DEMO001', '2026-09-30', 'A', '2025-11-10', 194, 20),
+('DEMO001', '2026-09-30', 'A', '2025-11-17', 174, 20),
+('DEMO001', '2026-09-30', 'A', '2025-11-24', 152, 22),
+('DEMO001', '2026-09-30', 'A', '2025-12-01', 132, 20),
+('DEMO001', '2026-09-30', 'A', '2025-12-08', 112, 20),
+('DEMO001', '2026-09-30', 'A', '2025-12-15',  90, 22),
+('DEMO001', '2026-09-30', 'A', '2025-12-22',  70, 20),
+('DEMO001', '2026-09-30', 'A', '2025-12-29',  50, 20),
+('DEMO001', '2026-09-30', 'A', '2026-01-05',  30, 20),
+('DEMO001', '2026-09-30', 'A', '2026-01-12',  10, 20),
+('DEMO001', '2026-09-30', 'A', '2026-01-19',   0, 10);
+
+-- Batch 3 (expiry 2027-03-01): 360pkt入荷
+INSERT INTO sample_weekly_sales (code, expiry_date, location, week_start, ending_qty, total_sales) VALUES
+('DEMO001', '2027-03-01', 'A', '2026-01-19', 360,  0),
+('DEMO001', '2027-03-01', 'A', '2026-01-26', 340, 20),
+('DEMO001', '2027-03-01', 'A', '2026-02-02', 320, 20),
+('DEMO001', '2027-03-01', 'A', '2026-02-09', 300, 20),
+('DEMO001', '2027-03-01', 'A', '2026-02-16', 280, 20),
+('DEMO001', '2027-03-01', 'A', '2026-02-23', 258, 22),
+('DEMO001', '2027-03-01', 'A', '2026-03-02', 238, 20),
+('DEMO001', '2027-03-01', 'A', '2026-03-09', 218, 20),
+('DEMO001', '2027-03-01', 'A', '2026-03-16', 198, 20),
+('DEMO001', '2027-03-01', 'A', '2026-03-23', 178, 20),
+('DEMO001', '2027-03-01', 'A', '2026-03-30', 156, 22),
+('DEMO001', '2027-03-01', 'A', '2026-04-06', 136, 20),
+('DEMO001', '2027-03-01', 'A', '2026-04-13', 116, 20),
+('DEMO001', '2027-03-01', 'A', '2026-04-20',  96, 20),
+('DEMO001', '2027-03-01', 'A', '2026-04-27',  76, 20);
+
+-- ============================================================
+-- DEMO002〜DEMO007: 8週分データ（2026-03-09〜2026-04-27）
+-- ============================================================
 
 -- DEMO002: Section 2 - No Sale 1m / Expiry < 3m
 INSERT INTO sample_weekly_sales (code, expiry_date, location, week_start, ending_qty, total_sales) VALUES
@@ -198,73 +264,131 @@ INSERT INTO sample_sku_category_map (sku_code, category_id) VALUES
 ('DEMO006', 'RFJP');
 
 -- ============================================================
--- 入荷予定
+-- 入荷予定（DEMO001: 過去2回完了 + 次回pending）
 -- ============================================================
 INSERT INTO sample_shipment_orders (code, arrival_date, order_qty, status) VALUES
-('DEMO002', '2026-05-15', 200, 'pending'),
-('DEMO004', '2026-05-15',  30, 'pending'),
-('DEMO003', '2026-06-12', 150, 'pending');
+('DEMO001', '2025-08-04',  480, 'completed'),
+('DEMO001', '2026-01-19',  360, 'completed'),
+('DEMO001', '2026-05-15',  240, 'pending'),
+('DEMO002', '2026-05-15',  200, 'pending'),
+('DEMO004', '2026-05-15',   30, 'pending'),
+('DEMO003', '2026-06-12',  150, 'pending');
 
 -- ============================================================
--- ピッキングデータ（Warehouse Map用）
--- ラック色の目安: 合計>50=赤 / >20=黄 / >0=青
--- Rack A(DEMO001+002): 赤, Rack B(DEMO003+007): 黄, Rack C: 青, Rack D: 青, Rack F: 赤
+-- ピッキングデータ
+-- DEMO001: 52週分（2025-05-05〜2026-04-27）
+-- DEMO002〜006: 8週分（2026-03-09〜2026-04-27）
 -- ============================================================
+
+-- DEMO001: 52週 / 約20pkt・8回/週
 INSERT INTO sample_picking_data (code, client_name, week_start, pick_qty, pick_count) VALUES
--- DEMO001: Rack A / 高頻度（週8回）
-('DEMO001', 'Demo Client', '2026-03-09',  40, 8),
-('DEMO001', 'Demo Client', '2026-03-16',  40, 8),
-('DEMO001', 'Demo Client', '2026-03-23',  40, 8),
-('DEMO001', 'Demo Client', '2026-03-30',  40, 8),
-('DEMO001', 'Demo Client', '2026-04-06',  40, 8),
-('DEMO001', 'Demo Client', '2026-04-13',  40, 8),
-('DEMO001', 'Demo Client', '2026-04-20',  40, 8),
-('DEMO001', 'Demo Client', '2026-04-27',  40, 8),
+('DEMO001', 'Demo Client', '2025-05-05', 20, 8),
+('DEMO001', 'Demo Client', '2025-05-12', 22, 8),
+('DEMO001', 'Demo Client', '2025-05-19', 20, 8),
+('DEMO001', 'Demo Client', '2025-05-26', 20, 7),
+('DEMO001', 'Demo Client', '2025-06-02', 20, 8),
+('DEMO001', 'Demo Client', '2025-06-09', 22, 9),
+('DEMO001', 'Demo Client', '2025-06-16', 20, 8),
+('DEMO001', 'Demo Client', '2025-06-23', 20, 8),
+('DEMO001', 'Demo Client', '2025-06-30', 20, 8),
+('DEMO001', 'Demo Client', '2025-07-07', 20, 8),
+('DEMO001', 'Demo Client', '2025-07-14', 20, 7),
+('DEMO001', 'Demo Client', '2025-07-21', 20, 8),
+('DEMO001', 'Demo Client', '2025-07-28', 22, 8),
+('DEMO001', 'Demo Client', '2025-08-04', 14, 6),
+('DEMO001', 'Demo Client', '2025-08-11', 20, 8),
+('DEMO001', 'Demo Client', '2025-08-18', 20, 8),
+('DEMO001', 'Demo Client', '2025-08-25', 22, 9),
+('DEMO001', 'Demo Client', '2025-09-01', 20, 8),
+('DEMO001', 'Demo Client', '2025-09-08', 20, 8),
+('DEMO001', 'Demo Client', '2025-09-15', 20, 8),
+('DEMO001', 'Demo Client', '2025-09-22', 20, 8),
+('DEMO001', 'Demo Client', '2025-09-29', 22, 9),
+('DEMO001', 'Demo Client', '2025-10-06', 20, 8),
+('DEMO001', 'Demo Client', '2025-10-13', 20, 8),
+('DEMO001', 'Demo Client', '2025-10-20', 20, 8),
+('DEMO001', 'Demo Client', '2025-10-27', 22, 8),
+('DEMO001', 'Demo Client', '2025-11-03', 20, 8),
+('DEMO001', 'Demo Client', '2025-11-10', 20, 8),
+('DEMO001', 'Demo Client', '2025-11-17', 20, 7),
+('DEMO001', 'Demo Client', '2025-11-24', 22, 9),
+('DEMO001', 'Demo Client', '2025-12-01', 20, 8),
+('DEMO001', 'Demo Client', '2025-12-08', 20, 8),
+('DEMO001', 'Demo Client', '2025-12-15', 22, 8),
+('DEMO001', 'Demo Client', '2025-12-22', 20, 8),
+('DEMO001', 'Demo Client', '2025-12-29', 20, 8),
+('DEMO001', 'Demo Client', '2026-01-05', 20, 8),
+('DEMO001', 'Demo Client', '2026-01-12', 20, 7),
+('DEMO001', 'Demo Client', '2026-01-19', 10, 5),
+('DEMO001', 'Demo Client', '2026-01-26', 20, 8),
+('DEMO001', 'Demo Client', '2026-02-02', 20, 8),
+('DEMO001', 'Demo Client', '2026-02-09', 20, 8),
+('DEMO001', 'Demo Client', '2026-02-16', 20, 8),
+('DEMO001', 'Demo Client', '2026-02-23', 22, 9),
+('DEMO001', 'Demo Client', '2026-03-02', 20, 8),
+('DEMO001', 'Demo Client', '2026-03-09', 20, 8),
+('DEMO001', 'Demo Client', '2026-03-16', 20, 8),
+('DEMO001', 'Demo Client', '2026-03-23', 20, 8),
+('DEMO001', 'Demo Client', '2026-03-30', 22, 9),
+('DEMO001', 'Demo Client', '2026-04-06', 20, 8),
+('DEMO001', 'Demo Client', '2026-04-13', 20, 8),
+('DEMO001', 'Demo Client', '2026-04-20', 20, 8),
+('DEMO001', 'Demo Client', '2026-04-27', 20, 8);
+
 -- DEMO002: Rack A / 中頻度（週5回）
-('DEMO002', 'Demo Client', '2026-03-09',  20, 5),
-('DEMO002', 'Demo Client', '2026-03-16',  20, 5),
-('DEMO002', 'Demo Client', '2026-03-23',  20, 5),
-('DEMO002', 'Demo Client', '2026-03-30',  20, 5),
-('DEMO002', 'Demo Client', '2026-04-06',  20, 5),
-('DEMO002', 'Demo Client', '2026-04-13',  20, 5),
-('DEMO002', 'Demo Client', '2026-04-20',  20, 5),
-('DEMO002', 'Demo Client', '2026-04-27',  20, 5),
+INSERT INTO sample_picking_data (code, client_name, week_start, pick_qty, pick_count) VALUES
+('DEMO002', 'Demo Client', '2026-03-09', 20, 5),
+('DEMO002', 'Demo Client', '2026-03-16', 20, 5),
+('DEMO002', 'Demo Client', '2026-03-23', 20, 5),
+('DEMO002', 'Demo Client', '2026-03-30', 20, 5),
+('DEMO002', 'Demo Client', '2026-04-06', 20, 5),
+('DEMO002', 'Demo Client', '2026-04-13', 20, 5),
+('DEMO002', 'Demo Client', '2026-04-20', 20, 5),
+('DEMO002', 'Demo Client', '2026-04-27', 20, 5);
+
 -- DEMO003: Rack B / 中頻度（週4回）
-('DEMO003', 'Demo Client', '2026-03-09',  15, 4),
-('DEMO003', 'Demo Client', '2026-03-16',  15, 4),
-('DEMO003', 'Demo Client', '2026-03-23',  15, 4),
-('DEMO003', 'Demo Client', '2026-03-30',  15, 4),
-('DEMO003', 'Demo Client', '2026-04-06',  15, 3),
-('DEMO003', 'Demo Client', '2026-04-13',  15, 3),
-('DEMO003', 'Demo Client', '2026-04-20',  15, 3),
-('DEMO003', 'Demo Client', '2026-04-27',  15, 3),
+INSERT INTO sample_picking_data (code, client_name, week_start, pick_qty, pick_count) VALUES
+('DEMO003', 'Demo Client', '2026-03-09', 15, 4),
+('DEMO003', 'Demo Client', '2026-03-16', 15, 4),
+('DEMO003', 'Demo Client', '2026-03-23', 15, 4),
+('DEMO003', 'Demo Client', '2026-03-30', 15, 4),
+('DEMO003', 'Demo Client', '2026-04-06', 15, 3),
+('DEMO003', 'Demo Client', '2026-04-13', 15, 3),
+('DEMO003', 'Demo Client', '2026-04-20', 15, 3),
+('DEMO003', 'Demo Client', '2026-04-27', 15, 3);
+
 -- DEMO004: Rack C / 低頻度（週2回）
-('DEMO004', 'Demo Client', '2026-03-09',  10, 2),
-('DEMO004', 'Demo Client', '2026-03-16',  10, 2),
-('DEMO004', 'Demo Client', '2026-03-23',  10, 2),
-('DEMO004', 'Demo Client', '2026-03-30',  10, 2),
-('DEMO004', 'Demo Client', '2026-04-06',  10, 1),
-('DEMO004', 'Demo Client', '2026-04-13',  10, 1),
-('DEMO004', 'Demo Client', '2026-04-20',  10, 1),
-('DEMO004', 'Demo Client', '2026-04-27',  10, 1),
+INSERT INTO sample_picking_data (code, client_name, week_start, pick_qty, pick_count) VALUES
+('DEMO004', 'Demo Client', '2026-03-09', 10, 2),
+('DEMO004', 'Demo Client', '2026-03-16', 10, 2),
+('DEMO004', 'Demo Client', '2026-03-23', 10, 2),
+('DEMO004', 'Demo Client', '2026-03-30', 10, 2),
+('DEMO004', 'Demo Client', '2026-04-06', 10, 1),
+('DEMO004', 'Demo Client', '2026-04-13', 10, 1),
+('DEMO004', 'Demo Client', '2026-04-20', 10, 1),
+('DEMO004', 'Demo Client', '2026-04-27', 10, 1);
+
 -- DEMO005: Rack D / 低頻度（週1回）
-('DEMO005', 'Demo Client', '2026-03-09',   5, 1),
-('DEMO005', 'Demo Client', '2026-03-16',   5, 1),
-('DEMO005', 'Demo Client', '2026-03-23',   5, 1),
-('DEMO005', 'Demo Client', '2026-03-30',   5, 1),
-('DEMO005', 'Demo Client', '2026-04-06',   5, 1),
-('DEMO005', 'Demo Client', '2026-04-13',   5, 1),
-('DEMO005', 'Demo Client', '2026-04-20',   5, 1),
-('DEMO005', 'Demo Client', '2026-04-27',   5, 1),
+INSERT INTO sample_picking_data (code, client_name, week_start, pick_qty, pick_count) VALUES
+('DEMO005', 'Demo Client', '2026-03-09',  5, 1),
+('DEMO005', 'Demo Client', '2026-03-16',  5, 1),
+('DEMO005', 'Demo Client', '2026-03-23',  5, 1),
+('DEMO005', 'Demo Client', '2026-03-30',  5, 1),
+('DEMO005', 'Demo Client', '2026-04-06',  5, 1),
+('DEMO005', 'Demo Client', '2026-04-13',  5, 1),
+('DEMO005', 'Demo Client', '2026-04-20',  5, 1),
+('DEMO005', 'Demo Client', '2026-04-27',  5, 1);
+
 -- DEMO006: Rack F / 高頻度・Frozen（週9回）
-('DEMO006', 'Demo Client', '2026-03-09',  35, 9),
-('DEMO006', 'Demo Client', '2026-03-16',  35, 9),
-('DEMO006', 'Demo Client', '2026-03-23',  35, 9),
-('DEMO006', 'Demo Client', '2026-03-30',  35, 9),
-('DEMO006', 'Demo Client', '2026-04-06',  35, 9),
-('DEMO006', 'Demo Client', '2026-04-13',  35, 9),
-('DEMO006', 'Demo Client', '2026-04-20',  35, 9),
-('DEMO006', 'Demo Client', '2026-04-27',  35, 9);
+INSERT INTO sample_picking_data (code, client_name, week_start, pick_qty, pick_count) VALUES
+('DEMO006', 'Demo Client', '2026-03-09', 35, 9),
+('DEMO006', 'Demo Client', '2026-03-16', 35, 9),
+('DEMO006', 'Demo Client', '2026-03-23', 35, 9),
+('DEMO006', 'Demo Client', '2026-03-30', 35, 9),
+('DEMO006', 'Demo Client', '2026-04-06', 35, 9),
+('DEMO006', 'Demo Client', '2026-04-13', 35, 9),
+('DEMO006', 'Demo Client', '2026-04-20', 35, 9),
+('DEMO006', 'Demo Client', '2026-04-27', 35, 9);
 
 -- ============================================================
 -- 削除用SQL（不要になったらこれだけ実行）
