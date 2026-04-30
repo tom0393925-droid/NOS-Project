@@ -635,12 +635,12 @@ async function sbLoadSampleData(statusCallback) {
 
     log('Loading sample SKU master...');
     const { data: masterRows, error: e1 } = await _sb
-        .from('sku_master').select('*').like('code', 'DEMO%');
+        .from('sample_sku_master').select('*');
     if (e1) throw e1;
 
     log('Loading sample weekly sales...');
     const { data: salesRows, error: e2 } = await _sb
-        .from('weekly_sales').select('*').like('code', 'DEMO%')
+        .from('sample_weekly_sales').select('*')
         .order('week_start', { ascending: true });
     if (e2) throw e2;
 
