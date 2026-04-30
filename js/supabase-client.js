@@ -25,6 +25,27 @@ async function sbSignOut() {
     // SIGNED_OUT イベントで UI を更新（onAuthStateChange が処理）
 }
 
+// 許可済みメールのキャッシュ（1ヶ月有効）
+function _getAllowedCache(email) {
+    try {
+        const raw = localStorage.getItem('auth_allowed_' + email);
+        if (!raw) return false;
+        const { expiry } = JSON.parse(raw);
+        if (Date.now() > expiry) {
+            localStorage.removeItem('auth_allowed_' + email);
+            return false;
+        }
+        return true;
+    } catch { return false; }
+}
+
+function _setAllowedCache(email) {
+    try {
+        const expiry = Date.now() + 30 * 24 * 60 * 60 * 1000;
+        localStorage.setItem('auth_allowed_' + email, JSON.stringify({ expiry }));
+    } catch {}
+}
+
 // onAuthStateChange ベースの認証初期化（OAuthリダイレクト後も確実に動作）
 function sbInitAuth(onSuccess, onSignOut) {
     _sb.auth.onAuthStateChange(async (event, session) => {
@@ -32,6 +53,14 @@ function sbInitAuth(onSuccess, onSignOut) {
         if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session) {
             const userEmail = session.user.email;
             console.log('[Auth SIGNED_IN]', userEmail);
+
+            // キャッシュが有効なら即座に通過
+            if (_getAllowedCache(userEmail)) {
+                console.log('[Auth] Cache hit - skipping DB check');
+                onSuccess(session.user);
+                return;
+            }
+
             try {
                 const timeoutPromise = new Promise((_, reject) =>
                     setTimeout(() => reject(new Error('Auth timeout')), 5000)
@@ -42,6 +71,7 @@ function sbInitAuth(onSuccess, onSignOut) {
                 ]);
                 console.log('[allowed_emails]', data, error);
                 if (data && data.length > 0) {
+                    _setAllowedCache(userEmail);
                     onSuccess(session.user);
                 } else {
                     console.warn('[Auth] Not authorized or query failed:', error?.message);
