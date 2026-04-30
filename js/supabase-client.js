@@ -623,3 +623,74 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = false) {
         }, 100);
     }, 0);
 }
+
+// ==========================================
+// Sample Data Load (DEMO% codes only)
+// ==========================================
+async function sbLoadSampleData(statusCallback) {
+    const log = msg => {
+        if (statusCallback) statusCallback(msg);
+        _showLoading(msg);
+    };
+
+    log('Loading sample SKU master...');
+    const { data: masterRows, error: e1 } = await _sb
+        .from('sku_master').select('*').like('code', 'DEMO%');
+    if (e1) throw e1;
+
+    log('Loading sample weekly sales...');
+    const { data: salesRows, error: e2 } = await _sb
+        .from('weekly_sales').select('*').like('code', 'DEMO%')
+        .order('week_start', { ascending: true });
+    if (e2) throw e2;
+
+    log('Converting data...');
+    const masterData = {};
+    for (const row of masterRows) {
+        masterData[row.code] = {
+            name: row.name, uom: row.uom, price: row.price,
+            tc: row.tc, weight: row.weight, storageType: row.storage_type,
+            manufacture: row.manufacture, location: row.location,
+            isFF: row.is_ff, safetyStock: 0,
+        };
+    }
+
+    const { historyData: hd, weekKeys, weekLabels } = _weeklySalesToHistoryData(salesRows);
+    for (const key in hd) {
+        const code = hd[key].code;
+        if (masterData[code]) {
+            hd[key].name = masterData[code].name;
+            hd[key].uom  = masterData[code].uom;
+        }
+    }
+
+    window._loadedWeekKeys  = weekKeys;
+    skuMaster               = masterData;
+    historyData             = hd;
+    invoiceHistoryData      = {};
+    loadedWeeks             = weekKeys.length;
+    loadedFiles             = weekLabels;
+    loadedInvoiceWeeks      = 0;
+    loadedInvoiceFiles      = [];
+    window.shipmentOrders   = {};
+    window.orderCategories  = {};
+    window.skuCategoryMap   = {};
+    globalDryNext = globalDryNext2 = globalDryNext3 = '';
+    globalFrozenNext = globalFrozenNext2 = globalFrozenNext3 = '';
+
+    const wkEl = document.getElementById('uiWeekCount');
+    if (wkEl) wkEl.innerText = loadedWeeks;
+
+    log(`Sample loaded: ${masterRows.length} SKUs / ${weekKeys.length} weeks`);
+    _showLoading('Rendering...');
+    setTimeout(() => {
+        if (typeof renderActionList  === 'function') renderActionList();
+        setTimeout(() => {
+            if (typeof updateAnalyticsUI  === 'function') updateAnalyticsUI();
+            setTimeout(() => {
+                if (typeof renderWarehouseMap === 'function') renderWarehouseMap();
+                _hideLoading();
+            }, 200);
+        }, 100);
+    }, 0);
+}
