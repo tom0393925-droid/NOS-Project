@@ -38,6 +38,10 @@ CREATE TABLE sample_weekly_sales (
     total_sales  numeric
 );
 
+-- RLS無効化（既存テーブルと同じ設定）
+ALTER TABLE sample_sku_master   DISABLE ROW LEVEL SECURITY;
+ALTER TABLE sample_weekly_sales DISABLE ROW LEVEL SECURITY;
+
 -- ============================================================
 -- サンプルSKU（7品目 / NOS Meetingの全セクションをカバー）
 -- ============================================================
