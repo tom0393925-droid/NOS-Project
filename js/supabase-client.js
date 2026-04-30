@@ -625,7 +625,7 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = false) {
 }
 
 // ==========================================
-// Sample Data Load (DEMO% codes only)
+// Sample Data Load
 // ==========================================
 async function sbLoadSampleData(statusCallback) {
     const log = msg => {
@@ -634,17 +634,28 @@ async function sbLoadSampleData(statusCallback) {
     };
 
     log('Loading sample SKU master...');
-    const { data: masterRows, error: e1 } = await _sb
-        .from('sample_sku_master').select('*');
+    const { data: masterRows, error: e1 } = await _sb.from('sample_sku_master').select('*');
     if (e1) throw e1;
 
     log('Loading sample weekly sales...');
-    const { data: salesRows, error: e2 } = await _sb
-        .from('sample_weekly_sales').select('*')
-        .order('week_start', { ascending: true });
+    const { data: salesRows, error: e2 } = await _sb.from('sample_weekly_sales').select('*').order('week_start', { ascending: true });
     if (e2) throw e2;
 
+    log('Loading sample order categories...');
+    const { data: catRows, error: e3 } = await _sb.from('sample_order_categories').select('*').order('id');
+    if (e3) throw e3;
+
+    log('Loading sample SKU category map...');
+    const { data: catMapRows, error: e4 } = await _sb.from('sample_sku_category_map').select('*');
+    if (e4) throw e4;
+
+    log('Loading sample shipment orders...');
+    const { data: orderRows, error: e5 } = await _sb.from('sample_shipment_orders').select('*').order('arrival_date', { ascending: true });
+    if (e5) throw e5;
+
     log('Converting data...');
+
+    // SKU master
     const masterData = {};
     for (const row of masterRows) {
         masterData[row.code] = {
@@ -655,6 +666,7 @@ async function sbLoadSampleData(statusCallback) {
         };
     }
 
+    // History data
     const { historyData: hd, weekKeys, weekLabels } = _weeklySalesToHistoryData(salesRows);
     for (const key in hd) {
         const code = hd[key].code;
@@ -664,25 +676,64 @@ async function sbLoadSampleData(statusCallback) {
         }
     }
 
-    window._loadedWeekKeys  = weekKeys;
-    skuMaster               = masterData;
-    historyData             = hd;
-    invoiceHistoryData      = {};
-    loadedWeeks             = weekKeys.length;
-    loadedFiles             = weekLabels;
-    loadedInvoiceWeeks      = 0;
-    loadedInvoiceFiles      = [];
-    window.shipmentOrders   = {};
-    window.orderCategories  = {};
-    window.skuCategoryMap   = {};
-    globalDryNext = globalDryNext2 = globalDryNext3 = '';
-    globalFrozenNext = globalFrozenNext2 = globalFrozenNext3 = '';
+    // Order categories
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const sampleCats = {};
+    for (const row of catRows) {
+        const parsed = _parseCategoryConfig(row.name || row.id);
+        const future = [row.next1, row.next2, row.next3].filter(d => d && new Date(d) >= today);
+        while (future.length < 3) future.push('');
+        sampleCats[row.id] = {
+            id: row.id, name: parsed.displayName || row.id,
+            parentId: parsed.parentId || null, prefixes: parsed.prefixes || null,
+            next1: future[0], next2: future[1], next3: future[2],
+        };
+    }
+
+    // SKU category map
+    const sampleCatMap = {};
+    for (const row of catMapRows) {
+        if (!sampleCatMap[row.sku_code]) sampleCatMap[row.sku_code] = [];
+        sampleCatMap[row.sku_code].push(row.category_id);
+    }
+
+    // Shipment orders
+    const sampleOrders = {};
+    for (const row of orderRows) {
+        if (!sampleOrders[row.code]) sampleOrders[row.code] = [];
+        sampleOrders[row.code].push({ arrivalDate: row.arrival_date, orderQty: row.order_qty, status: row.status });
+    }
+
+    // Set globals
+    window._loadedWeekKeys = weekKeys;
+    skuMaster              = masterData;
+    historyData            = hd;
+    invoiceHistoryData     = {};
+    loadedWeeks            = weekKeys.length;
+    loadedFiles            = weekLabels;
+    loadedInvoiceWeeks     = 0;
+    loadedInvoiceFiles     = [];
+    window.shipmentOrders  = sampleOrders;
+    window.orderCategories = sampleCats;
+    window.skuCategoryMap  = sampleCatMap;
+
+    const cfjp = sampleCats['CFJP'] || {};
+    const rfjp = sampleCats['RFJP'] || {};
+    globalDryNext    = cfjp.next1 || '';
+    globalDryNext2   = cfjp.next2 || '';
+    globalDryNext3   = cfjp.next3 || '';
+    globalFrozenNext  = rfjp.next1 || '';
+    globalFrozenNext2 = rfjp.next2 || '';
+    globalFrozenNext3 = rfjp.next3 || '';
 
     const wkEl = document.getElementById('uiWeekCount');
     if (wkEl) wkEl.innerText = loadedWeeks;
 
     log(`Sample loaded: ${masterRows.length} SKUs / ${weekKeys.length} weeks`);
     _showLoading('Rendering...');
+    if (typeof renderCategoryManagement === 'function') renderCategoryManagement();
+    if (typeof renderOrderCategoryTabs  === 'function') renderOrderCategoryTabs();
+    if (typeof renderMasterList         === 'function') renderMasterList();
     setTimeout(() => {
         if (typeof renderActionList  === 'function') renderActionList();
         setTimeout(() => {
