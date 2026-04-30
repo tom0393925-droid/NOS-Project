@@ -275,17 +275,35 @@ function _encodeCategoryConfig(displayName, parentId, prefixes) {
 async function sbLoadOrderCategories() {
     const { data, error } = await _sb.from('order_categories').select('*').order('id');
     if (error) throw error;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const shiftDates = (...ds) => {
+        const future = ds.filter(d => d && new Date(d) >= today);
+        while (future.length < 3) future.push('');
+        return future;
+    };
+
     const result = {};
     for (const row of data) {
         const parsed = _parseCategoryConfig(row.name || row.id);
+        const [n1, n2, n3] = shiftDates(row.next1, row.next2, row.next3);
+
+        const changed = n1 !== (row.next1 || '') || n2 !== (row.next2 || '') || n3 !== (row.next3 || '');
+        if (changed) {
+            try {
+                await sbSaveOrderCategory({ id: row.id, name: row.name || row.id, next1: n1 || null, next2: n2 || null, next3: n3 || null });
+            } catch (e) { console.error('Category date shift save failed:', e); }
+        }
+
         result[row.id] = {
             id:       row.id,
             name:     parsed.displayName || row.id,
             parentId: parsed.parentId || null,
             prefixes: parsed.prefixes || null,
-            next1:    row.next1 || '',
-            next2:    row.next2 || '',
-            next3:    row.next3 || '',
+            next1:    n1,
+            next2:    n2,
+            next3:    n3,
         };
     }
     return result;
