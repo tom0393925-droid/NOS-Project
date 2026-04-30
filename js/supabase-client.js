@@ -653,6 +653,10 @@ async function sbLoadSampleData(statusCallback) {
     const { data: orderRows, error: e5 } = await _sb.from('sample_shipment_orders').select('*').order('arrival_date', { ascending: true });
     if (e5) throw e5;
 
+    log('Loading sample picking data...');
+    const { data: pickingRows, error: e6 } = await _sb.from('sample_picking_data').select('*').order('week_start', { ascending: true });
+    if (e6) throw e6;
+
     log('Converting data...');
 
     // SKU master
@@ -704,15 +708,17 @@ async function sbLoadSampleData(statusCallback) {
         sampleOrders[row.code].push({ arrivalDate: row.arrival_date, orderQty: row.order_qty, status: row.status });
     }
 
+    const invoiceHd = _pickingDataToInvoiceHistory(pickingRows, weekKeys);
+
     // Set globals
     window._loadedWeekKeys = weekKeys;
     skuMaster              = masterData;
     historyData            = hd;
-    invoiceHistoryData     = {};
+    invoiceHistoryData     = invoiceHd;
     loadedWeeks            = weekKeys.length;
     loadedFiles            = weekLabels;
-    loadedInvoiceWeeks     = 0;
-    loadedInvoiceFiles     = [];
+    loadedInvoiceWeeks     = weekKeys.length;
+    loadedInvoiceFiles     = weekLabels.map(w => 'Picking ' + w);
     window.shipmentOrders  = sampleOrders;
     window.orderCategories = sampleCats;
     window.skuCategoryMap  = sampleCatMap;
