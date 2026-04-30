@@ -112,7 +112,7 @@
                             <p class="text-sm text-gray-500 mt-1">Load DEMO sample data only. Real data will not be affected.</p>
                             <p id="sampleLoadStatus" class="text-sm mt-1 font-medium text-gray-400"></p>
                         </div>
-                        <button onclick="sbLoadSampleData(msg => document.getElementById('sampleLoadStatus').textContent = msg)"
+                        <button onclick="sbLoadSampleData(msg => document.getElementById('sampleLoadStatus').textContent = msg).catch(e => { document.getElementById('sampleLoadStatus').textContent = 'Error: ' + e.message; document.getElementById('loadingOverlay').classList.add('hidden'); })"
                             class="bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-bold transition-colors shadow-md whitespace-nowrap flex-shrink-0">
                             🧪 Load Sample Data
                         </button>
