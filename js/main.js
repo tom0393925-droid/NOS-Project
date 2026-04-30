@@ -358,13 +358,23 @@ if ('scrollRestoration' in history) {
 }
 
 window.onload = function() {
+    const _authTimer = setTimeout(() => {
+        const overlay = document.getElementById('authOverlay');
+        if (overlay && !overlay.classList.contains('hidden')) {
+            console.warn('[Auth] Timeout - redirecting to login');
+            window.location.href = 'login.html';
+        }
+    }, 8000);
+
     sbInitAuth(
         function(user) {
+            clearTimeout(_authTimer);
             document.getElementById('authOverlay')?.classList.add('hidden');
             document.getElementById('userEmail').textContent = user.email;
             document.getElementById('userInfoBar').classList.remove('hidden');
         },
         function() {
+            clearTimeout(_authTimer);
             window.location.href = 'login.html';
         }
     );

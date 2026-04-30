@@ -33,10 +33,13 @@ function sbInitAuth(onSuccess, onSignOut) {
             const userEmail = session.user.email;
             console.log('[Auth SIGNED_IN]', userEmail);
             try {
-                const { data, error } = await _sb
-                    .from('allowed_emails')
-                    .select('email')
-                    .eq('email', userEmail);
+                const timeoutPromise = new Promise((_, reject) =>
+                    setTimeout(() => reject(new Error('Auth timeout')), 5000)
+                );
+                const { data, error } = await Promise.race([
+                    _sb.from('allowed_emails').select('email').eq('email', userEmail),
+                    timeoutPromise
+                ]);
                 console.log('[allowed_emails]', data, error);
                 if (data && data.length > 0) {
                     onSuccess(session.user);
