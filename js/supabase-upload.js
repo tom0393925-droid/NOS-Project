@@ -1,4 +1,4 @@
-// ==========================================
+﻿// ==========================================
 // js/supabase-upload.js
 // Supabase へのデータアップロード処理
 // ==========================================
@@ -26,7 +26,7 @@ function _parseInventoryExcel(file) {
                 // 行3（index 2）から期間を取得
                 const dateRow = String(rows[2]?.[0] || '');
                 const match = dateRow.match(/Beginning:\s*(\d{2}\/\d{2}\/\d{4})/);
-                if (!match) throw new Error(`日付行が見つかりません。行3に "Beginning: DD/MM/YYYY ..." が必要です。\n実際の内容: "${dateRow}"`);
+                if (!match) throw new Error(`Date row not found. Row 3 must contain "Beginning: DD/MM/YYYY ..."\nActual content: "${dateRow}"`);
 
                 // DD/MM/YYYY → YYYY-MM-DD
                 const [dd, mm, yyyy] = match[1].split('/');
@@ -58,13 +58,13 @@ function _parseInventoryExcel(file) {
                     });
                 }
 
-                if (records.length === 0) throw new Error('データ行が見つかりませんでした。Excelのフォーマットを確認してください。');
+                if (records.length === 0) throw new Error('No data rows found. Please check the Excel format.');
                 resolve({ weekStart, records, fileName: file.name });
             } catch (err) {
                 reject(err);
             }
         };
-        reader.onerror = () => reject(new Error('ファイルの読み込みに失敗しました。'));
+        reader.onerror = () => reject(new Error('Failed to read file.'));
         if (isCsv) {
             reader.readAsText(file, 'UTF-8');
         } else {
@@ -80,11 +80,11 @@ async function uploadWeeklyInventoryFiles(files) {
 
     const fileList = Array.from(files).filter(f => f.name.match(/\.(xlsx|xls|csv)$/i));
     if (fileList.length === 0) {
-        statusEl.innerHTML = '<span class="text-red-600">❌ ファイル (.xlsx / .xls / .csv) を選択してください。</span>';
+        statusEl.innerHTML = '<span class="text-red-600">❌ Please select a file (.xlsx / .xls / .csv).</span>';
         return;
     }
 
-    statusEl.innerHTML = `<span class="text-blue-600">⏳ ${fileList.length}ファイルを処理中...</span>`;
+    statusEl.innerHTML = `<span class="text-blue-600">⏳ Processing ${fileList.length} file(s)...</span>`;
     if (progressEl) progressEl.style.display = 'block';
 
     let successCount = 0;
@@ -104,7 +104,7 @@ async function uploadWeeklyInventoryFiles(files) {
                 await sbUpsertWeeklySales(records.slice(i, i + chunkSize));
             }
 
-            logs.push(`✅ ${weekStart} (${records.length}件) — ${file.name}`);
+            logs.push(`✅ ${weekStart} (${records.length} records) — ${file.name}`);
             successCount++;
         } catch (err) {
             logs.push(`❌ ${file.name}: ${err.message}`);
@@ -114,7 +114,7 @@ async function uploadWeeklyInventoryFiles(files) {
 
     if (progressEl) progressEl.style.display = 'none';
 
-    const summary = `完了: ${successCount}件成功 / ${errorCount}件エラー`;
+    const summary = `Done: ${successCount} succeeded / ${errorCount} failed`;
     statusEl.innerHTML = `
         <div class="font-bold mb-1 ${errorCount > 0 ? 'text-yellow-700' : 'text-green-700'}">${summary}</div>
         <div class="text-xs text-gray-600 space-y-0.5 max-h-32 overflow-y-auto">${logs.map(l => `<div>${l}</div>`).join('')}</div>
@@ -142,19 +142,19 @@ async function uploadSkuMasterFile(files) {
 
     const fileList = Array.from(files).filter(f => f.name.match(/\.(xlsx|xls|csv)$/i));
     if (fileList.length === 0) {
-        statusEl.innerHTML = '<span class="text-red-600">❌ Excelまたはcsvファイルを選択してください。</span>';
+        statusEl.innerHTML = '<span class="text-red-600">❌ Please select an Excel or CSV file.</span>';
         return;
     }
 
     const file = fileList[0];
-    statusEl.innerHTML = '<span class="text-blue-600">⏳ 読み込み中...</span>';
+    statusEl.innerHTML = '<span class="text-blue-600">⏳ Loading...</span>';
 
     try {
         const isCsv = file.name.toLowerCase().endsWith('.csv');
         const content = await new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = e => resolve(e.target.result);
-            reader.onerror = () => reject(new Error('読み込み失敗'));
+            reader.onerror = () => reject(new Error('Failed to read file'));
             isCsv ? reader.readAsText(file, 'UTF-8') : reader.readAsBinaryString(file);
         });
 
@@ -172,7 +172,7 @@ async function uploadSkuMasterFile(files) {
                 break;
             }
         }
-        if (headerRow < 0) throw new Error('ヘッダー行（SKU列）が見つかりません。');
+        if (headerRow < 0) throw new Error('Header row (SKU column) not found.');
 
         // ヘッダーから列インデックスを動的に取得
         const headers = rows[headerRow].map(h => String(h).trim().toLowerCase());
@@ -198,7 +198,7 @@ async function uploadSkuMasterFile(files) {
         const iUom  = col('uom');
         const iTemp = col('temp');
 
-        if (iSku < 0) throw new Error('SKU列が見つかりません。');
+        if (iSku < 0) throw new Error('SKU column not found.');
 
         // データ行を解析（重複はMapで後勝ち）
         const recordMap = new Map();
@@ -216,9 +216,9 @@ async function uploadSkuMasterFile(files) {
         }
 
         const records = [...recordMap.values()];
-        if (records.length === 0) throw new Error('データ行が見つかりません。');
+        if (records.length === 0) throw new Error('No data rows found.');
 
-        statusEl.innerHTML = `<span class="text-blue-600">⏳ ${records.length}件をSupabaseに登録中...</span>`;
+        statusEl.innerHTML = `<span class="text-blue-600">⏳ ${records.length} records uploading to Supabase...</span>`;
 
         // 既存データを upsert（code が同じなら上書き）
         const chunkSize = 100;
@@ -228,9 +228,9 @@ async function uploadSkuMasterFile(files) {
             if (error) throw error;
         }
 
-        statusEl.innerHTML = `<span class="text-green-700 font-bold">✅ ${records.length}件のSKUマスターを登録しました。</span>`;
+        statusEl.innerHTML = `<span class="text-green-700 font-bold">✅ ${records.length} SKU master records registered.</span>`;
     } catch (err) {
-        statusEl.innerHTML = `<span class="text-red-600">❌ エラー: ${err.message}</span>`;
+        statusEl.innerHTML = `<span class="text-red-600">❌ Error: ${err.message}</span>`;
     }
 }
 
