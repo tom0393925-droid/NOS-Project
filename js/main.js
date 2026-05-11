@@ -275,23 +275,15 @@ async function saveDatesAndRender() {
     }
 }
 
-// 過去の到着日を除去して残りを前に詰める
+// 過去の到着日は自動除去しない（手動 Received ボタンで管理）
 function _shiftExpiredDates(dates) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const shift = (...ds) => {
-        const future = ds.filter(d => d && new Date(d) >= today);
-        while (future.length < 3) future.push('');
-        return future;
-    };
-
-    const dry    = shift(dates.dryNext,    dates.dryNext2,    dates.dryNext3);
-    const frozen = shift(dates.frozenNext, dates.frozenNext2, dates.frozenNext3);
-
     return {
-        dryNext:     dry[0],    dryNext2:    dry[1],    dryNext3:    dry[2],
-        frozenNext:  frozen[0], frozenNext2: frozen[1], frozenNext3: frozen[2],
+        dryNext:     dates.dryNext     || '',
+        dryNext2:    dates.dryNext2    || '',
+        dryNext3:    dates.dryNext3    || '',
+        frozenNext:  dates.frozenNext  || '',
+        frozenNext2: dates.frozenNext2 || '',
+        frozenNext3: dates.frozenNext3 || '',
     };
 }
 

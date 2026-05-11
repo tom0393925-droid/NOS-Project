@@ -259,7 +259,9 @@ function updateChartPeriod() {
                 skuShipments.forEach(s => {
                     if (s.status === 'arrived') return;
                     const sd = new Date(s.arrivalDate);
-                    if (sd > wStart && sd <= wEnd) { runningQty += s.orderQty; shipArrivedThisWeek = true; }
+                    // 遅延中（過去日付）の未着荷は week 1 到着扱い
+                    const effectiveSd = sd <= baseDate ? new Date(baseDate.getTime() + 1) : sd;
+                    if (effectiveSd > wStart && effectiveSd <= wEnd) { runningQty += s.orderQty; shipArrivedThisWeek = true; }
                 });
                 // Zero-stock arrival week: no sales (nothing to sell before shipment arrived)
                 if (!(shipArrivedThisWeek && qtyBeforeOrder === 0)) {
@@ -384,7 +386,8 @@ function _rebuildPrediction(newAvg) {
         skuShipments.forEach(s => {
             if (s.status === 'arrived') return;
             const sd = new Date(s.arrivalDate);
-            if (sd > wStart && sd <= wEnd) runningQty += s.orderQty;
+            const effectiveSd = sd <= _simBaseDate ? new Date(_simBaseDate.getTime() + 1) : sd;
+            if (effectiveSd > wStart && effectiveSd <= wEnd) runningQty += s.orderQty;
         });
         runningQty = Math.max(0, runningQty - newAvg);
         ds[loadedWeeks - 1 + i] = runningQty;
