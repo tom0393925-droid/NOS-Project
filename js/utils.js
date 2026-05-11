@@ -26,6 +26,7 @@ function getLatestDataDate() {
                }
             }
         }
+        latestDate.setDate(latestDate.getDate() + 6); // week_end = week_start + 6 days
     }
     return latestDate;
 }

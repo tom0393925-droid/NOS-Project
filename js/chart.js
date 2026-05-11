@@ -206,10 +206,18 @@ function updateChartPeriod() {
     let extendedLabels = loadedFiles.map((filename, i) => {
         // Sheets API format: "W/2026-03-24"
         const isoMatch = filename.match(/(\d{4})-(\d{2})-(\d{2})/);
-        if (isoMatch) return `${isoMatch[1].slice(-2)}/${isoMatch[2]}/${isoMatch[3]}`;
+        if (isoMatch) {
+            const d = new Date(`${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}T00:00:00`);
+            d.setDate(d.getDate() + 6);
+            return `${d.getFullYear().toString().slice(-2)}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+        }
         // Old Excel filename format: "YYMMDD"
         const match = filename.match(/(\d{6})/);
-        if (match) return `20${match[0].slice(0,2)}/${match[0].slice(2,4)}/${match[0].slice(4,6)}`;
+        if (match) {
+            const d = new Date(`20${match[0].slice(0,2)}/${match[0].slice(2,4)}/${match[0].slice(4,6)}`);
+            d.setDate(d.getDate() + 6);
+            return `${d.getFullYear().toString().slice(-2)}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+        }
         return `Wk ${i + 1}`;
     });
 
