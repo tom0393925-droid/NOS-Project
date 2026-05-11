@@ -686,18 +686,18 @@ function renderOrderTable() {
         const tr = document.createElement('tr');
         tr.className = 'border-b border-gray-100 hover:bg-purple-50/20';
         tr.innerHTML = `
-            <td class="p-3 pl-4 font-bold text-indigo-700">${row.code} <span id="saveStatus_${sid}" class="text-[10px] font-bold"></span></td>
-            <td class="p-3 max-w-[180px] truncate text-gray-700" title="${row.name}">${row.name}</td>
-            <td class="p-3 text-center text-gray-500 text-xs">${row.uom}</td>
-            <td class="p-3 text-right font-mono text-gray-500">${row.avg.toFixed(1)}</td>
-            <td class="p-3 text-right font-mono text-red-500 font-bold">${row.safety.toLocaleString()}</td>
-            <td class="p-3 text-right font-mono font-bold text-gray-800">${row.currentQty.toLocaleString()}</td>
-            <td class="p-3 text-right bg-blue-50">${fmtPred(row.predNext, row.safety)}</td>
-            <td class="p-3 bg-blue-50"><input type="text" inputmode="numeric" value="${row.orderNext.toLocaleString()}" data-sid="${sid}" data-field="orderNext" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-blue-200 rounded px-2 py-1 text-xs font-bold text-blue-800 focus:ring-1 focus:ring-blue-400 outline-none bg-white">${autoHint(`hint_next_${sid}`, row.orderNext, row.autoOrderNext)}</td>
-            <td class="p-3 text-right bg-indigo-50" id="op2_${sid}">${fmtPred(row.pred2nd, row.safety)}</td>
-            <td class="p-3 bg-indigo-50"><input type="text" inputmode="numeric" value="${row.order2nd.toLocaleString()}" data-sid="${sid}" data-field="order2nd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-indigo-200 rounded px-2 py-1 text-xs font-bold text-indigo-800 focus:ring-1 focus:ring-indigo-400 outline-none bg-white">${autoHint(`hint_2nd_${sid}`, row.order2nd, row.autoOrder2nd)}</td>
-            <td class="p-3 text-right bg-violet-50" id="op3_${sid}">${fmtPred(row.pred3rd, row.safety)}</td>
-            <td class="p-3 text-center"><button onclick="deleteSkuFromOrderPlan('${row.code.replace(/'/g, "\\'")}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 rounded px-1.5 py-1 text-xs transition-colors" title="Remove from ${_mfTab}">✕</button></td>
+            <td class="p-2 pl-3 font-bold text-indigo-700">${row.code} <span id="saveStatus_${sid}" class="text-[10px] font-bold"></span></td>
+            <td class="p-2 max-w-[150px] truncate text-gray-700" title="${row.name}">${row.name}</td>
+            <td class="p-2 text-center text-gray-500 text-xs">${row.uom}</td>
+            <td class="p-2 text-right font-mono text-gray-500">${row.avg.toFixed(1)}</td>
+            <td class="p-2 text-right font-mono text-red-500 font-bold">${row.safety.toLocaleString()}</td>
+            <td class="p-2 text-right font-mono font-bold text-gray-800">${row.currentQty.toLocaleString()}</td>
+            <td class="p-2 text-right bg-blue-50">${fmtPred(row.predNext, row.safety)}</td>
+            <td class="p-2 bg-blue-50"><input type="text" inputmode="numeric" value="${row.orderNext.toLocaleString()}" data-sid="${sid}" data-field="orderNext" onchange="onOrderQtyChange(this)" class="w-16 text-right border border-blue-200 rounded px-1 py-1 text-xs font-bold text-blue-800 focus:ring-1 focus:ring-blue-400 outline-none bg-white">${autoHint(`hint_next_${sid}`, row.orderNext, row.autoOrderNext)}</td>
+            <td class="p-2 text-right bg-indigo-50" id="op2_${sid}">${fmtPred(row.pred2nd, row.safety)}</td>
+            <td class="p-2 bg-indigo-50"><input type="text" inputmode="numeric" value="${row.order2nd.toLocaleString()}" data-sid="${sid}" data-field="order2nd" onchange="onOrderQtyChange(this)" class="w-16 text-right border border-indigo-200 rounded px-1 py-1 text-xs font-bold text-indigo-800 focus:ring-1 focus:ring-indigo-400 outline-none bg-white">${autoHint(`hint_2nd_${sid}`, row.order2nd, row.autoOrder2nd)}</td>
+            <td class="p-2 text-right bg-violet-50" id="op3_${sid}">${fmtPred(row.pred3rd, row.safety)}</td>
+            <td class="p-2 text-center"><button onclick="deleteSkuFromOrderPlan('${row.code.replace(/'/g, "\\'")}')" class="text-red-400 hover:text-red-600 hover:bg-red-50 rounded px-1 py-1 text-xs transition-colors" title="Remove from ${_mfTab}">✕</button></td>
         `;
         tbody.appendChild(tr);
     });
