@@ -163,6 +163,13 @@ function renderCategoryManagement() {
 
         if (!cat.parentId) {
             // ── Parent category row ──
+            const _today = new Date(); _today.setHours(0,0,0,0);
+            const _next1IsPast = cat.next1 && new Date(cat.next1) < _today;
+            const _delayedBadge = _next1IsPast
+                ? `<span class="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded border border-orange-300">⚠️ Delayed</span>
+                   <button onclick="markContainerReceived('${id}')"
+                       class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-bold transition-colors">✓ Received</button>`
+                : '';
             div.innerHTML = `
                 <div class="flex flex-wrap items-center gap-3">
                     <input type="text" id="catName_${id}" value="${_escHtml(displayName)}" maxlength="40"
@@ -170,7 +177,8 @@ function renderCategoryManagement() {
                     <div class="flex items-center gap-1 text-xs">
                         <span class="text-gray-500 font-semibold">Next:</span>
                         <input type="date" id="catDate_${id}_1" value="${cat.next1 || ''}"
-                            class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none">
+                            class="border ${_next1IsPast ? 'border-orange-400 bg-orange-50' : 'border-gray-300'} rounded px-2 py-1 text-xs focus:ring-1 outline-none">
+                        ${_delayedBadge}
                     </div>
                     <div class="flex items-center gap-1 text-xs">
                         <span class="text-gray-500 font-semibold">2nd:</span>
@@ -254,6 +262,37 @@ async function saveCategoryName(id) {
     } catch (e) {
         alert('Save failed: ' + e.message);
     }
+}
+
+async function markContainerReceived(id) {
+    if (!window.orderCategories) return;
+    const cat = window.orderCategories[id];
+    if (!cat) return;
+
+    const newNext1 = cat.next2 || '';
+    const newNext2 = cat.next3 || '';
+    const newNext3 = '';
+
+    cat.next1 = newNext1; cat.next2 = newNext2; cat.next3 = newNext3;
+
+    const savedName = (cat.parentId && typeof _encodeCategoryConfig === 'function')
+        ? _encodeCategoryConfig(cat.name || id, cat.parentId, cat.prefixes || null)
+        : (cat.name || id);
+    try {
+        await sbSaveOrderCategory({ id, name: savedName, next1: newNext1 || null, next2: newNext2 || null, next3: null });
+    } catch (e) {
+        alert('Save failed: ' + e.message); return;
+    }
+
+    if (id === 'CFJP') {
+        globalDryNext = newNext1; globalDryNext2 = newNext2; globalDryNext3 = newNext3;
+    } else if (id === 'RFJP') {
+        globalFrozenNext = newNext1; globalFrozenNext2 = newNext2; globalFrozenNext3 = newNext3;
+    }
+
+    if (typeof renderCategories === 'function') renderCategories();
+    if (typeof renderCategoryScheduleBar === 'function') renderCategoryScheduleBar();
+    if (currentSelectedSKU && typeof renderSKUDetails === 'function') renderSKUDetails(currentSelectedSKU);
 }
 
 async function saveCategoryDates(id) {
