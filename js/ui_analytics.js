@@ -393,15 +393,6 @@ function _getArrivalDates() {
     let next2 = cat.next2 || parentCat.next2 || '';
     let next3 = cat.next3 || parentCat.next3 || '';
 
-    // Date shifting: if 1st shipment date has passed, shift 2nd→1st, 3rd→2nd
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (next && new Date(next) < today) {
-        next  = next2;
-        next2 = next3;
-        next3 = '';
-    }
-
     const baseDate = getLatestDataDate();
     const dNext  = next  ? new Date(next)  : null;
     const dNext2 = next2 ? new Date(next2) : null;
