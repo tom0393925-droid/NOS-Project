@@ -1,6 +1,6 @@
 # NOS-Project — 在庫管理・発注計画システム
 
-社内向けの在庫管理・発注計画Webアプリケーションです。Googleスプレッドシートからデータを取り込み、在庫状況の分析・発注量の自動シミュレーションを行います。
+社内向けの在庫管理・発注計画Webアプリケーションです。Excelファイル（.xlsx）からデータをSupabaseにアップロードし、在庫状況の分析・発注量の自動シミュレーションを行います。
 
 ---
 
@@ -25,9 +25,9 @@ NOS-Project/
 │   ├── supabase-client.js # データベース（Supabase）との通信
 │   ├── supabase-upload.js # スプレッドシートデータのDB保存処理
 │   └── utils.js          # 日付計算などの小さな共通処理
-├── gas/                  # Google Apps Script（スプレッドシート側の処理）
-│   ├── Code.gs           # スプレッドシートからデータを出力するスクリプト
-│   └── SampleData.gs     # テスト用サンプルデータ生成スクリプト
+├── gas_legacy/           # 旧Google Apps Script（現在は未使用）
+│   ├── Code.gs           # 旧スプレッドシート連携スクリプト（廃止）
+│   └── SampleData.gs     # 旧サンプルデータ生成スクリプト（廃止）
 └── .claude/
     ├── settings.local.json  # Claude Codeの権限設定
     └── skills/
@@ -64,12 +64,12 @@ NOS-Project/
 | `supabase-upload.js` | スプレッドシートから読み込んだデータをDBへアップロードする処理 |
 | `utils.js` | 「最新データ日付の取得」など、複数箇所で使う小さな共通処理をまとめたファイル |
 
-### Google Apps Script（gas/）
+### Google Apps Script（gas_legacy/ ※現在は未使用）
 
 | ファイル | 役割 |
 |----------|------|
-| `Code.gs` | Googleスプレッドシート側で動くスクリプト。スプレッドシートのデータをWebアプリが読める形式に出力する |
-| `SampleData.gs` | 開発・テスト時にダミーデータを自動生成するためのスクリプト |
+| `Code.gs` | 旧Googleスプレッドシート連携スクリプト。現在はExcelファイルの直接アップロードに移行済みのため廃止 |
+| `SampleData.gs` | 旧サンプルデータ生成スクリプト。現在は廃止 |
 
 ---
 
