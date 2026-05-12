@@ -614,6 +614,23 @@ function sortOrderTable(col) {
     renderOrderTable();
 }
 
+function alignColToAuto(field) {
+    if (!confirm('Set all visible orders to auto values for this shipment?')) return;
+    const q = (document.getElementById('orderTableSearch')?.value || '').toLowerCase();
+    const visibleRows = q
+        ? _orderData.filter(r => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q))
+        : [..._orderData];
+    visibleRows.forEach(row => {
+        const sid = String(row.code).replace(/[^a-zA-Z0-9]/g, '_');
+        const autoVal = field === 'orderNext' ? row.autoOrderNext : row.autoOrder2nd;
+        const input = document.querySelector(`input[data-sid="${sid}"][data-field="${field}"]`);
+        if (input) {
+            input.value = String(autoVal);
+            onOrderQtyChange(input);
+        }
+    });
+}
+
 function renderOrderTable() {
     const tbody = document.getElementById('orderAlertTableBody');
     if (!tbody) return;
@@ -628,12 +645,15 @@ function renderOrderTable() {
     setTh('thPredNext', 'predNext', dates.next);
     setTh('thPred2nd',  'pred2nd',  dates.next2);
     setTh('thPred3rd',  'pred3rd',  dates.next3);
-    const setOrderTh = (id, label, date) => {
+    const setOrderTh = (id, label, date, field) => {
         const el = document.getElementById(id);
-        if (el) el.textContent = date ? `Order (${date})` : label;
+        if (!el) return;
+        const text = date ? `Order (${date})` : label;
+        const btn = date ? `<button onclick="alignColToAuto('${field}')" class="ml-1.5 text-[10px] bg-blue-200 hover:bg-blue-300 text-blue-800 rounded px-1.5 py-0.5 font-bold transition-colors" title="Set all visible to auto">≈auto</button>` : '';
+        el.innerHTML = text + btn;
     };
-    setOrderTh('thOrderNext', 'Order (Next)', dates.next);
-    setOrderTh('thOrder2nd',  'Order (2nd)',  dates.next2);
+    setOrderTh('thOrderNext', 'Order (Next)', dates.next,  'orderNext');
+    setOrderTh('thOrder2nd',  'Order (2nd)',  dates.next2, 'order2nd');
 
     // filter
     const q = (document.getElementById('orderTableSearch')?.value || '').toLowerCase();
