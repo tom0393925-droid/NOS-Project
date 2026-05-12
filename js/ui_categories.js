@@ -2,6 +2,14 @@
 // js/ui_categories.js: Order Category Management UI
 // ==========================================
 
+function _showToast(message, durationMs = 5000) {
+    const el = document.createElement('div');
+    el.textContent = message;
+    el.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.25);max-width:480px;text-align:center;line-height:1.5;';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), durationMs);
+}
+
 // ── Add-category UI state ──
 let _newCatPrefixes = [];
 
@@ -290,9 +298,13 @@ async function markContainerReceived(id) {
         globalFrozenNext = newNext1; globalFrozenNext2 = newNext2; globalFrozenNext3 = newNext3;
     }
 
-    if (typeof renderCategories === 'function') renderCategories();
+    renderCategoryManagement();
     if (typeof renderCategoryScheduleBar === 'function') renderCategoryScheduleBar();
+    if (typeof renderOrderCategoryTabs === 'function') renderOrderCategoryTabs();
     if (currentSelectedSKU && typeof renderSKUDetails === 'function') renderSKUDetails(currentSelectedSKU);
+
+    const next1Label = newNext1 || '—';
+    _showToast(`✓ Received! Next → ${next1Label} に更新しました。カテゴリタブをクリックすると発注リストが最新に更新されます。`);
 }
 
 async function saveCategoryDates(id) {
