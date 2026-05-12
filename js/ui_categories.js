@@ -315,6 +315,52 @@ async function saveCategoryDates(id) {
     if (!window.orderCategories) window.orderCategories = {};
     const cat = window.orderCategories[id] || { id, name: id };
 
+    // Capture old dates before overwriting
+    const oldNext1 = cat.next1 || '';
+    const oldNext2 = cat.next2 || '';
+
+    const stType = id === 'RFJP' ? 'Frozen' : id === 'CFJP' ? 'Dry' : null;
+
+    const _hasQty = (date) => {
+        if (!date || !window.shipmentOrders) return false;
+        return Object.entries(window.shipmentOrders).some(([sku, orders]) => {
+            if (stType && (window.skuMaster || {})[sku]?.storageType !== stType) return false;
+            return orders.some(o => o.arrivalDate === date && o.status !== 'arrived' && o.orderQty > 0);
+        });
+    };
+
+    const _migrateQty = (oldDate, newDate) => {
+        if (!oldDate || !newDate || !window.shipmentOrders) return;
+        Object.entries(window.shipmentOrders).forEach(([sku, orders]) => {
+            if (stType && (window.skuMaster || {})[sku]?.storageType !== stType) return;
+            const oldEntry = orders.find(o => o.arrivalDate === oldDate && o.status !== 'arrived');
+            if (!oldEntry) return;
+            const newEntry = orders.find(o => o.arrivalDate === newDate);
+            if (newEntry) newEntry.orderQty = oldEntry.orderQty;
+            else orders.push({ arrivalDate: newDate, orderQty: oldEntry.orderQty, status: 'pending' });
+            orders.splice(orders.indexOf(oldEntry), 1);
+        });
+    };
+
+    const _clearQty = (date) => {
+        if (!date || !window.shipmentOrders) return;
+        Object.entries(window.shipmentOrders).forEach(([sku, orders]) => {
+            if (stType && (window.skuMaster || {})[sku]?.storageType !== stType) return;
+            const idx = orders.findIndex(o => o.arrivalDate === date && o.status !== 'arrived');
+            if (idx >= 0) orders.splice(idx, 1);
+        });
+    };
+
+    // Confirm qty carry-over for Next and 2nd Next if date changed and qty exists
+    if (next1 && oldNext1 && next1 !== oldNext1 && _hasQty(oldNext1)) {
+        const carry = confirm(`Next arrival date changed: ${oldNext1} → ${next1}\n\nOrder quantities were entered for the old date. Carry them over to the new date?`);
+        carry ? _migrateQty(oldNext1, next1) : _clearQty(oldNext1);
+    }
+    if (next2 && oldNext2 && next2 !== oldNext2 && _hasQty(oldNext2)) {
+        const carry = confirm(`2nd Next arrival date changed: ${oldNext2} → ${next2}\n\nOrder quantities were entered for the old date. Carry them over to the new date?`);
+        carry ? _migrateQty(oldNext2, next2) : _clearQty(oldNext2);
+    }
+
     // For parent categories, also read the name input
     if (!cat.parentId) {
         const nameEl = document.getElementById(`catName_${id}`);
@@ -344,8 +390,8 @@ async function saveCategoryDates(id) {
         const st = document.getElementById(`catSaveStatus_${id}`);
         if (st) { st.textContent = '✅ Saved'; setTimeout(() => { st.textContent = ''; }, 2500); }
 
-        // Refresh schedule bar if visible
         if (typeof renderCategoryScheduleBar === 'function') renderCategoryScheduleBar();
+        if (currentSelectedSKU && typeof renderSKUDetails === 'function') renderSKUDetails(currentSelectedSKU);
     } catch (e) {
         alert('Save failed: ' + e.message);
     }
