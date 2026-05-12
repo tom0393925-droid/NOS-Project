@@ -390,6 +390,7 @@ async function saveCategoryDates(id) {
         const st = document.getElementById(`catSaveStatus_${id}`);
         if (st) { st.textContent = '✅ Saved'; setTimeout(() => { st.textContent = ''; }, 2500); }
 
+        renderCategoryManagement();
         if (typeof renderCategoryScheduleBar === 'function') renderCategoryScheduleBar();
         if (currentSelectedSKU && typeof renderSKUDetails === 'function') renderSKUDetails(currentSelectedSKU);
     } catch (e) {
