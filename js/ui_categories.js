@@ -15,7 +15,7 @@ let _newCatPrefixes = [];
 
 function _getSkuSupplierPrefixes() {
     const prefixes = new Set();
-    for (const code in (window.skuMaster || {})) {
+    for (const code in (skuMaster || {})) {
         const m = code.match(/^([A-Za-z]+)/);
         if (m) prefixes.add(m[1].toUpperCase());
     }
@@ -324,7 +324,7 @@ async function saveCategoryDates(id) {
     const _hasQty = (date) => {
         if (!date || !window.shipmentOrders) return false;
         return Object.entries(window.shipmentOrders).some(([sku, orders]) => {
-            if (stType && (window.skuMaster || {})[sku]?.storageType !== stType) return false;
+            if (stType && (skuMaster || {})[sku]?.storageType !== stType) return false;
             return orders.some(o => o.arrivalDate === date && o.status !== 'arrived' && o.orderQty > 0);
         });
     };
@@ -332,7 +332,7 @@ async function saveCategoryDates(id) {
     const _migrateQty = (oldDate, newDate) => {
         if (!oldDate || !newDate || !window.shipmentOrders) return;
         Object.entries(window.shipmentOrders).forEach(([sku, orders]) => {
-            if (stType && (window.skuMaster || {})[sku]?.storageType !== stType) return;
+            if (stType && (skuMaster || {})[sku]?.storageType !== stType) return;
             const oldEntry = orders.find(o => o.arrivalDate === oldDate && o.status !== 'arrived');
             if (!oldEntry) return;
             const newEntry = orders.find(o => o.arrivalDate === newDate);
@@ -345,7 +345,7 @@ async function saveCategoryDates(id) {
     const _clearQty = (date) => {
         if (!date || !window.shipmentOrders) return;
         Object.entries(window.shipmentOrders).forEach(([sku, orders]) => {
-            if (stType && (window.skuMaster || {})[sku]?.storageType !== stType) return;
+            if (stType && (skuMaster || {})[sku]?.storageType !== stType) return;
             const idx = orders.findIndex(o => o.arrivalDate === date && o.status !== 'arrived');
             if (idx >= 0) orders.splice(idx, 1);
         });
