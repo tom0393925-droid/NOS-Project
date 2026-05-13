@@ -537,22 +537,16 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = false) {
         _showLoading(msg);
     };
 
-    log('Loading SKU master...');
-    const masterData  = await sbLoadSkuMaster();
-
-    log(`Loading weekly sales data (last ${weeks} weeks)...`);
-    const salesRows   = await sbLoadWeeklySales(weeks);
-
-    log('Loading picking data...');
-    const pickingRows = await sbLoadPickingData();
-
-    log('Loading shipment orders...');
-    const ordersData  = await sbLoadShipmentOrders();
-
-    log('Loading order categories...');
-    const orderCats  = await sbLoadOrderCategories();
-    log('Loading SKU category map...');
-    const skuCatMap  = await sbLoadSkuCategoryMap();
+    log(`Loading all data in parallel (last ${weeks} weeks)...`);
+    const [masterData, salesRows, pickingRows, ordersData, orderCats, skuCatMap] =
+        await Promise.all([
+            sbLoadSkuMaster(),
+            sbLoadWeeklySales(weeks),
+            sbLoadPickingData(),
+            sbLoadShipmentOrders(),
+            sbLoadOrderCategories(),
+            sbLoadSkuCategoryMap(),
+        ]);
 
     log('Converting data...');
     const { historyData: hd, weekKeys, weekLabels } = _weeklySalesToHistoryData(salesRows);
