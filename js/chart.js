@@ -9,6 +9,7 @@ let _isStockoutChart = false; // true when some weeks were excluded due to zero 
 let _simNumFutureWeeks = 0;  // how many future weeks are extended on the chart
 let _simLatestQty = 0;       // inventory qty at the last historical week
 let _simBaseDate = null;     // Date object for the last historical week
+let _simValidDates = new Set(); // arrival dates eligible for chart order boost (next + next2 only)
 let _prevChartSKU = null;    // detect SKU switches to auto-reset sim
 let _isDragging = false;
 let _dragStartClientY = 0;
@@ -245,8 +246,9 @@ function updateChartPeriod() {
             _simLatestQty = latestQty;
             _simBaseDate = baseDate;
             _simNumFutureWeeks = extendWeeks;
+            _simValidDates = new Set([tNext, tNext2].filter(Boolean));
 
-            const _validDates = new Set([tNext, tNext2, tNext3].filter(Boolean));
+            const _validDates = _simValidDates;
             const skuShipments = ((window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [])
                 .filter(s => _validDates.size === 0 || _validDates.has(s.arrivalDate));
             let runningQty = latestQty;
@@ -378,7 +380,8 @@ function _rebuildPrediction(newAvg) {
     for (let i = 0; i < loadedWeeks - 1; i++) ds[i] = null;
     ds[loadedWeeks - 1] = _simLatestQty;
     // Rebuild future data points with new avg
-    const skuShipments = (window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [];
+    const skuShipments = ((window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [])
+        .filter(s => _simValidDates.size === 0 || _simValidDates.has(s.arrivalDate));
     let runningQty = _simLatestQty;
     for (let i = 1; i <= _simNumFutureWeeks; i++) {
         const wStart = new Date(_simBaseDate); wStart.setDate(_simBaseDate.getDate() + ((i - 1) * 7));
