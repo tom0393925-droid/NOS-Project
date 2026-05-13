@@ -42,6 +42,15 @@
             }
         }
 
+        // 認証エラーメッセージを表示
+        const authErr = sessionStorage.getItem('auth_error');
+        if (authErr) {
+            sessionStorage.removeItem('auth_error');
+            const errEl = document.getElementById('loginError');
+            errEl.textContent = authErr;
+            errEl.classList.remove('hidden');
+        }
+
         // すでにログイン済みならアプリへ
         _sb.auth.onAuthStateChange((event, session) => {
             if ((event === 'INITIAL_SESSION' || event === 'SIGNED_IN') && session) {

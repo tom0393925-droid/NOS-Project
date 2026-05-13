@@ -125,11 +125,14 @@ function sbInitAuth(onSuccess, onSignOut) {
                     _setAllowedCache(userEmail);
                     onSuccess(session.user);
                 } else {
-                    console.warn('[Auth] Not authorized or query failed:', error?.message);
+                    const reason = error ? 'DBエラー: ' + error.message : 'このメールアドレスは許可リストに登録されていません: ' + userEmail;
+                    console.warn('[Auth] Not authorized or query failed:', reason);
+                    sessionStorage.setItem('auth_error', reason);
                     await _sb.auth.signOut();
                 }
             } catch (e) {
                 console.error('[Auth] allowed_emails check threw:', e);
+                sessionStorage.setItem('auth_error', 'タイムアウトまたは接続エラー: ' + e.message);
                 await _sb.auth.signOut();
             }
         } else if (event === 'SIGNED_OUT') {
