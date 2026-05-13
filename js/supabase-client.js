@@ -105,19 +105,17 @@ async function testSupabaseConnection() {
 // SKU Master
 // ==========================================
 async function sbLoadSkuMaster() {
-    const allRows = [];
     const pageSize = 1000;
-    let from = 0;
-    while (true) {
-        const { data, error } = await _sb
-            .from('sku_master')
-            .select('*')
-            .range(from, from + pageSize - 1);
-        if (error) throw error;
-        allRows.push(...data);
-        if (data.length < pageSize) break;
-        from += pageSize;
-    }
+    const { count, error: ce } = await _sb.from('sku_master').select('*', { count: 'exact', head: true });
+    if (ce) throw ce;
+    const pages = Math.ceil(count / pageSize);
+    const results = await Promise.all(
+        Array.from({ length: pages }, (_, i) =>
+            _sb.from('sku_master').select('*').range(i * pageSize, (i + 1) * pageSize - 1)
+        )
+    );
+    for (const r of results) if (r.error) throw r.error;
+    const allRows = results.flatMap(r => r.data);
     const result = {};
     for (const row of allRows) {
         result[row.code] = {
@@ -163,27 +161,26 @@ async function sbDeleteSkuMaster(code) {
 // Weekly Sales
 // ==========================================
 async function sbLoadWeeklySales(weeks = 52) {
-    // 直近N週の開始日を計算
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - weeks * 7);
     const cutoffStr = cutoff.toISOString().split('T')[0];
 
-    const allRows = [];
     const pageSize = 1000;
-    let from = 0;
-    while (true) {
-        const { data, error } = await _sb
-            .from('weekly_sales')
-            .select('*')
-            .gte('week_start', cutoffStr)
-            .order('week_start', { ascending: true })
-            .range(from, from + pageSize - 1);
-        if (error) throw error;
-        allRows.push(...data);
-        if (data.length < pageSize) break;
-        from += pageSize;
-    }
-    return allRows;
+    const { count, error: ce } = await _sb.from('weekly_sales')
+        .select('*', { count: 'exact', head: true })
+        .gte('week_start', cutoffStr);
+    if (ce) throw ce;
+    const pages = Math.ceil(count / pageSize);
+    const results = await Promise.all(
+        Array.from({ length: pages }, (_, i) =>
+            _sb.from('weekly_sales').select('*')
+                .gte('week_start', cutoffStr)
+                .order('week_start', { ascending: true })
+                .range(i * pageSize, (i + 1) * pageSize - 1)
+        )
+    );
+    for (const r of results) if (r.error) throw r.error;
+    return results.flatMap(r => r.data);
 }
 
 async function sbUpsertWeeklySales(rows) {
@@ -198,21 +195,19 @@ async function sbUpsertWeeklySales(rows) {
 // Picking Data
 // ==========================================
 async function sbLoadPickingData() {
-    const allRows = [];
     const pageSize = 1000;
-    let from = 0;
-    while (true) {
-        const { data, error } = await _sb
-            .from('picking_data')
-            .select('*')
-            .order('week_start', { ascending: true })
-            .range(from, from + pageSize - 1);
-        if (error) throw error;
-        allRows.push(...data);
-        if (data.length < pageSize) break;
-        from += pageSize;
-    }
-    return allRows;
+    const { count, error: ce } = await _sb.from('picking_data').select('*', { count: 'exact', head: true });
+    if (ce) throw ce;
+    const pages = Math.ceil(count / pageSize);
+    const results = await Promise.all(
+        Array.from({ length: pages }, (_, i) =>
+            _sb.from('picking_data').select('*')
+                .order('week_start', { ascending: true })
+                .range(i * pageSize, (i + 1) * pageSize - 1)
+        )
+    );
+    for (const r of results) if (r.error) throw r.error;
+    return results.flatMap(r => r.data);
 }
 
 async function sbUpsertPickingData(rows) {
