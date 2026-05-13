@@ -599,9 +599,14 @@
                                 <!-- Tabs: dynamically populated by renderOrderCategoryTabs() -->
                                 <div class="flex items-center justify-between">
                                     <div id="orderCategoryTabBar" class="flex flex-wrap gap-x-0 gap-y-0"></div>
-                                    <button onclick="exportOrderTable()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-colors whitespace-nowrap mb-0.5">
-                                        📥 Export to Excel
-                                    </button>
+                                    <div class="flex items-center gap-2 mb-0.5">
+                                        <button onclick="openOrderImportModal()" class="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-colors whitespace-nowrap">
+                                            📤 Import Orders
+                                        </button>
+                                        <button onclick="exportOrderTable()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-md transition-colors whitespace-nowrap">
+                                            📥 Export to Excel
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
@@ -954,6 +959,52 @@
         </div>
     </div>
 
+    <!-- Order Import Modal -->
+    <div id="orderImportModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center hidden">
+        <div class="bg-white rounded-xl shadow-xl p-6 w-full max-w-lg mx-4 max-h-[90vh] flex flex-col">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="font-black text-purple-900 text-lg">📤 Import Orders from Excel</h3>
+                <button onclick="closeOrderImportModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">① Excel file</label>
+                    <input type="file" id="orderImportFile" accept=".xlsx,.xls"
+                        class="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded-lg file:border-0 file:font-bold file:bg-purple-100 file:text-purple-700 hover:file:bg-purple-200 cursor-pointer">
+                    <p class="text-xs text-gray-400 mt-1">Column named <strong>SKU</strong> or <strong>Code</strong> + quantity column named <strong>1st</strong>, <strong>2nd</strong>, or <strong>Order</strong></p>
+                </div>
+                <div>
+                    <label class="block text-sm font-bold text-gray-700 mb-1">② Arrival date to assign</label>
+                    <select id="orderImportDateSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-purple-400 outline-none">
+                        <option value="">-- Select arrival date --</option>
+                    </select>
+                </div>
+                <button onclick="previewOrderImport()" class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 rounded-lg font-bold text-sm transition-colors">
+                    Preview
+                </button>
+            </div>
+            <div id="orderImportPreviewArea" class="hidden mt-4 flex flex-col min-h-0">
+                <p id="orderImportPreviewInfo" class="text-sm font-bold text-purple-800 mb-2"></p>
+                <div class="overflow-y-auto rounded-lg border border-gray-200" style="max-height:280px">
+                    <table class="w-full text-sm">
+                        <thead class="bg-gray-50 sticky top-0">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-bold text-gray-600">SKU</th>
+                                <th class="px-3 py-2 text-left font-bold text-gray-600">Name</th>
+                                <th class="px-3 py-2 text-right font-bold text-gray-600">Order Qty</th>
+                            </tr>
+                        </thead>
+                        <tbody id="orderImportPreviewBody"></tbody>
+                    </table>
+                </div>
+                <button id="orderImportConfirmBtn" onclick="confirmOrderImport()"
+                    class="mt-4 w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded-lg font-bold text-sm transition-colors">
+                    Confirm &amp; Import
+                </button>
+            </div>
+        </div>
+    </div>
+
   <script src="js/supabase-client.js?v=12"></script>
     <script src="js/supabase-upload.js?v=4"></script>
     <script src="js/state.js?v=23"></script>
@@ -962,7 +1013,7 @@
     <script src="js/chart.js?v=29"></script>
     <script src="js/ui_master.js?v=26"></script>
     <script src="js/ui_categories.js?v=6"></script>
-    <script src="js/ui_analytics.js?v=38"></script>
+    <script src="js/ui_analytics.js?v=39"></script>
     <script src="js/ui_map.js?v=22"></script>
     <script src="js/ui.js?v=31"></script>
     <script src="js/main.js?v=34"></script>
