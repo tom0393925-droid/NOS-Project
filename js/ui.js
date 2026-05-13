@@ -319,7 +319,7 @@ function renderSKUDetails(selectedCode) {
                 setSafeText('predNextQty', 'Error'); setSafeText('predNext2Qty', 'Error'); setSafeText('predNext3Qty', 'Error');
                 predictEl.innerHTML = `<span class="text-xs text-red-400 font-bold">Date Setting Error (Past date selected)</span>`;
             } else {
-                // 発注量を考慮した予測在庫
+                // 発注量を考慮した予測在庫（チャート・Order Judgment用: 発注後残高）
                 const shipNext  = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext).reduce((a, s) => a + s.orderQty, 0);
                 const shipNext2 = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext2).reduce((a, s) => a + s.orderQty, 0);
                 // Sequential depletion: each period starts from the previous period's ending balance
@@ -339,9 +339,21 @@ function renderSKUDetails(selectedCode) {
                     }
                 }
 
-                setSafeText('predNextQty',  Math.max(0, Math.round(stockNext)).toLocaleString()  + ' ' + uomText);
-                setSafeText('predNext2Qty', Math.max(0, Math.round(stockNext2)).toLocaleString() + ' ' + uomText);
-                setSafeText('predNext3Qty', stockNext3 !== null ? Math.max(0, Math.round(stockNext3)).toLocaleString() + ' ' + uomText : '-');
+                // 表示用残高: Order Planningと同じく「その便の発注を受け取る前」の残高
+                const predNextRaw = Math.max(0, latestQty - past12WAvg * diffWkNext);
+                const dispNext2   = Math.max(0, predNextRaw + shipNext - past12WAvg * chartWks12);
+                let dispNext3 = null;
+                if (targetNext3) {
+                    const diffWkNext3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
+                    if (diffWkNext3 > 0) {
+                        const wks23 = diffWkNext3 - diffWkNext2;
+                        dispNext3 = Math.max(0, dispNext2 + shipNext2 - past12WAvg * wks23);
+                    }
+                }
+
+                setSafeText('predNextQty',  Math.max(0, Math.round(predNextRaw)).toLocaleString() + ' ' + uomText);
+                setSafeText('predNext2Qty', Math.max(0, Math.round(dispNext2)).toLocaleString()   + ' ' + uomText);
+                setSafeText('predNext3Qty', dispNext3 !== null ? Math.max(0, Math.round(dispNext3)).toLocaleString() + ' ' + uomText : '-');
 
                 // Compute auto order suggestions — same logic as Order Planning
                 const predNextRaw = Math.max(0, latestQty - past12WAvg * diffWkNext);
@@ -473,9 +485,21 @@ function refreshPredictedBalances() {
         }
     }
 
-    setSafeText('predNextQty',  Math.max(0, Math.round(stockNext)).toLocaleString()  + ' ' + uomText);
-    setSafeText('predNext2Qty', Math.max(0, Math.round(stockNext2)).toLocaleString() + ' ' + uomText);
-    setSafeText('predNext3Qty', stockNext3 !== null ? Math.max(0, Math.round(stockNext3)).toLocaleString() + ' ' + uomText : '-');
+    // 表示用残高: Order Planningと同じく「その便の発注を受け取る前」の残高
+    const predNextRaw = Math.max(0, latestQty - past12WAvg * diffWkNext);
+    const dispNext2   = Math.max(0, predNextRaw + shipNext - past12WAvg * chartWks12);
+    let dispNext3 = null;
+    if (targetNext3) {
+        const diffWkNext3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
+        if (diffWkNext3 > 0) {
+            const wks23 = diffWkNext3 - diffWkNext2;
+            dispNext3 = Math.max(0, dispNext2 + shipNext2 - past12WAvg * wks23);
+        }
+    }
+
+    setSafeText('predNextQty',  Math.max(0, Math.round(predNextRaw)).toLocaleString() + ' ' + uomText);
+    setSafeText('predNext2Qty', Math.max(0, Math.round(dispNext2)).toLocaleString()   + ' ' + uomText);
+    setSafeText('predNext3Qty', dispNext3 !== null ? Math.max(0, Math.round(dispNext3)).toLocaleString() + ' ' + uomText : '-');
 
     // Update hints with current input values
     const curNext  = parseInt(document.getElementById('shipOrderNextQty')?.value)  || 0;
