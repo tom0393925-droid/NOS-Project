@@ -9,20 +9,37 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ==========================================
-// ローカルキャッシュ (localStorage)
+// ローカルキャッシュ (IndexedDB)
 // ==========================================
-const _CACHE_VER = 'sb1';
+function _idbOpen() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open('sb_cache_v1', 1);
+        req.onupgradeneeded = e => e.target.result.createObjectStore('tables');
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = () => reject(req.error);
+    });
+}
 
-function _cacheGet(table) {
+async function _cacheGet(table) {
     try {
-        const raw = localStorage.getItem(`${_CACHE_VER}_${table}`);
-        return raw ? JSON.parse(raw) : null;
+        const db = await _idbOpen();
+        return await new Promise((resolve) => {
+            const req = db.transaction('tables', 'readonly').objectStore('tables').get(table);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror   = () => resolve(null);
+        });
     } catch { return null; }
 }
 
-function _cacheSet(table, data, updatedAt, extra = {}) {
+async function _cacheSet(table, data, updatedAt, extra = {}) {
     try {
-        localStorage.setItem(`${_CACHE_VER}_${table}`, JSON.stringify({ data, updatedAt, ...extra }));
+        const db = await _idbOpen();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction('tables', 'readwrite');
+            tx.objectStore('tables').put({ data, updatedAt, ...extra }, table);
+            tx.oncomplete = resolve;
+            tx.onerror    = reject;
+        });
     } catch (e) { console.warn('Cache write failed:', e); }
 }
 
@@ -575,17 +592,13 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = false) {
     log('Checking for updates...');
     const meta = await sbGetCacheMetadata();
 
-    const _needsFetch = (table, extra = {}) => {
-        const c = _cacheGet(table);
-        if (!c) return true;
-        if (c.updatedAt !== meta[table]) return true;
-        for (const [k, v] of Object.entries(extra)) { if (c[k] !== v) return true; }
-        return false;
-    };
     const _fetchOrCache = async (table, fn, extra = {}) => {
-        if (!_needsFetch(table, extra)) return _cacheGet(table).data;
+        const c = await _cacheGet(table);
+        const stale = !c || c.updatedAt !== meta[table] ||
+            Object.entries(extra).some(([k, v]) => c[k] !== v);
+        if (!stale) return c.data;
         const data = await fn();
-        _cacheSet(table, data, meta[table], extra);
+        await _cacheSet(table, data, meta[table], extra);
         return data;
     };
 
