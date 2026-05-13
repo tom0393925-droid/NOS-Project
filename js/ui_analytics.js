@@ -1018,8 +1018,7 @@ async function previewOrderImport() {
     }
 
     if (found.length === 0) {
-        alert('No data found.
-Make sure the Excel has a "SKU" or "Code" column, and a quantity column named "1st", "2nd", or "Order".');
+        alert('No data found. Make sure the Excel has a SKU/Code column and a quantity column named 1st, 2nd, or Order.');
         return;
     }
 
