@@ -132,7 +132,7 @@ function sbInitAuth(onSuccess, onSignOut) {
                 console.error('[Auth] allowed_emails check threw:', e);
                 await _sb.auth.signOut();
             }
-        } else if ((event === 'INITIAL_SESSION' && !session) || event === 'SIGNED_OUT') {
+        } else if (event === 'SIGNED_OUT') {
             onSignOut();
         }
     });
