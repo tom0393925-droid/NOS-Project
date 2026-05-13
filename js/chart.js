@@ -249,7 +249,7 @@ function updateChartPeriod() {
             _simValidDates = new Set([tNext, tNext2].filter(Boolean));
 
             const _validDates = _simValidDates;
-            const skuShipments = ((window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [])
+            const skuShipments = ((window._detailLocalOrders && window._detailLocalOrders[currentSelectedSKU]) || [])
                 .filter(s => _validDates.size === 0 || _validDates.has(s.arrivalDate));
             let runningQty = latestQty;
             for (let i = 1; i <= extendWeeks; i++) {
@@ -380,7 +380,7 @@ function _rebuildPrediction(newAvg) {
     for (let i = 0; i < loadedWeeks - 1; i++) ds[i] = null;
     ds[loadedWeeks - 1] = _simLatestQty;
     // Rebuild future data points with new avg
-    const skuShipments = ((window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [])
+    const skuShipments = ((window._detailLocalOrders && window._detailLocalOrders[currentSelectedSKU]) || [])
         .filter(s => _simValidDates.size === 0 || _simValidDates.has(s.arrivalDate));
     let runningQty = _simLatestQty;
     for (let i = 1; i <= _simNumFutureWeeks; i++) {

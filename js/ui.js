@@ -293,8 +293,12 @@ function renderSKUDetails(selectedCode) {
         else { targetNext = globalDryNext; targetNext2 = globalDryNext2; }
         let targetNext3 = (stType === 'Frozen') ? globalFrozenNext3 : globalDryNext3;
 
-        // 発注量入力欄を現在の shipmentOrders から復元
-        const skuShipments = (window.shipmentOrders && window.shipmentOrders[selectedCode]) || [];
+        // Order Planningの保存値をローカルストアにコピーして初期値とする
+        if (!window._detailLocalOrders) window._detailLocalOrders = {};
+        const savedShipments = (window.shipmentOrders && window.shipmentOrders[selectedCode]) || [];
+        window._detailLocalOrders[selectedCode] = savedShipments.map(s => ({ ...s }));
+
+        const skuShipments = window._detailLocalOrders[selectedCode];
         const loadedNextQty  = skuShipments.find(s => s.status !== 'arrived' && s.arrivalDate === targetNext)?.orderQty  || 0;
         const loadedNext2Qty = skuShipments.find(s => s.status !== 'arrived' && s.arrivalDate === targetNext2)?.orderQty || 0;
         const nextInput  = document.getElementById('shipOrderNextQty');
@@ -339,16 +343,17 @@ function renderSKUDetails(selectedCode) {
                 setSafeText('predNext2Qty', Math.max(0, Math.round(stockNext2)).toLocaleString() + ' ' + uomText);
                 setSafeText('predNext3Qty', stockNext3 !== null ? Math.max(0, Math.round(stockNext3)).toLocaleString() + ' ' + uomText : '-');
 
-                // Compute auto order suggestions
+                // Compute auto order suggestions — same logic as Order Planning
                 const predNextRaw = Math.max(0, latestQty - past12WAvg * diffWkNext);
                 const autoNext = Math.max(0, Math.ceil(safetyStock + past12WAvg * chartWks12 - predNextRaw));
-                const pred2ndRaw = Math.max(0, autoNext - past12WAvg * chartWks12);
+                // pred2nd uses actual saved shipNext (matches Order Planning formula)
+                const pred2ndForAuto = Math.max(0, predNextRaw + shipNext - past12WAvg * chartWks12);
                 let autoNext2 = 0;
                 if (targetNext3) {
                     const dWk3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
                     if (dWk3 > 0) {
                         const wks23 = dWk3 - diffWkNext2;
-                        autoNext2 = Math.max(0, Math.ceil(safetyStock + past12WAvg * wks23 - pred2ndRaw));
+                        autoNext2 = Math.max(0, Math.ceil(safetyStock + past12WAvg * wks23 - pred2ndForAuto));
                     }
                 }
                 window._shipAutoQtys = { next: autoNext, next2: autoNext2 };
@@ -451,7 +456,7 @@ function refreshPredictedBalances() {
         return;
     }
 
-    const skuShipments = (window.shipmentOrders && window.shipmentOrders[selectedCode]) || [];
+    const skuShipments = (window._detailLocalOrders && window._detailLocalOrders[selectedCode]) || [];
     const shipNext  = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext).reduce((a, s) => a + s.orderQty, 0);
     const shipNext2 = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext2).reduce((a, s) => a + s.orderQty, 0);
     const isZeroStock = latestQty === 0;
