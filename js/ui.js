@@ -297,13 +297,10 @@ function renderSKUDetails(selectedCode) {
         const skuShipments = (window.shipmentOrders && window.shipmentOrders[selectedCode]) || [];
         const loadedNextQty  = skuShipments.find(s => s.status !== 'arrived' && s.arrivalDate === targetNext)?.orderQty  || 0;
         const loadedNext2Qty = skuShipments.find(s => s.status !== 'arrived' && s.arrivalDate === targetNext2)?.orderQty || 0;
-        const loadedNext3Qty = skuShipments.find(s => s.status !== 'arrived' && s.arrivalDate === targetNext3)?.orderQty || 0;
         const nextInput  = document.getElementById('shipOrderNextQty');
         const next2Input = document.getElementById('shipOrderNext2Qty');
-        const next3Input = document.getElementById('shipOrderNext3Qty');
         if (nextInput)  nextInput.value  = loadedNextQty  || '';
         if (next2Input) next2Input.value = loadedNext2Qty || '';
-        if (next3Input) next3Input.value = loadedNext3Qty || '';
 
         if (!targetNext || !targetNext2) {
             setSafeText('predNextQty', '-'); setSafeText('predNext2Qty', '-'); setSafeText('predNext3Qty', '-');
@@ -321,7 +318,6 @@ function renderSKUDetails(selectedCode) {
                 // 発注量を考慮した予測在庫
                 const shipNext  = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext).reduce((a, s) => a + s.orderQty, 0);
                 const shipNext2 = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext2).reduce((a, s) => a + s.orderQty, 0);
-                const shipNext3 = targetNext3 ? skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext3).reduce((a, s) => a + s.orderQty, 0) : 0;
                 // Sequential depletion: each period starts from the previous period's ending balance
                 // Zero-stock: arrival week has no sales (nothing to sell before shipment came)
                 const isZeroStock = latestQty === 0;
@@ -335,7 +331,7 @@ function renderSKUDetails(selectedCode) {
                     const diffWkNext3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
                     if (diffWkNext3 > 0) {
                         const wks23 = diffWkNext3 - diffWkNext2;
-                        stockNext3 = Math.max(0, stockNext2 - past12WAvg * wks23) + shipNext3;
+                        stockNext3 = Math.max(0, stockNext2 - past12WAvg * wks23);
                     }
                 }
 
@@ -347,18 +343,16 @@ function renderSKUDetails(selectedCode) {
                 const predNextRaw = Math.max(0, latestQty - past12WAvg * diffWkNext);
                 const autoNext = Math.max(0, Math.ceil(safetyStock + past12WAvg * chartWks12 - predNextRaw));
                 const pred2ndRaw = Math.max(0, autoNext - past12WAvg * chartWks12);
-                let autoNext2 = 0, autoNext3 = 0;
+                let autoNext2 = 0;
                 if (targetNext3) {
                     const dWk3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
                     if (dWk3 > 0) {
                         const wks23 = dWk3 - diffWkNext2;
                         autoNext2 = Math.max(0, Math.ceil(safetyStock + past12WAvg * wks23 - pred2ndRaw));
-                        const pred3rdRaw = Math.max(0, pred2ndRaw + autoNext2 - past12WAvg * wks23);
-                        autoNext3 = Math.max(0, Math.ceil(safetyStock - pred3rdRaw));
                     }
                 }
-                window._shipAutoQtys = { next: autoNext, next2: autoNext2, next3: autoNext3 };
-                _updateShipHints(loadedNextQty, loadedNext2Qty, loadedNext3Qty);
+                window._shipAutoQtys = { next: autoNext, next2: autoNext2 };
+                _updateShipHints(loadedNextQty, loadedNext2Qty);
 
                 const cNext  = Math.ceil(Math.max(0, stockNext));
                 const cNext2 = Math.ceil(Math.max(0, stockNext2));
@@ -460,7 +454,6 @@ function refreshPredictedBalances() {
     const skuShipments = (window.shipmentOrders && window.shipmentOrders[selectedCode]) || [];
     const shipNext  = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext).reduce((a, s) => a + s.orderQty, 0);
     const shipNext2 = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext2).reduce((a, s) => a + s.orderQty, 0);
-    const shipNext3 = targetNext3 ? skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext3).reduce((a, s) => a + s.orderQty, 0) : 0;
     const isZeroStock = latestQty === 0;
     const stockNext  = Math.max(0, latestQty - past12WAvg * diffWkNext) + shipNext;
     const wks12 = diffWkNext2 - diffWkNext;
@@ -471,7 +464,7 @@ function refreshPredictedBalances() {
         const diffWkNext3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
         if (diffWkNext3 > 0) {
             const wks23 = diffWkNext3 - diffWkNext2;
-            stockNext3 = Math.max(0, stockNext2 - past12WAvg * wks23) + shipNext3;
+            stockNext3 = Math.max(0, stockNext2 - past12WAvg * wks23);
         }
     }
 
@@ -482,8 +475,7 @@ function refreshPredictedBalances() {
     // Update hints with current input values
     const curNext  = parseInt(document.getElementById('shipOrderNextQty')?.value)  || 0;
     const curNext2 = parseInt(document.getElementById('shipOrderNext2Qty')?.value) || 0;
-    const curNext3 = parseInt(document.getElementById('shipOrderNext3Qty')?.value) || 0;
-    _updateShipHints(curNext, curNext2, curNext3);
+    _updateShipHints(curNext, curNext2);
 
     if (predictEl) {
         const cNext  = Math.ceil(Math.max(0, stockNext));
@@ -505,8 +497,8 @@ function refreshPredictedBalances() {
     }
 }
 
-function _updateShipHints(qtyNext, qtyNext2, qtyNext3) {
-    const auto = window._shipAutoQtys || { next: 0, next2: 0, next3: 0 };
+function _updateShipHints(qtyNext, qtyNext2) {
+    const auto = window._shipAutoQtys || { next: 0, next2: 0 };
     const upd = (id, qty, autoQty) => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -515,5 +507,4 @@ function _updateShipHints(qtyNext, qtyNext2, qtyNext3) {
     };
     upd('hintShipNext',  qtyNext,  auto.next);
     upd('hintShipNext2', qtyNext2, auto.next2);
-    upd('hintShipNext3', qtyNext3, auto.next3);
 }

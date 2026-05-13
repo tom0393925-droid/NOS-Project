@@ -198,37 +198,10 @@ function updateShipmentOrder(slot, value) {
                 if (el2 && document.activeElement !== el2) el2.value = auto2 || '';
                 setOrder(tNext2, auto2);
                 if (window._shipAutoQtys) window._shipAutoQtys.next2 = auto2;
-                // Also cascade to 3rd
-                if (tNext3 && dw3 > dw2) {
-                    const predAt3rd = Math.max(0, predAt2nd + auto2 - avg * (dw3 - dw2));
-                    const auto3 = Math.max(0, Math.ceil(safety - predAt3rd));
-                    const el3 = document.getElementById('shipOrderNext3Qty');
-                    if (el3 && document.activeElement !== el3) el3.value = auto3 || '';
-                    setOrder(tNext3, auto3);
-                    if (window._shipAutoQtys) window._shipAutoQtys.next3 = auto3;
-                }
                 // Refresh hint labels to reflect new auto values
                 if (typeof _updateShipHints === 'function') {
                     const v2 = parseInt(document.getElementById('shipOrderNext2Qty')?.value) || 0;
-                    const v3 = parseInt(document.getElementById('shipOrderNext3Qty')?.value) || 0;
-                    _updateShipHints(qty, v2, v3);
-                }
-            } else if (slot === 'next2' && tNext3 && dw3 > dw2) {
-                // 2nd changed → recalculate 3rd
-                const shipNext = orders.find(s => s.arrivalDate === tNext)?.orderQty || 0;
-                const depletedAtNext = Math.max(0, latestQty - avg * dw1);
-                const stockAt2nd = Math.max(0, depletedAtNext + shipNext - avg * (dw2 - dw1)) + qty;
-                const predAt3rd = Math.max(0, stockAt2nd - avg * (dw3 - dw2));
-                const auto3 = Math.max(0, Math.ceil(safety - predAt3rd));
-                const el3 = document.getElementById('shipOrderNext3Qty');
-                if (el3 && document.activeElement !== el3) el3.value = auto3 || '';
-                setOrder(tNext3, auto3);
-                if (window._shipAutoQtys) window._shipAutoQtys.next3 = auto3;
-                // Refresh hint labels
-                if (typeof _updateShipHints === 'function') {
-                    const v1 = parseInt(document.getElementById('shipOrderNextQty')?.value) || 0;
-                    const v3 = parseInt(document.getElementById('shipOrderNext3Qty')?.value) || 0;
-                    _updateShipHints(v1, qty, v3);
+                    _updateShipHints(qty, v2);
                 }
             }
         }
