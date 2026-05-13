@@ -356,7 +356,6 @@ function renderSKUDetails(selectedCode) {
                 setSafeText('predNext3Qty', dispNext3 !== null ? Math.max(0, Math.round(dispNext3)).toLocaleString() + ' ' + uomText : '-');
 
                 // Compute auto order suggestions — same logic as Order Planning
-                const predNextRaw = Math.max(0, latestQty - past12WAvg * diffWkNext);
                 const autoNext = Math.max(0, Math.ceil(safetyStock + past12WAvg * chartWks12 - predNextRaw));
                 // pred2nd uses actual saved shipNext (matches Order Planning formula)
                 const pred2ndForAuto = Math.max(0, predNextRaw + shipNext - past12WAvg * chartWks12);
