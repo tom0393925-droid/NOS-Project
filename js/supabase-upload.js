@@ -113,6 +113,7 @@ async function uploadWeeklyInventoryFiles(files) {
     }
 
     if (progressEl) progressEl.style.display = 'none';
+    if (successCount > 0) await _touchCacheMetadata('weekly_sales');
 
     const summary = `Done: ${successCount} succeeded / ${errorCount} failed`;
     statusEl.innerHTML = `
@@ -228,6 +229,7 @@ async function uploadSkuMasterFile(files) {
             if (error) throw error;
         }
 
+        await _touchCacheMetadata('sku_master');
         statusEl.innerHTML = `<span class="text-green-700 font-bold">✅ ${records.length} SKU master records registered.</span>`;
     } catch (err) {
         statusEl.innerHTML = `<span class="text-red-600">❌ Error: ${err.message}</span>`;

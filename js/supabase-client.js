@@ -9,6 +9,39 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ==========================================
+// ローカルキャッシュ (localStorage)
+// ==========================================
+const _CACHE_VER = 'sb1';
+
+function _cacheGet(table) {
+    try {
+        const raw = localStorage.getItem(`${_CACHE_VER}_${table}`);
+        return raw ? JSON.parse(raw) : null;
+    } catch { return null; }
+}
+
+function _cacheSet(table, data, updatedAt, extra = {}) {
+    try {
+        localStorage.setItem(`${_CACHE_VER}_${table}`, JSON.stringify({ data, updatedAt, ...extra }));
+    } catch (e) { console.warn('Cache write failed:', e); }
+}
+
+async function _touchCacheMetadata(table) {
+    try {
+        await _sb.from('cache_metadata').upsert(
+            { table_name: table, updated_at: new Date().toISOString() },
+            { onConflict: 'table_name' }
+        );
+    } catch (e) { console.warn('cache_metadata update failed:', e); }
+}
+
+async function sbGetCacheMetadata() {
+    const { data, error } = await _sb.from('cache_metadata').select('table_name, updated_at');
+    if (error) throw error;
+    return Object.fromEntries(data.map(r => [r.table_name, r.updated_at]));
+}
+
+// ==========================================
 // 認証 (Google OAuth)
 // ==========================================
 
@@ -150,11 +183,13 @@ async function sbSaveSkuMaster(code, item) {
     };
     const { error } = await _sb.from('sku_master').upsert(row, { onConflict: 'code' });
     if (error) throw error;
+    await _touchCacheMetadata('sku_master');
 }
 
 async function sbDeleteSkuMaster(code) {
     const { error } = await _sb.from('sku_master').delete().eq('code', code);
     if (error) throw error;
+    await _touchCacheMetadata('sku_master');
 }
 
 // ==========================================
@@ -184,11 +219,11 @@ async function sbLoadWeeklySales(weeks = 52) {
 }
 
 async function sbUpsertWeeklySales(rows) {
-    // rows: [{ code, expiry_date, location, week_start, ending_qty, total_sales }, ...]
     const { error } = await _sb.from('weekly_sales').upsert(rows, {
         onConflict: 'code,expiry_date,location,week_start'
     });
     if (error) throw error;
+    await _touchCacheMetadata('weekly_sales');
 }
 
 // ==========================================
@@ -211,11 +246,11 @@ async function sbLoadPickingData() {
 }
 
 async function sbUpsertPickingData(rows) {
-    // rows: [{ code, client_name, week_start, pick_qty, pick_count }, ...]
     const { error } = await _sb.from('picking_data').upsert(rows, {
         onConflict: 'code,client_name,week_start'
     });
     if (error) throw error;
+    await _touchCacheMetadata('picking_data');
 }
 
 // ==========================================
@@ -245,6 +280,7 @@ async function sbSaveShipmentOrder(code, arrivalDate, orderQty, status = 'pendin
         code, arrival_date: arrivalDate, order_qty: orderQty, status
     }, { onConflict: 'code,arrival_date' });
     if (error) throw error;
+    await _touchCacheMetadata('shipment_orders');
 }
 
 // ==========================================
@@ -328,11 +364,13 @@ async function sbSaveOrderCategory(catData) {
         { onConflict: 'id' }
     );
     if (error) throw error;
+    await _touchCacheMetadata('order_categories');
 }
 
 async function sbDeleteOrderCategory(id) {
     const { error } = await _sb.from('order_categories').delete().eq('id', id);
     if (error) throw error;
+    await _touchCacheMetadata('order_categories');
 }
 
 // ==========================================
@@ -366,6 +404,7 @@ async function sbBulkUpsertSkuCategory(skuCodes, categoryId) {
             .upsert(rows.slice(i, i + batchSize), { onConflict: 'sku_code,category_id' });
         if (error) throw error;
     }
+    await _touchCacheMetadata('sku_category_map');
 }
 
 async function sbRemoveSkuFromCategory(skuCode, categoryId) {
@@ -374,6 +413,7 @@ async function sbRemoveSkuFromCategory(skuCode, categoryId) {
         .eq('sku_code', skuCode)
         .eq('category_id', categoryId);
     if (error) throw error;
+    await _touchCacheMetadata('sku_category_map');
 }
 
 async function sbLoadSkuHistory(code) {
@@ -532,15 +572,32 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = false) {
         _showLoading(msg);
     };
 
-    log(`Loading all data in parallel (last ${weeks} weeks)...`);
+    log('Checking for updates...');
+    const meta = await sbGetCacheMetadata();
+
+    const _needsFetch = (table, extra = {}) => {
+        const c = _cacheGet(table);
+        if (!c) return true;
+        if (c.updatedAt !== meta[table]) return true;
+        for (const [k, v] of Object.entries(extra)) { if (c[k] !== v) return true; }
+        return false;
+    };
+    const _fetchOrCache = async (table, fn, extra = {}) => {
+        if (!_needsFetch(table, extra)) return _cacheGet(table).data;
+        const data = await fn();
+        _cacheSet(table, data, meta[table], extra);
+        return data;
+    };
+
+    log(`Loading data...`);
     const [masterData, salesRows, pickingRows, ordersData, orderCats, skuCatMap] =
         await Promise.all([
-            sbLoadSkuMaster(),
-            sbLoadWeeklySales(weeks),
-            sbLoadPickingData(),
-            sbLoadShipmentOrders(),
-            sbLoadOrderCategories(),
-            sbLoadSkuCategoryMap(),
+            _fetchOrCache('sku_master',       sbLoadSkuMaster),
+            _fetchOrCache('weekly_sales',     () => sbLoadWeeklySales(weeks), { weeks }),
+            _fetchOrCache('picking_data',     sbLoadPickingData),
+            _fetchOrCache('shipment_orders',  sbLoadShipmentOrders),
+            _fetchOrCache('order_categories', sbLoadOrderCategories),
+            _fetchOrCache('sku_category_map', sbLoadSkuCategoryMap),
         ]);
 
     log('Converting data...');
