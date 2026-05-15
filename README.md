@@ -31,7 +31,7 @@ NOS-Project/
 │   └── SampleData.gs     # 旧サンプルデータ生成スクリプト（廃止）
 └── .claude/
     ├── settings.local.json  # Claude Codeの権限設定
-    └── skills/
+    └── commands/
         └── consult.md       # /consult コマンド（意見交換モード）の定義
 ```
 
