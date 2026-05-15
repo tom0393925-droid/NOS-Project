@@ -2,12 +2,20 @@
 // js/ui_categories.js: Order Category Management UI
 // ==========================================
 
+function _showToast(message, durationMs = 5000) {
+    const el = document.createElement('div');
+    el.textContent = message;
+    el.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,0.25);max-width:480px;text-align:center;line-height:1.5;';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), durationMs);
+}
+
 // ── Add-category UI state ──
 let _newCatPrefixes = [];
 
 function _getSkuSupplierPrefixes() {
     const prefixes = new Set();
-    for (const code in (window.skuMaster || {})) {
+    for (const code in (skuMaster || {})) {
         const m = code.match(/^([A-Za-z]+)/);
         if (m) prefixes.add(m[1].toUpperCase());
     }
@@ -163,6 +171,13 @@ function renderCategoryManagement() {
 
         if (!cat.parentId) {
             // ── Parent category row ──
+            const _today = new Date(); _today.setHours(0,0,0,0);
+            const _next1IsPast = cat.next1 && new Date(cat.next1) < _today;
+            const _delayedBadge = _next1IsPast
+                ? `<span class="bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded border border-orange-300">⚠️ Delayed</span>
+                   <button onclick="markContainerReceived('${id}')"
+                       class="bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-bold transition-colors">✓ Received</button>`
+                : '';
             div.innerHTML = `
                 <div class="flex flex-wrap items-center gap-3">
                     <input type="text" id="catName_${id}" value="${_escHtml(displayName)}" maxlength="40"
@@ -170,7 +185,8 @@ function renderCategoryManagement() {
                     <div class="flex items-center gap-1 text-xs">
                         <span class="text-gray-500 font-semibold">Next:</span>
                         <input type="date" id="catDate_${id}_1" value="${cat.next1 || ''}"
-                            class="border border-gray-300 rounded px-2 py-1 text-xs focus:ring-1 outline-none">
+                            class="border ${_next1IsPast ? 'border-orange-400 bg-orange-50' : 'border-gray-300'} rounded px-2 py-1 text-xs focus:ring-1 outline-none">
+                        ${_delayedBadge}
                     </div>
                     <div class="flex items-center gap-1 text-xs">
                         <span class="text-gray-500 font-semibold">2nd:</span>
@@ -256,6 +272,41 @@ async function saveCategoryName(id) {
     }
 }
 
+async function markContainerReceived(id) {
+    if (!window.orderCategories) return;
+    const cat = window.orderCategories[id];
+    if (!cat) return;
+
+    const newNext1 = cat.next2 || '';
+    const newNext2 = cat.next3 || '';
+    const newNext3 = '';
+
+    cat.next1 = newNext1; cat.next2 = newNext2; cat.next3 = newNext3;
+
+    const savedName = (cat.parentId && typeof _encodeCategoryConfig === 'function')
+        ? _encodeCategoryConfig(cat.name || id, cat.parentId, cat.prefixes || null)
+        : (cat.name || id);
+    try {
+        await sbSaveOrderCategory({ id, name: savedName, next1: newNext1 || null, next2: newNext2 || null, next3: null });
+    } catch (e) {
+        alert('Save failed: ' + e.message); return;
+    }
+
+    if (id === 'CFJP') {
+        globalDryNext = newNext1; globalDryNext2 = newNext2; globalDryNext3 = newNext3;
+    } else if (id === 'RFJP') {
+        globalFrozenNext = newNext1; globalFrozenNext2 = newNext2; globalFrozenNext3 = newNext3;
+    }
+
+    renderCategoryManagement();
+    if (typeof renderCategoryScheduleBar === 'function') renderCategoryScheduleBar();
+    if (typeof renderOrderCategoryTabs === 'function') renderOrderCategoryTabs();
+    if (currentSelectedSKU && typeof renderSKUDetails === 'function') renderSKUDetails(currentSelectedSKU);
+
+    const next1Label = newNext1 || '—';
+    _showToast(`✓ Received! Next updated to ${next1Label}. Click a category tab to refresh the order list.`);
+}
+
 async function saveCategoryDates(id) {
     const next1 = document.getElementById(`catDate_${id}_1`)?.value || null;
     const next2 = document.getElementById(`catDate_${id}_2`)?.value || null;
@@ -263,6 +314,52 @@ async function saveCategoryDates(id) {
 
     if (!window.orderCategories) window.orderCategories = {};
     const cat = window.orderCategories[id] || { id, name: id };
+
+    // Capture old dates before overwriting
+    const oldNext1 = cat.next1 || '';
+    const oldNext2 = cat.next2 || '';
+
+    const stType = id === 'RFJP' ? 'Frozen' : id === 'CFJP' ? 'Dry' : null;
+
+    const _hasQty = (date) => {
+        if (!date || !window.shipmentOrders) return false;
+        return Object.entries(window.shipmentOrders).some(([sku, orders]) => {
+            if (stType && (skuMaster || {})[sku]?.storageType !== stType) return false;
+            return orders.some(o => o.arrivalDate === date && o.status !== 'arrived' && o.orderQty > 0);
+        });
+    };
+
+    const _migrateQty = (oldDate, newDate) => {
+        if (!oldDate || !newDate || !window.shipmentOrders) return;
+        Object.entries(window.shipmentOrders).forEach(([sku, orders]) => {
+            if (stType && (skuMaster || {})[sku]?.storageType !== stType) return;
+            const oldEntry = orders.find(o => o.arrivalDate === oldDate && o.status !== 'arrived');
+            if (!oldEntry) return;
+            const newEntry = orders.find(o => o.arrivalDate === newDate);
+            if (newEntry) newEntry.orderQty = oldEntry.orderQty;
+            else orders.push({ arrivalDate: newDate, orderQty: oldEntry.orderQty, status: 'pending' });
+            orders.splice(orders.indexOf(oldEntry), 1);
+        });
+    };
+
+    const _clearQty = (date) => {
+        if (!date || !window.shipmentOrders) return;
+        Object.entries(window.shipmentOrders).forEach(([sku, orders]) => {
+            if (stType && (skuMaster || {})[sku]?.storageType !== stType) return;
+            const idx = orders.findIndex(o => o.arrivalDate === date && o.status !== 'arrived');
+            if (idx >= 0) orders.splice(idx, 1);
+        });
+    };
+
+    // Confirm qty carry-over for Next and 2nd Next if date changed and qty exists
+    if (next1 && oldNext1 && next1 !== oldNext1 && _hasQty(oldNext1)) {
+        const carry = confirm(`Next arrival date changed: ${oldNext1} → ${next1}\n\nOrder quantities were entered for the old date. Carry them over to the new date?`);
+        carry ? _migrateQty(oldNext1, next1) : _clearQty(oldNext1);
+    }
+    if (next2 && oldNext2 && next2 !== oldNext2 && _hasQty(oldNext2)) {
+        const carry = confirm(`2nd Next arrival date changed: ${oldNext2} → ${next2}\n\nOrder quantities were entered for the old date. Carry them over to the new date?`);
+        carry ? _migrateQty(oldNext2, next2) : _clearQty(oldNext2);
+    }
 
     // For parent categories, also read the name input
     if (!cat.parentId) {
@@ -293,8 +390,9 @@ async function saveCategoryDates(id) {
         const st = document.getElementById(`catSaveStatus_${id}`);
         if (st) { st.textContent = '✅ Saved'; setTimeout(() => { st.textContent = ''; }, 2500); }
 
-        // Refresh schedule bar if visible
+        renderCategoryManagement();
         if (typeof renderCategoryScheduleBar === 'function') renderCategoryScheduleBar();
+        if (currentSelectedSKU && typeof renderSKUDetails === 'function') renderSKUDetails(currentSelectedSKU);
     } catch (e) {
         alert('Save failed: ' + e.message);
     }

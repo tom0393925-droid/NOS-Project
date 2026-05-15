@@ -393,15 +393,6 @@ function _getArrivalDates() {
     let next2 = cat.next2 || parentCat.next2 || '';
     let next3 = cat.next3 || parentCat.next3 || '';
 
-    // Date shifting: if 1st shipment date has passed, shift 2nd→1st, 3rd→2nd
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    if (next && new Date(next) < today) {
-        next  = next2;
-        next2 = next3;
-        next3 = '';
-    }
-
     const baseDate = getLatestDataDate();
     const dNext  = next  ? new Date(next)  : null;
     const dNext2 = next2 ? new Date(next2) : null;
@@ -623,6 +614,23 @@ function sortOrderTable(col) {
     renderOrderTable();
 }
 
+function alignColToAuto(field) {
+    if (!confirm('Set all visible orders to auto values for this shipment?')) return;
+    const q = (document.getElementById('orderTableSearch')?.value || '').toLowerCase();
+    const visibleRows = q
+        ? _orderData.filter(r => r.code.toLowerCase().includes(q) || r.name.toLowerCase().includes(q))
+        : [..._orderData];
+    visibleRows.forEach(row => {
+        const sid = String(row.code).replace(/[^a-zA-Z0-9]/g, '_');
+        const autoVal = field === 'orderNext' ? row.autoOrderNext : row.autoOrder2nd;
+        const input = document.querySelector(`input[data-sid="${sid}"][data-field="${field}"]`);
+        if (input) {
+            input.value = String(autoVal);
+            onOrderQtyChange(input);
+        }
+    });
+}
+
 function renderOrderTable() {
     const tbody = document.getElementById('orderAlertTableBody');
     if (!tbody) return;
@@ -637,12 +645,15 @@ function renderOrderTable() {
     setTh('thPredNext', 'predNext', dates.next);
     setTh('thPred2nd',  'pred2nd',  dates.next2);
     setTh('thPred3rd',  'pred3rd',  dates.next3);
-    const setOrderTh = (id, label, date) => {
+    const setOrderTh = (id, label, date, field) => {
         const el = document.getElementById(id);
-        if (el) el.textContent = date ? `Order (${date})` : label;
+        if (!el) return;
+        const text = date ? `Order (${date})` : label;
+        const btn = date ? `<button onclick="alignColToAuto('${field}')" class="ml-1.5 text-[10px] bg-blue-200 hover:bg-blue-300 text-blue-800 rounded px-1.5 py-0.5 font-bold transition-colors" title="Set all visible to auto">≈auto</button>` : '';
+        el.innerHTML = text + btn;
     };
-    setOrderTh('thOrderNext', 'Order (Next)', dates.next);
-    setOrderTh('thOrder2nd',  'Order (2nd)',  dates.next2);
+    setOrderTh('thOrderNext', 'Order (Next)', dates.next,  'orderNext');
+    setOrderTh('thOrder2nd',  'Order (2nd)',  dates.next2, 'order2nd');
 
     // filter
     const q = (document.getElementById('orderTableSearch')?.value || '').toLowerCase();
@@ -946,4 +957,108 @@ function showCrossList(valRank, hitRank) {
         `;
         tbody.appendChild(tr);
     });
+}
+
+// ==========================================
+// Order Import from Excel
+// ==========================================
+
+function openOrderImportModal() {
+    const dates = _getArrivalDates();
+    const select = document.getElementById('orderImportDateSelect');
+    select.innerHTML = '<option value="">-- Select arrival date --</option>';
+    if (dates.next)  select.innerHTML += `<option value="${dates.next}">1st: ${dates.next}</option>`;
+    if (dates.next2) select.innerHTML += `<option value="${dates.next2}">2nd: ${dates.next2}</option>`;
+    if (dates.next3) select.innerHTML += `<option value="${dates.next3}">3rd: ${dates.next3}</option>`;
+    document.getElementById('orderImportModal').classList.remove('hidden');
+    document.getElementById('orderImportPreviewArea').classList.add('hidden');
+    document.getElementById('orderImportFile').value = '';
+}
+
+function closeOrderImportModal() {
+    document.getElementById('orderImportModal').classList.add('hidden');
+}
+
+async function previewOrderImport() {
+    const file = document.getElementById('orderImportFile').files[0];
+    const date = document.getElementById('orderImportDateSelect').value;
+    if (!file) { alert('Please select an Excel file.'); return; }
+    if (!date) { alert('Please select an arrival date.'); return; }
+
+    let found = [];
+    try {
+        const workbook = await readExcelWorkbookAsync(file);
+        for (const sheetName of workbook.SheetNames) {
+            const json = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1 });
+            let colSku = -1, colQty = -1, startRow = -1;
+            for (let r = 0; r < Math.min(json.length, 50); r++) {
+                if (!json[r]) continue;
+                for (let c = 0; c < json[r].length; c++) {
+                    const v = String(json[r][c] || '').trim().toLowerCase().replace(/\s+/g, '');
+                    if (v === 'sku' || v === 'code') colSku = c;
+                    if (['1st','2nd','order','orderqty','qty','発注量','confirmed'].includes(v)) colQty = c;
+                }
+                if (colSku !== -1 && colQty !== -1) { startRow = r + 1; break; }
+            }
+            if (startRow === -1) continue;
+            for (let r = startRow; r < json.length; r++) {
+                const row = json[r];
+                if (!row || row.length === 0) continue;
+                const code = String(row[colSku] || '').trim();
+                const qty = parseFloat(row[colQty]);
+                if (code && !isNaN(qty) && qty >= 0) {
+                    found.push({ code, name: (skuMaster[code] && skuMaster[code].name) || '-', qty: Math.round(qty) });
+                }
+            }
+            break;
+        }
+    } catch (e) {
+        alert('Failed to read Excel: ' + e.message);
+        return;
+    }
+
+    if (found.length === 0) {
+        alert('No data found. Make sure the Excel has a SKU/Code column and a quantity column named 1st, 2nd, or Order.');
+        return;
+    }
+
+    window._orderImportData = { date, rows: found };
+
+    const tbody = document.getElementById('orderImportPreviewBody');
+    tbody.innerHTML = found.map(r =>
+        `<tr class="border-b border-gray-100">
+            <td class="px-3 py-2 font-mono text-sm">${r.code}</td>
+            <td class="px-3 py-2 text-sm text-gray-600">${r.name}</td>
+            <td class="px-3 py-2 text-sm font-bold text-right">${r.qty.toLocaleString()}</td>
+        </tr>`
+    ).join('');
+
+    document.getElementById('orderImportPreviewInfo').textContent = `${found.length} SKUs will be imported → ${date}`;
+    document.getElementById('orderImportPreviewArea').classList.remove('hidden');
+}
+
+async function confirmOrderImport() {
+    const d = window._orderImportData;
+    if (!d) return;
+    const btn = document.getElementById('orderImportConfirmBtn');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    try {
+        await Promise.all(d.rows.map(r => sbSaveShipmentOrder(r.code, d.date, r.qty)));
+        if (!window.shipmentOrders) window.shipmentOrders = {};
+        for (const r of d.rows) {
+            if (!window.shipmentOrders[r.code]) window.shipmentOrders[r.code] = [];
+            const entry = window.shipmentOrders[r.code].find(s => s.arrivalDate === d.date);
+            if (entry) entry.orderQty = r.qty;
+            else window.shipmentOrders[r.code].push({ arrivalDate: d.date, orderQty: r.qty, status: 'pending' });
+        }
+        closeOrderImportModal();
+        _buildOrderData();
+        renderOrderTable();
+        alert(`✅ Imported ${d.rows.length} order quantities for ${d.date}`);
+    } catch (e) {
+        alert('Import failed: ' + e.message);
+        btn.disabled = false;
+        btn.textContent = 'Confirm & Import';
+    }
 }

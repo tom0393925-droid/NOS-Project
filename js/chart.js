@@ -9,6 +9,7 @@ let _isStockoutChart = false; // true when some weeks were excluded due to zero 
 let _simNumFutureWeeks = 0;  // how many future weeks are extended on the chart
 let _simLatestQty = 0;       // inventory qty at the last historical week
 let _simBaseDate = null;     // Date object for the last historical week
+let _simValidDates = new Set(); // arrival dates eligible for chart order boost (next + next2 only)
 let _prevChartSKU = null;    // detect SKU switches to auto-reset sim
 let _isDragging = false;
 let _dragStartClientY = 0;
@@ -206,10 +207,18 @@ function updateChartPeriod() {
     let extendedLabels = loadedFiles.map((filename, i) => {
         // Sheets API format: "W/2026-03-24"
         const isoMatch = filename.match(/(\d{4})-(\d{2})-(\d{2})/);
-        if (isoMatch) return `${isoMatch[1].slice(-2)}/${isoMatch[2]}/${isoMatch[3]}`;
+        if (isoMatch) {
+            const d = new Date(`${isoMatch[1]}-${isoMatch[2]}-${isoMatch[3]}T00:00:00`);
+            d.setDate(d.getDate() + 6);
+            return `${d.getFullYear().toString().slice(-2)}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+        }
         // Old Excel filename format: "YYMMDD"
         const match = filename.match(/(\d{6})/);
-        if (match) return `20${match[0].slice(0,2)}/${match[0].slice(2,4)}/${match[0].slice(4,6)}`;
+        if (match) {
+            const d = new Date(`20${match[0].slice(0,2)}/${match[0].slice(2,4)}/${match[0].slice(4,6)}`);
+            d.setDate(d.getDate() + 6);
+            return `${d.getFullYear().toString().slice(-2)}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+        }
         return `Wk ${i + 1}`;
     });
 
@@ -237,9 +246,10 @@ function updateChartPeriod() {
             _simLatestQty = latestQty;
             _simBaseDate = baseDate;
             _simNumFutureWeeks = extendWeeks;
+            _simValidDates = new Set([tNext, tNext2].filter(Boolean));
 
-            const _validDates = new Set([tNext, tNext2, tNext3].filter(Boolean));
-            const skuShipments = ((window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [])
+            const _validDates = _simValidDates;
+            const skuShipments = ((window._detailLocalOrders && window._detailLocalOrders[currentSelectedSKU]) || [])
                 .filter(s => _validDates.size === 0 || _validDates.has(s.arrivalDate));
             let runningQty = latestQty;
             for (let i = 1; i <= extendWeeks; i++) {
@@ -251,7 +261,9 @@ function updateChartPeriod() {
                 skuShipments.forEach(s => {
                     if (s.status === 'arrived') return;
                     const sd = new Date(s.arrivalDate);
-                    if (sd > wStart && sd <= wEnd) { runningQty += s.orderQty; shipArrivedThisWeek = true; }
+                    // 遅延中（過去日付）の未着荷は week 1 到着扱い
+                    const effectiveSd = sd <= baseDate ? new Date(baseDate.getTime() + 1) : sd;
+                    if (effectiveSd > wStart && effectiveSd <= wEnd) { runningQty += s.orderQty; shipArrivedThisWeek = true; }
                 });
                 // Zero-stock arrival week: no sales (nothing to sell before shipment arrived)
                 if (!(shipArrivedThisWeek && qtyBeforeOrder === 0)) {
@@ -368,7 +380,8 @@ function _rebuildPrediction(newAvg) {
     for (let i = 0; i < loadedWeeks - 1; i++) ds[i] = null;
     ds[loadedWeeks - 1] = _simLatestQty;
     // Rebuild future data points with new avg
-    const skuShipments = (window.shipmentOrders && window.shipmentOrders[currentSelectedSKU]) || [];
+    const skuShipments = ((window._detailLocalOrders && window._detailLocalOrders[currentSelectedSKU]) || [])
+        .filter(s => _simValidDates.size === 0 || _simValidDates.has(s.arrivalDate));
     let runningQty = _simLatestQty;
     for (let i = 1; i <= _simNumFutureWeeks; i++) {
         const wStart = new Date(_simBaseDate); wStart.setDate(_simBaseDate.getDate() + ((i - 1) * 7));
@@ -376,7 +389,8 @@ function _rebuildPrediction(newAvg) {
         skuShipments.forEach(s => {
             if (s.status === 'arrived') return;
             const sd = new Date(s.arrivalDate);
-            if (sd > wStart && sd <= wEnd) runningQty += s.orderQty;
+            const effectiveSd = sd <= _simBaseDate ? new Date(_simBaseDate.getTime() + 1) : sd;
+            if (effectiveSd > wStart && effectiveSd <= wEnd) runningQty += s.orderQty;
         });
         runningQty = Math.max(0, runningQty - newAvg);
         ds[loadedWeeks - 1 + i] = runningQty;

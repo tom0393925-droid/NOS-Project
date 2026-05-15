@@ -293,17 +293,18 @@ function renderSKUDetails(selectedCode) {
         else { targetNext = globalDryNext; targetNext2 = globalDryNext2; }
         let targetNext3 = (stType === 'Frozen') ? globalFrozenNext3 : globalDryNext3;
 
-        // 発注量入力欄を現在の shipmentOrders から復元
-        const skuShipments = (window.shipmentOrders && window.shipmentOrders[selectedCode]) || [];
+        // Order Planningの保存値をローカルストアにコピーして初期値とする
+        if (!window._detailLocalOrders) window._detailLocalOrders = {};
+        const savedShipments = (window.shipmentOrders && window.shipmentOrders[selectedCode]) || [];
+        window._detailLocalOrders[selectedCode] = savedShipments.map(s => ({ ...s }));
+
+        const skuShipments = window._detailLocalOrders[selectedCode];
         const loadedNextQty  = skuShipments.find(s => s.status !== 'arrived' && s.arrivalDate === targetNext)?.orderQty  || 0;
         const loadedNext2Qty = skuShipments.find(s => s.status !== 'arrived' && s.arrivalDate === targetNext2)?.orderQty || 0;
-        const loadedNext3Qty = skuShipments.find(s => s.status !== 'arrived' && s.arrivalDate === targetNext3)?.orderQty || 0;
         const nextInput  = document.getElementById('shipOrderNextQty');
         const next2Input = document.getElementById('shipOrderNext2Qty');
-        const next3Input = document.getElementById('shipOrderNext3Qty');
         if (nextInput)  nextInput.value  = loadedNextQty  || '';
         if (next2Input) next2Input.value = loadedNext2Qty || '';
-        if (next3Input) next3Input.value = loadedNext3Qty || '';
 
         if (!targetNext || !targetNext2) {
             setSafeText('predNextQty', '-'); setSafeText('predNext2Qty', '-'); setSafeText('predNext3Qty', '-');
@@ -318,10 +319,9 @@ function renderSKUDetails(selectedCode) {
                 setSafeText('predNextQty', 'Error'); setSafeText('predNext2Qty', 'Error'); setSafeText('predNext3Qty', 'Error');
                 predictEl.innerHTML = `<span class="text-xs text-red-400 font-bold">Date Setting Error (Past date selected)</span>`;
             } else {
-                // 発注量を考慮した予測在庫
+                // 発注量を考慮した予測在庫（チャート・Order Judgment用: 発注後残高）
                 const shipNext  = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext).reduce((a, s) => a + s.orderQty, 0);
                 const shipNext2 = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext2).reduce((a, s) => a + s.orderQty, 0);
-                const shipNext3 = targetNext3 ? skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext3).reduce((a, s) => a + s.orderQty, 0) : 0;
                 // Sequential depletion: each period starts from the previous period's ending balance
                 // Zero-stock: arrival week has no sales (nothing to sell before shipment came)
                 const isZeroStock = latestQty === 0;
@@ -335,30 +335,40 @@ function renderSKUDetails(selectedCode) {
                     const diffWkNext3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
                     if (diffWkNext3 > 0) {
                         const wks23 = diffWkNext3 - diffWkNext2;
-                        stockNext3 = Math.max(0, stockNext2 - past12WAvg * wks23) + shipNext3;
+                        stockNext3 = Math.max(0, stockNext2 - past12WAvg * wks23);
                     }
                 }
 
-                setSafeText('predNextQty',  Math.max(0, Math.round(stockNext)).toLocaleString()  + ' ' + uomText);
-                setSafeText('predNext2Qty', Math.max(0, Math.round(stockNext2)).toLocaleString() + ' ' + uomText);
-                setSafeText('predNext3Qty', stockNext3 !== null ? Math.max(0, Math.round(stockNext3)).toLocaleString() + ' ' + uomText : '-');
-
-                // Compute auto order suggestions
+                // 表示用残高: Order Planningと同じく「その便の発注を受け取る前」の残高
                 const predNextRaw = Math.max(0, latestQty - past12WAvg * diffWkNext);
+                const dispNext2   = Math.max(0, predNextRaw + shipNext - past12WAvg * chartWks12);
+                let dispNext3 = null;
+                if (targetNext3) {
+                    const diffWkNext3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
+                    if (diffWkNext3 > 0) {
+                        const wks23 = diffWkNext3 - diffWkNext2;
+                        dispNext3 = Math.max(0, dispNext2 + shipNext2 - past12WAvg * wks23);
+                    }
+                }
+
+                setSafeText('predNextQty',  Math.max(0, Math.round(predNextRaw)).toLocaleString() + ' ' + uomText);
+                setSafeText('predNext2Qty', Math.max(0, Math.round(dispNext2)).toLocaleString()   + ' ' + uomText);
+                setSafeText('predNext3Qty', dispNext3 !== null ? Math.max(0, Math.round(dispNext3)).toLocaleString() + ' ' + uomText : '-');
+
+                // Compute auto order suggestions — same logic as Order Planning
                 const autoNext = Math.max(0, Math.ceil(safetyStock + past12WAvg * chartWks12 - predNextRaw));
-                const pred2ndRaw = Math.max(0, autoNext - past12WAvg * chartWks12);
-                let autoNext2 = 0, autoNext3 = 0;
+                // pred2nd uses actual saved shipNext (matches Order Planning formula)
+                const pred2ndForAuto = Math.max(0, predNextRaw + shipNext - past12WAvg * chartWks12);
+                let autoNext2 = 0;
                 if (targetNext3) {
                     const dWk3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
                     if (dWk3 > 0) {
                         const wks23 = dWk3 - diffWkNext2;
-                        autoNext2 = Math.max(0, Math.ceil(safetyStock + past12WAvg * wks23 - pred2ndRaw));
-                        const pred3rdRaw = Math.max(0, pred2ndRaw + autoNext2 - past12WAvg * wks23);
-                        autoNext3 = Math.max(0, Math.ceil(safetyStock - pred3rdRaw));
+                        autoNext2 = Math.max(0, Math.ceil(safetyStock + past12WAvg * wks23 - pred2ndForAuto));
                     }
                 }
-                window._shipAutoQtys = { next: autoNext, next2: autoNext2, next3: autoNext3 };
-                _updateShipHints(loadedNextQty, loadedNext2Qty, loadedNext3Qty);
+                window._shipAutoQtys = { next: autoNext, next2: autoNext2 };
+                _updateShipHints(loadedNextQty, loadedNext2Qty);
 
                 const cNext  = Math.ceil(Math.max(0, stockNext));
                 const cNext2 = Math.ceil(Math.max(0, stockNext2));
@@ -457,10 +467,9 @@ function refreshPredictedBalances() {
         return;
     }
 
-    const skuShipments = (window.shipmentOrders && window.shipmentOrders[selectedCode]) || [];
+    const skuShipments = (window._detailLocalOrders && window._detailLocalOrders[selectedCode]) || [];
     const shipNext  = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext).reduce((a, s) => a + s.orderQty, 0);
     const shipNext2 = skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext2).reduce((a, s) => a + s.orderQty, 0);
-    const shipNext3 = targetNext3 ? skuShipments.filter(s => s.status !== 'arrived' && s.arrivalDate === targetNext3).reduce((a, s) => a + s.orderQty, 0) : 0;
     const isZeroStock = latestQty === 0;
     const stockNext  = Math.max(0, latestQty - past12WAvg * diffWkNext) + shipNext;
     const wks12 = diffWkNext2 - diffWkNext;
@@ -471,19 +480,30 @@ function refreshPredictedBalances() {
         const diffWkNext3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
         if (diffWkNext3 > 0) {
             const wks23 = diffWkNext3 - diffWkNext2;
-            stockNext3 = Math.max(0, stockNext2 - past12WAvg * wks23) + shipNext3;
+            stockNext3 = Math.max(0, stockNext2 - past12WAvg * wks23);
         }
     }
 
-    setSafeText('predNextQty',  Math.max(0, Math.round(stockNext)).toLocaleString()  + ' ' + uomText);
-    setSafeText('predNext2Qty', Math.max(0, Math.round(stockNext2)).toLocaleString() + ' ' + uomText);
-    setSafeText('predNext3Qty', stockNext3 !== null ? Math.max(0, Math.round(stockNext3)).toLocaleString() + ' ' + uomText : '-');
+    // 表示用残高: Order Planningと同じく「その便の発注を受け取る前」の残高
+    const predNextRaw = Math.max(0, latestQty - past12WAvg * diffWkNext);
+    const dispNext2   = Math.max(0, predNextRaw + shipNext - past12WAvg * chartWks12);
+    let dispNext3 = null;
+    if (targetNext3) {
+        const diffWkNext3 = (new Date(targetNext3) - baseDate) / (1000 * 60 * 60 * 24 * 7);
+        if (diffWkNext3 > 0) {
+            const wks23 = diffWkNext3 - diffWkNext2;
+            dispNext3 = Math.max(0, dispNext2 + shipNext2 - past12WAvg * wks23);
+        }
+    }
+
+    setSafeText('predNextQty',  Math.max(0, Math.round(predNextRaw)).toLocaleString() + ' ' + uomText);
+    setSafeText('predNext2Qty', Math.max(0, Math.round(dispNext2)).toLocaleString()   + ' ' + uomText);
+    setSafeText('predNext3Qty', dispNext3 !== null ? Math.max(0, Math.round(dispNext3)).toLocaleString() + ' ' + uomText : '-');
 
     // Update hints with current input values
     const curNext  = parseInt(document.getElementById('shipOrderNextQty')?.value)  || 0;
     const curNext2 = parseInt(document.getElementById('shipOrderNext2Qty')?.value) || 0;
-    const curNext3 = parseInt(document.getElementById('shipOrderNext3Qty')?.value) || 0;
-    _updateShipHints(curNext, curNext2, curNext3);
+    _updateShipHints(curNext, curNext2);
 
     if (predictEl) {
         const cNext  = Math.ceil(Math.max(0, stockNext));
@@ -505,8 +525,8 @@ function refreshPredictedBalances() {
     }
 }
 
-function _updateShipHints(qtyNext, qtyNext2, qtyNext3) {
-    const auto = window._shipAutoQtys || { next: 0, next2: 0, next3: 0 };
+function _updateShipHints(qtyNext, qtyNext2) {
+    const auto = window._shipAutoQtys || { next: 0, next2: 0 };
     const upd = (id, qty, autoQty) => {
         const el = document.getElementById(id);
         if (!el) return;
@@ -515,5 +535,4 @@ function _updateShipHints(qtyNext, qtyNext2, qtyNext3) {
     };
     upd('hintShipNext',  qtyNext,  auto.next);
     upd('hintShipNext2', qtyNext2, auto.next2);
-    upd('hintShipNext3', qtyNext3, auto.next3);
 }

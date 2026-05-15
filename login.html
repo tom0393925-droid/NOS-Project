@@ -37,9 +37,18 @@
             });
             if (error) {
                 const errEl = document.getElementById('loginError');
-                errEl.textContent = 'Login failed: ' + error.message;
+                errEl.textContent = 'Sign-in failed: ' + error.message;
                 errEl.classList.remove('hidden');
             }
+        }
+
+        // 認証エラーメッセージを表示
+        const authErr = sessionStorage.getItem('auth_error');
+        if (authErr) {
+            sessionStorage.removeItem('auth_error');
+            const errEl = document.getElementById('loginError');
+            errEl.textContent = authErr;
+            errEl.classList.remove('hidden');
         }
 
         // すでにログイン済みならアプリへ

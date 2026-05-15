@@ -137,102 +137,20 @@ function updateShipmentOrder(slot, value) {
     const tNext2 = stType === 'Frozen' ? globalFrozenNext2 : globalDryNext2;
     const tNext3 = stType === 'Frozen' ? globalFrozenNext3 : globalDryNext3;
 
-    const arrivalDate = slot === 'next' ? tNext : slot === 'next2' ? tNext2 : tNext3;
+    const arrivalDate = slot === 'next' ? tNext : tNext2;
     if (!arrivalDate) return;
 
-    if (!window.shipmentOrders) window.shipmentOrders = {};
-    if (!window.shipmentOrders[currentSelectedSKU]) window.shipmentOrders[currentSelectedSKU] = [];
+    // Write only to local store — never touches window.shipmentOrders (Order Planning data)
+    if (!window._detailLocalOrders) window._detailLocalOrders = {};
+    if (!window._detailLocalOrders[currentSelectedSKU]) window._detailLocalOrders[currentSelectedSKU] = [];
 
-    const orders = window.shipmentOrders[currentSelectedSKU];
-    const setOrder = (date, newQty) => {
+    const orders = window._detailLocalOrders[currentSelectedSKU];
+    const setLocal = (date, newQty) => {
         if (!date) return;
         const e = orders.find(s => s.arrivalDate === date);
         if (e) e.orderQty = newQty; else orders.push({ arrivalDate: date, orderQty: newQty, status: 'pending' });
     };
-    setOrder(arrivalDate, qty);
-
-    // Cascade: recalculate subsequent shipment quantities
-    if (slot !== 'next3' && tNext2) {
-        const targetLots = Object.values(historyData).filter(h => h.code === currentSelectedSKU);
-        if (targetLots.length > 0) {
-            let latestQty = 0;
-            targetLots.forEach(lot => { latestQty += (lot.qtys[loadedWeeks - 1] || 0); });
-            const wks12 = Math.min(12, loadedWeeks);
-            const aggQtys  = new Array(loadedWeeks).fill(0);
-            const aggSales = new Array(loadedWeeks).fill(0);
-            for (let i = 0; i < loadedWeeks; i++) {
-                targetLots.forEach(lot => { aggQtys[i] += (lot.qtys[i] || 0); aggSales[i] += (lot.sales[i] || 0); });
-            }
-            let hasStk = false, recentZero = 0;
-            for (let i = 0; i < loadedWeeks; i++) {
-                if (aggQtys[i] > 0) hasStk = true;
-                if (i >= loadedWeeks - wks12 && aggQtys[i] === 0) recentZero++;
-            }
-            let avg;
-            if (hasStk && recentZero > 0 && typeof _calcStockoutAvg === 'function') {
-                avg = _calcStockoutAvg(aggQtys, aggSales, loadedWeeks);
-            } else {
-                let salesSum = 0;
-                for (let i = loadedWeeks - wks12; i < loadedWeeks; i++) salesSum += aggSales[i];
-                avg = wks12 > 0 ? salesSum / wks12 : 0;
-            }
-            const safety = Math.round(avg * safetyWeeks);
-            const base = getLatestDataDate();
-            const dw1 = tNext  ? (new Date(tNext)  - base) / 604800000 : 0;
-            const dw2 = tNext2 ? (new Date(tNext2) - base) / 604800000 : 0;
-            const dw3 = tNext3 ? (new Date(tNext3) - base) / 604800000 : 0;
-
-            if (slot === 'next' && dw2 > 0) {
-                // 1st changed → recalculate 2nd
-                const depletedAtNext = Math.max(0, latestQty - avg * dw1);
-                // Zero-stock: arrival week has no sales; use chart-aligned week count
-                const isZeroStock = latestQty === 0;
-                const chartWks12 = isZeroStock ? Math.ceil(dw2) - Math.ceil(dw1) - 1 : dw2 - dw1;
-                const predAt2nd = isZeroStock
-                    ? Math.max(0, qty - avg * chartWks12)
-                    : Math.max(0, depletedAtNext + qty - avg * (dw2 - dw1));
-                const auto2 = tNext3 && dw3 > dw2
-                    ? Math.max(0, Math.ceil(safety + avg * (dw3 - dw2) - predAt2nd))
-                    : Math.max(0, Math.ceil(safety - predAt2nd));
-                const el2 = document.getElementById('shipOrderNext2Qty');
-                if (el2 && document.activeElement !== el2) el2.value = auto2 || '';
-                setOrder(tNext2, auto2);
-                if (window._shipAutoQtys) window._shipAutoQtys.next2 = auto2;
-                // Also cascade to 3rd
-                if (tNext3 && dw3 > dw2) {
-                    const predAt3rd = Math.max(0, predAt2nd + auto2 - avg * (dw3 - dw2));
-                    const auto3 = Math.max(0, Math.ceil(safety - predAt3rd));
-                    const el3 = document.getElementById('shipOrderNext3Qty');
-                    if (el3 && document.activeElement !== el3) el3.value = auto3 || '';
-                    setOrder(tNext3, auto3);
-                    if (window._shipAutoQtys) window._shipAutoQtys.next3 = auto3;
-                }
-                // Refresh hint labels to reflect new auto values
-                if (typeof _updateShipHints === 'function') {
-                    const v2 = parseInt(document.getElementById('shipOrderNext2Qty')?.value) || 0;
-                    const v3 = parseInt(document.getElementById('shipOrderNext3Qty')?.value) || 0;
-                    _updateShipHints(qty, v2, v3);
-                }
-            } else if (slot === 'next2' && tNext3 && dw3 > dw2) {
-                // 2nd changed → recalculate 3rd
-                const shipNext = orders.find(s => s.arrivalDate === tNext)?.orderQty || 0;
-                const depletedAtNext = Math.max(0, latestQty - avg * dw1);
-                const stockAt2nd = Math.max(0, depletedAtNext + shipNext - avg * (dw2 - dw1)) + qty;
-                const predAt3rd = Math.max(0, stockAt2nd - avg * (dw3 - dw2));
-                const auto3 = Math.max(0, Math.ceil(safety - predAt3rd));
-                const el3 = document.getElementById('shipOrderNext3Qty');
-                if (el3 && document.activeElement !== el3) el3.value = auto3 || '';
-                setOrder(tNext3, auto3);
-                if (window._shipAutoQtys) window._shipAutoQtys.next3 = auto3;
-                // Refresh hint labels
-                if (typeof _updateShipHints === 'function') {
-                    const v1 = parseInt(document.getElementById('shipOrderNextQty')?.value) || 0;
-                    const v3 = parseInt(document.getElementById('shipOrderNext3Qty')?.value) || 0;
-                    _updateShipHints(v1, qty, v3);
-                }
-            }
-        }
-    }
+    setLocal(arrivalDate, qty);
 
     // チャートと残高テキストのみ軽量更新（フォーカスを奪わない）
     if (typeof updateChartPeriod === 'function') updateChartPeriod();
@@ -275,23 +193,15 @@ async function saveDatesAndRender() {
     }
 }
 
-// 過去の到着日を除去して残りを前に詰める
+// 過去の到着日は自動除去しない（手動 Received ボタンで管理）
 function _shiftExpiredDates(dates) {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
-    const shift = (...ds) => {
-        const future = ds.filter(d => d && new Date(d) >= today);
-        while (future.length < 3) future.push('');
-        return future;
-    };
-
-    const dry    = shift(dates.dryNext,    dates.dryNext2,    dates.dryNext3);
-    const frozen = shift(dates.frozenNext, dates.frozenNext2, dates.frozenNext3);
-
     return {
-        dryNext:     dry[0],    dryNext2:    dry[1],    dryNext3:    dry[2],
-        frozenNext:  frozen[0], frozenNext2: frozen[1], frozenNext3: frozen[2],
+        dryNext:     dates.dryNext     || '',
+        dryNext2:    dates.dryNext2    || '',
+        dryNext3:    dates.dryNext3    || '',
+        frozenNext:  dates.frozenNext  || '',
+        frozenNext2: dates.frozenNext2 || '',
+        frozenNext3: dates.frozenNext3 || '',
     };
 }
 

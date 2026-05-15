@@ -9,6 +9,56 @@ const SUPABASE_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 const _sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON);
 
 // ==========================================
+// ローカルキャッシュ (IndexedDB)
+// ==========================================
+function _idbOpen() {
+    return new Promise((resolve, reject) => {
+        const req = indexedDB.open('sb_cache_v1', 1);
+        req.onupgradeneeded = e => e.target.result.createObjectStore('tables');
+        req.onsuccess = e => resolve(e.target.result);
+        req.onerror = () => reject(req.error);
+    });
+}
+
+async function _cacheGet(table) {
+    try {
+        const db = await _idbOpen();
+        return await new Promise((resolve) => {
+            const req = db.transaction('tables', 'readonly').objectStore('tables').get(table);
+            req.onsuccess = () => resolve(req.result || null);
+            req.onerror   = () => resolve(null);
+        });
+    } catch { return null; }
+}
+
+async function _cacheSet(table, data, updatedAt, extra = {}) {
+    try {
+        const db = await _idbOpen();
+        await new Promise((resolve, reject) => {
+            const tx = db.transaction('tables', 'readwrite');
+            tx.objectStore('tables').put({ data, updatedAt, ...extra }, table);
+            tx.oncomplete = resolve;
+            tx.onerror    = reject;
+        });
+    } catch (e) { console.warn('Cache write failed:', e); }
+}
+
+async function _touchCacheMetadata(table) {
+    try {
+        await _sb.from('cache_metadata').upsert(
+            { table_name: table, updated_at: new Date().toISOString() },
+            { onConflict: 'table_name' }
+        );
+    } catch (e) { console.warn('cache_metadata update failed:', e); }
+}
+
+async function sbGetCacheMetadata() {
+    const { data, error } = await _sb.from('cache_metadata').select('table_name, updated_at');
+    if (error) throw error;
+    return Object.fromEntries(data.map(r => [r.table_name, r.updated_at]));
+}
+
+// ==========================================
 // 認証 (Google OAuth)
 // ==========================================
 
@@ -75,14 +125,19 @@ function sbInitAuth(onSuccess, onSignOut) {
                     _setAllowedCache(userEmail);
                     onSuccess(session.user);
                 } else {
-                    console.warn('[Auth] Not authorized or query failed:', error?.message);
+                    const reason = error
+                        ? 'Database error: ' + error.message
+                        : 'Access denied: ' + userEmail + ' is not in the allowed list.';
+                    console.warn('[Auth] Not authorized or query failed:', reason);
+                    sessionStorage.setItem('auth_error', reason);
                     await _sb.auth.signOut();
                 }
             } catch (e) {
                 console.error('[Auth] allowed_emails check threw:', e);
+                sessionStorage.setItem('auth_error', 'Connection timeout or error: ' + e.message);
                 await _sb.auth.signOut();
             }
-        } else if ((event === 'INITIAL_SESSION' && !session) || event === 'SIGNED_OUT') {
+        } else if (event === 'SIGNED_OUT') {
             onSignOut();
         }
     });
@@ -105,19 +160,17 @@ async function testSupabaseConnection() {
 // SKU Master
 // ==========================================
 async function sbLoadSkuMaster() {
-    const allRows = [];
     const pageSize = 1000;
-    let from = 0;
-    while (true) {
-        const { data, error } = await _sb
-            .from('sku_master')
-            .select('*')
-            .range(from, from + pageSize - 1);
-        if (error) throw error;
-        allRows.push(...data);
-        if (data.length < pageSize) break;
-        from += pageSize;
-    }
+    const { count, error: ce } = await _sb.from('sku_master').select('*', { count: 'exact', head: true });
+    if (ce) throw ce;
+    const pages = Math.ceil(count / pageSize);
+    const results = await Promise.all(
+        Array.from({ length: pages }, (_, i) =>
+            _sb.from('sku_master').select('*').range(i * pageSize, (i + 1) * pageSize - 1)
+        )
+    );
+    for (const r of results) if (r.error) throw r.error;
+    const allRows = results.flatMap(r => r.data);
     const result = {};
     for (const row of allRows) {
         result[row.code] = {
@@ -152,75 +205,74 @@ async function sbSaveSkuMaster(code, item) {
     };
     const { error } = await _sb.from('sku_master').upsert(row, { onConflict: 'code' });
     if (error) throw error;
+    await _touchCacheMetadata('sku_master');
 }
 
 async function sbDeleteSkuMaster(code) {
     const { error } = await _sb.from('sku_master').delete().eq('code', code);
     if (error) throw error;
+    await _touchCacheMetadata('sku_master');
 }
 
 // ==========================================
 // Weekly Sales
 // ==========================================
 async function sbLoadWeeklySales(weeks = 52) {
-    // 直近N週の開始日を計算
     const cutoff = new Date();
     cutoff.setDate(cutoff.getDate() - weeks * 7);
     const cutoffStr = cutoff.toISOString().split('T')[0];
 
-    const allRows = [];
     const pageSize = 1000;
-    let from = 0;
-    while (true) {
-        const { data, error } = await _sb
-            .from('weekly_sales')
-            .select('*')
-            .gte('week_start', cutoffStr)
-            .order('week_start', { ascending: true })
-            .range(from, from + pageSize - 1);
-        if (error) throw error;
-        allRows.push(...data);
-        if (data.length < pageSize) break;
-        from += pageSize;
-    }
-    return allRows;
+    const { count, error: ce } = await _sb.from('weekly_sales')
+        .select('*', { count: 'exact', head: true })
+        .gte('week_start', cutoffStr);
+    if (ce) throw ce;
+    const pages = Math.ceil(count / pageSize);
+    const results = await Promise.all(
+        Array.from({ length: pages }, (_, i) =>
+            _sb.from('weekly_sales').select('*')
+                .gte('week_start', cutoffStr)
+                .order('week_start', { ascending: true })
+                .range(i * pageSize, (i + 1) * pageSize - 1)
+        )
+    );
+    for (const r of results) if (r.error) throw r.error;
+    return results.flatMap(r => r.data);
 }
 
 async function sbUpsertWeeklySales(rows) {
-    // rows: [{ code, expiry_date, location, week_start, ending_qty, total_sales }, ...]
     const { error } = await _sb.from('weekly_sales').upsert(rows, {
         onConflict: 'code,expiry_date,location,week_start'
     });
     if (error) throw error;
+    await _touchCacheMetadata('weekly_sales');
 }
 
 // ==========================================
 // Picking Data
 // ==========================================
 async function sbLoadPickingData() {
-    const allRows = [];
     const pageSize = 1000;
-    let from = 0;
-    while (true) {
-        const { data, error } = await _sb
-            .from('picking_data')
-            .select('*')
-            .order('week_start', { ascending: true })
-            .range(from, from + pageSize - 1);
-        if (error) throw error;
-        allRows.push(...data);
-        if (data.length < pageSize) break;
-        from += pageSize;
-    }
-    return allRows;
+    const { count, error: ce } = await _sb.from('picking_data').select('*', { count: 'exact', head: true });
+    if (ce) throw ce;
+    const pages = Math.ceil(count / pageSize);
+    const results = await Promise.all(
+        Array.from({ length: pages }, (_, i) =>
+            _sb.from('picking_data').select('*')
+                .order('week_start', { ascending: true })
+                .range(i * pageSize, (i + 1) * pageSize - 1)
+        )
+    );
+    for (const r of results) if (r.error) throw r.error;
+    return results.flatMap(r => r.data);
 }
 
 async function sbUpsertPickingData(rows) {
-    // rows: [{ code, client_name, week_start, pick_qty, pick_count }, ...]
     const { error } = await _sb.from('picking_data').upsert(rows, {
         onConflict: 'code,client_name,week_start'
     });
     if (error) throw error;
+    await _touchCacheMetadata('picking_data');
 }
 
 // ==========================================
@@ -250,6 +302,7 @@ async function sbSaveShipmentOrder(code, arrivalDate, orderQty, status = 'pendin
         code, arrival_date: arrivalDate, order_qty: orderQty, status
     }, { onConflict: 'code,arrival_date' });
     if (error) throw error;
+    await _touchCacheMetadata('shipment_orders');
 }
 
 // ==========================================
@@ -310,34 +363,17 @@ async function sbLoadOrderCategories() {
     const { data, error } = await _sb.from('order_categories').select('*').order('id');
     if (error) throw error;
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const shiftDates = (...ds) => {
-        const future = ds.filter(d => d && new Date(d) >= today);
-        while (future.length < 3) future.push('');
-        return future;
-    };
-
     const result = {};
     for (const row of data) {
         const parsed = _parseCategoryConfig(row.name || row.id);
-        const [n1, n2, n3] = shiftDates(row.next1, row.next2, row.next3);
-
-        const changed = n1 !== (row.next1 || '') || n2 !== (row.next2 || '') || n3 !== (row.next3 || '');
-        if (changed) {
-            try {
-                await sbSaveOrderCategory({ id: row.id, name: row.name || row.id, next1: n1 || null, next2: n2 || null, next3: n3 || null });
-            } catch (e) { console.error('Category date shift save failed:', e); }
-        }
-
         result[row.id] = {
             id:       row.id,
             name:     parsed.displayName || row.id,
             parentId: parsed.parentId || null,
             prefixes: parsed.prefixes || null,
-            next1:    n1,
-            next2:    n2,
-            next3:    n3,
+            next1:    row.next1 || '',
+            next2:    row.next2 || '',
+            next3:    row.next3 || '',
         };
     }
     return result;
@@ -350,11 +386,13 @@ async function sbSaveOrderCategory(catData) {
         { onConflict: 'id' }
     );
     if (error) throw error;
+    await _touchCacheMetadata('order_categories');
 }
 
 async function sbDeleteOrderCategory(id) {
     const { error } = await _sb.from('order_categories').delete().eq('id', id);
     if (error) throw error;
+    await _touchCacheMetadata('order_categories');
 }
 
 // ==========================================
@@ -388,6 +426,7 @@ async function sbBulkUpsertSkuCategory(skuCodes, categoryId) {
             .upsert(rows.slice(i, i + batchSize), { onConflict: 'sku_code,category_id' });
         if (error) throw error;
     }
+    await _touchCacheMetadata('sku_category_map');
 }
 
 async function sbRemoveSkuFromCategory(skuCode, categoryId) {
@@ -396,6 +435,7 @@ async function sbRemoveSkuFromCategory(skuCode, categoryId) {
         .eq('sku_code', skuCode)
         .eq('category_id', categoryId);
     if (error) throw error;
+    await _touchCacheMetadata('sku_category_map');
 }
 
 async function sbLoadSkuHistory(code) {
@@ -554,22 +594,29 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = false) {
         _showLoading(msg);
     };
 
-    log('Loading SKU master...');
-    const masterData  = await sbLoadSkuMaster();
+    log('Checking for updates...');
+    const meta = await sbGetCacheMetadata();
 
-    log(`Loading weekly sales data (last ${weeks} weeks)...`);
-    const salesRows   = await sbLoadWeeklySales(weeks);
+    const _fetchOrCache = async (table, fn, extra = {}) => {
+        const c = await _cacheGet(table);
+        const stale = !c || c.updatedAt !== meta[table] ||
+            Object.entries(extra).some(([k, v]) => c[k] !== v);
+        if (!stale) return c.data;
+        const data = await fn();
+        await _cacheSet(table, data, meta[table], extra);
+        return data;
+    };
 
-    log('Loading picking data...');
-    const pickingRows = await sbLoadPickingData();
-
-    log('Loading shipment orders...');
-    const ordersData  = await sbLoadShipmentOrders();
-
-    log('Loading order categories...');
-    const orderCats  = await sbLoadOrderCategories();
-    log('Loading SKU category map...');
-    const skuCatMap  = await sbLoadSkuCategoryMap();
+    log(`Loading data...`);
+    const [masterData, salesRows, pickingRows, ordersData, orderCats, skuCatMap] =
+        await Promise.all([
+            _fetchOrCache('sku_master',       sbLoadSkuMaster),
+            _fetchOrCache('weekly_sales',     () => sbLoadWeeklySales(weeks), { weeks }),
+            _fetchOrCache('picking_data',     sbLoadPickingData),
+            _fetchOrCache('shipment_orders',  sbLoadShipmentOrders),
+            _fetchOrCache('order_categories', sbLoadOrderCategories),
+            _fetchOrCache('sku_category_map', sbLoadSkuCategoryMap),
+        ]);
 
     log('Converting data...');
     const { historyData: hd, weekKeys, weekLabels } = _weeklySalesToHistoryData(salesRows);
@@ -715,16 +762,13 @@ async function sbLoadSampleData(statusCallback) {
     }
 
     // Order categories
-    const today = new Date(); today.setHours(0, 0, 0, 0);
     const sampleCats = {};
     for (const row of catRows) {
         const parsed = _parseCategoryConfig(row.name || row.id);
-        const future = [row.next1, row.next2, row.next3].filter(d => d && new Date(d) >= today);
-        while (future.length < 3) future.push('');
         sampleCats[row.id] = {
             id: row.id, name: parsed.displayName || row.id,
             parentId: parsed.parentId || null, prefixes: parsed.prefixes || null,
-            next1: future[0], next2: future[1], next3: future[2],
+            next1: row.next1 || '', next2: row.next2 || '', next3: row.next3 || '',
         };
     }
 
