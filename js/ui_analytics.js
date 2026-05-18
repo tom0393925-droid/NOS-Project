@@ -70,14 +70,12 @@ function updateAnalyticsUI() {
 
     setSafeText('kpiTotalValue', '$' + Math.round(totalNormalValue).toLocaleString());
     setSafeText('kpiWasteRisk', '$' + Math.round(totalWasteRisk).toLocaleString());
-    // skuMaster はSupabaseロード時にフィルター済みの唯一の正確な件数を持つ
-    const activeSkusCount = Object.keys(skuMaster).length;
-    setSafeText('kpiTotalSkus', activeSkusCount.toLocaleString());
 
     // ==========================================
     // 1. Financial ABC Analysis
     // ==========================================
     let skuTotals = Object.values(skuTotalsMap).filter(sku => sku.qty > 0);
+    setSafeText('kpiTotalSkus', skuTotals.length.toLocaleString());
     
     // ★ 修正：数字のコードでもエラーにならないように String() で文字列に強制変換して比較
     skuTotals.sort((a, b) => {
