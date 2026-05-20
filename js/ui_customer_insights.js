@@ -154,10 +154,60 @@ function renderCiContent(customerCode) {
     // Show last N weeks as column headers (up to 12)
     const displayWeeks = allWeeks.slice(-12);
 
+    // ==========================================
+    // KPI calculations
+    // ==========================================
+    const totalAmount = rows.reduce((sum, r) => sum + r.amount, 0);
+
+    const last4Weeks = allWeeks.slice(-4);
+    const prev4Weeks = allWeeks.slice(-8, -4);
+    const last4Total = rows.filter(r => last4Weeks.includes(r.week_end)).reduce((sum, r) => sum + r.amount, 0);
+    const prev4Total = rows.filter(r => prev4Weeks.includes(r.week_end)).reduce((sum, r) => sum + r.amount, 0);
+
+    let trendCardHtml;
+    if (prev4Weeks.length === 0) {
+        trendCardHtml = `
+            <p class="text-2xl font-black text-gray-400">—</p>
+            <p class="text-xs text-gray-400 mt-1">データ不足</p>`;
+    } else if (prev4Total === 0) {
+        trendCardHtml = `
+            <p class="text-2xl font-black text-blue-500">NEW</p>
+            <p class="text-xs text-gray-400 mt-1">前4週の注文なし</p>`;
+    } else {
+        const trendPct = (last4Total - prev4Total) / prev4Total * 100;
+        const isUp = trendPct >= 0;
+        const color  = isUp ? 'text-green-600' : 'text-red-500';
+        const arrow  = isUp ? '↑' : '↓';
+        trendCardHtml = `
+            <p class="text-2xl font-black ${color}">${arrow} ${Math.abs(trendPct).toFixed(1)}%</p>
+            <p class="text-xs text-gray-400 mt-1">前4週比（$${prev4Total.toFixed(0)} → $${last4Total.toFixed(0)}）</p>`;
+    }
+    const trendBorder = (prev4Total > 0 && last4Total >= prev4Total) ? 'border-l-green-500' : (prev4Total > 0 ? 'border-l-red-400' : 'border-l-gray-300');
+
     panel.innerHTML = `
-        <div class="mb-6">
+        <div class="mb-5">
             <h2 class="text-xl font-black text-gray-800">${customerName}</h2>
-            <p class="text-xs text-gray-400 mt-0.5">Code: ${customerCode} &nbsp;|&nbsp; Data up to: ${latestWeek} &nbsp;|&nbsp; ${activeSkus.length} active SKUs, ${dormantSkus.length} dormant</p>
+            <p class="text-xs text-gray-400 mt-0.5">Code: ${customerCode} &nbsp;|&nbsp; Data up to: ${latestWeek}</p>
+        </div>
+
+        <!-- KPI Cards -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-indigo-400">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Purchase</p>
+                <p class="text-2xl font-black text-gray-800">$${totalAmount.toFixed(2)}</p>
+                <p class="text-xs text-gray-400 mt-1">累計購買金額（全期間）</p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-green-500">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Active SKUs</p>
+                <p class="text-2xl font-black text-green-600">${activeSkus.length}
+                    <span class="text-sm font-bold text-gray-300 ml-1">/ ${activeSkus.length + dormantSkus.length}</span>
+                </p>
+                <p class="text-xs text-gray-400 mt-1">直近${CI_WARN_WEEKS}週以内に発注あり &nbsp;|&nbsp; <span class="text-red-400 font-bold">${dormantSkus.length} dormant</span></p>
+            </div>
+            <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 ${trendBorder}">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">4-Week Trend</p>
+                ${trendCardHtml}
+            </div>
         </div>
 
         <!-- Active SKUs -->
