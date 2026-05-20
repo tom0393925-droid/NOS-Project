@@ -222,8 +222,10 @@ function renderCiContent(customerCode) {
 
     // Weekly totals for bar chart
     const weeklyTotals = {};
+    const weeklySkuCounts = {};
     for (const row of rows) {
         weeklyTotals[row.week_end] = (weeklyTotals[row.week_end] || 0) + row.amount;
+        weeklySkuCounts[row.week_end] = (weeklySkuCounts[row.week_end] || 0) + 1;
     }
 
     const last4Weeks = allWeeks.slice(-4);
@@ -325,12 +327,36 @@ function renderCiContent(customerCode) {
                     borderSkipped: false,
                 }]
             },
+            plugins: [{
+                id: 'ciBarLabels',
+                afterDatasetsDraw(chart) {
+                    const { ctx } = chart;
+                    chart.getDatasetMeta(0).data.forEach((bar, i) => {
+                        const val = chart.data.datasets[0].data[i];
+                        if (!val) return;
+                        const label = val >= 1000 ? '$' + (val / 1000).toFixed(1) + 'k' : '$' + val.toFixed(0);
+                        ctx.save();
+                        ctx.fillStyle = '#374151';
+                        ctx.font = 'bold 11px sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        ctx.fillText(label, bar.x, bar.y - 4);
+                        ctx.restore();
+                    });
+                }
+            }],
             options: {
                 responsive: true,
                 plugins: {
                     legend: { display: false },
                     tooltip: {
-                        callbacks: { label: c => _ciFormatAmt(c.parsed.y) }
+                        callbacks: {
+                            label: c => {
+                                const week = allWeeks[c.dataIndex];
+                                const skuCount = weeklySkuCounts[week] || 0;
+                                return [_ciFormatAmt(c.parsed.y), `${skuCount} SKUs ordered`];
+                            }
+                        }
                     }
                 },
                 scales: {
