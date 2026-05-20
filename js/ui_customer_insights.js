@@ -14,42 +14,42 @@ const CI_DORMANT_WEEKS = 8;
 // Entry: load data from Supabase and init tab
 // ==========================================
 async function initCustomerInsights() {
-    console.log('[CI] initCustomerInsights called');
     const placeholder = document.getElementById('ciPlaceholder');
     const content     = document.getElementById('ciContent');
 
-    console.log('[CI] placeholder:', placeholder, '/ content:', content);
-
-    // Keep placeholder visible until data is confirmed
     if (placeholder) placeholder.style.display = 'flex';
     if (content)     content.style.display = 'none';
 
-    // Clear any previous error message
-    const prevErr = document.getElementById('ciErrorMsg');
-    if (prevErr) prevErr.remove();
+    // Show loading spinner
+    if (placeholder) placeholder.innerHTML = `
+        <div class="flex flex-col items-center justify-center gap-3">
+            <svg class="animate-spin h-10 w-10 text-teal-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+            </svg>
+            <p class="text-sm font-bold text-gray-400">Loading client data...</p>
+        </div>`;
 
     let rows = [];
     try {
         rows = await sbLoadClientSkuOrders();
-        console.log('[CI] rows fetched:', rows.length);
     } catch (e) {
-        console.error('[CI] load failed:', e);
-        // Show error visually inside placeholder
-        if (placeholder) {
-            const errEl = document.createElement('p');
-            errEl.id = 'ciErrorMsg';
-            errEl.className = 'text-red-500 text-sm mt-3 font-bold bg-red-50 px-4 py-2 rounded-lg border border-red-200';
-            errEl.textContent = 'Load error: ' + (e.message || String(e));
-            placeholder.appendChild(errEl);
-        }
+        if (placeholder) placeholder.innerHTML = `
+            <p class="text-red-500 text-sm font-bold bg-red-50 px-4 py-2 rounded-lg border border-red-200">
+                Load error: ${e.message || String(e)}
+            </p>`;
         return;
     }
 
     window._ciRawData = rows;
 
     if (!rows.length) {
-        console.log('[CI] No rows — showing placeholder');
-        return; // No data yet — placeholder stays
+        // Restore "no data" message
+        if (placeholder) placeholder.innerHTML = `
+            <div class="text-5xl mb-4">👥</div>
+            <p class="text-xl font-black text-gray-700 mb-2">No data yet</p>
+            <p class="text-sm text-gray-500">Go to <strong class="text-teal-700">⚙️ Data Setup</strong> and upload a <em>Sales By Item (Customer)</em> Excel file.</p>`;
+        return;
     }
 
     console.log('[CI] Showing content');
