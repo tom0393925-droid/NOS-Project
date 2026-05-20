@@ -58,6 +58,7 @@ async function initCustomerInsights() {
 
     try {
         renderCiClientDropdown();
+        renderCiContent(''); // show prompt message on initial load
     } catch (e) {
         console.error('[CI] renderCiClientDropdown failed:', e);
         if (content) {
@@ -143,7 +144,15 @@ function renderCiContent(customerCode) {
     const panel = document.getElementById('ciClientPanel');
     if (!panel) return;
 
-    if (!customerCode) { panel.innerHTML = ''; return; }
+    if (!customerCode) {
+        panel.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-24 text-center">
+                <div class="text-5xl mb-4">🔍</div>
+                <p class="text-lg font-black text-gray-600 mb-1">クライアントを選択してください</p>
+                <p class="text-sm text-gray-400">上の検索欄からクライアント名を入力して選択すると<br>購買データが表示されます。</p>
+            </div>`;
+        return;
+    }
 
     const rows = window._ciRawData.filter(r => r.customer_code === customerCode);
     if (!rows.length) { panel.innerHTML = '<p class="text-gray-400 text-center py-10">No data for this client.</p>'; return; }
