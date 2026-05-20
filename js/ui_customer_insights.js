@@ -110,17 +110,18 @@ function ciFilterClients(query) {
 
     dd.innerHTML = matches.map(c => `
         <div class="px-4 py-2.5 text-sm cursor-pointer hover:bg-teal-50 hover:text-teal-700 font-bold border-b border-gray-50 last:border-0"
-             onmousedown="ciSelectClient('${c.code}', ${JSON.stringify(c.name)})">
+             onmousedown="ciSelectClient('${c.code}')">
             ${c.name}
             <span class="text-xs font-normal text-gray-400 ml-1">(${c.code})</span>
         </div>`).join('');
     dd.classList.remove('hidden');
 }
 
-function ciSelectClient(code, name) {
-    const input = document.getElementById('ciClientSearch');
-    const dd    = document.getElementById('ciClientDropdown');
-    if (input) input.value = name + ' (' + code + ')';
+function ciSelectClient(code) {
+    const input  = document.getElementById('ciClientSearch');
+    const dd     = document.getElementById('ciClientDropdown');
+    const client = window._ciClients.find(c => c.code === code);
+    if (input) input.value = client ? client.name + ' (' + code + ')' : code;
     if (dd)    dd.classList.add('hidden');
     renderCiContent(code);
 }
