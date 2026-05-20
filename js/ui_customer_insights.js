@@ -309,7 +309,7 @@ function renderCiContent(customerCode) {
                 <div style="position:relative;height:200px;">
                     <canvas id="ciDonutChart"></canvas>
                 </div>
-                <div id="ciDonutList" class="mt-3 space-y-1.5 overflow-y-auto" style="max-height:150px;"></div>
+                <div id="ciDonutList" class="mt-3 space-y-1.5 overflow-y-auto flex-1 min-h-0"></div>
             </div>
         </div>
 
