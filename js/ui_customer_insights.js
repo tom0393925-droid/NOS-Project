@@ -160,8 +160,8 @@ function renderCiContent(customerCode) {
         panel.innerHTML = `
             <div class="flex flex-col items-center justify-center py-24 text-center">
                 <div class="text-5xl mb-4">🔍</div>
-                <p class="text-lg font-black text-gray-600 mb-1">クライアントを選択してください</p>
-                <p class="text-sm text-gray-400">上の検索欄からクライアント名を入力して選択すると<br>購買データが表示されます。</p>
+                <p class="text-lg font-black text-gray-600 mb-1">Select a Client</p>
+                <p class="text-sm text-gray-400">Type a client name in the search box above<br>to view purchase data.</p>
             </div>`;
         return;
     }
