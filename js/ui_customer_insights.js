@@ -337,16 +337,17 @@ function renderCiContent(customerCode) {
                         const label = val >= 1000 ? '$' + (val / 1000).toFixed(1) + 'k' : '$' + val.toFixed(0);
                         ctx.save();
                         ctx.fillStyle = '#374151';
-                        ctx.font = 'bold 11px sans-serif';
+                        ctx.font = 'bold 13px sans-serif';
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'bottom';
-                        ctx.fillText(label, bar.x, bar.y - 4);
+                        ctx.fillText(label, bar.x, bar.y - 6);
                         ctx.restore();
                     });
                 }
             }],
             options: {
                 responsive: true,
+                aspectRatio: 4,
                 plugins: {
                     legend: { display: false },
                     tooltip: {
@@ -362,11 +363,14 @@ function renderCiContent(customerCode) {
                 scales: {
                     y: {
                         beginAtZero: true,
-                        ticks: { callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v) },
+                        ticks: {
+                            font: { size: 12 },
+                            callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v)
+                        },
                         grid: { color: 'rgba(0,0,0,0.05)' }
                     },
                     x: {
-                        ticks: { font: { size: 10 } },
+                        ticks: { font: { size: 12 } },
                         grid: { display: false }
                     }
                 }
