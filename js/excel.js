@@ -302,7 +302,7 @@ async function runCustomerInsightsImport() {
 
     const btn = document.getElementById('ciImportBtn');
     const status = document.getElementById('ciImportStatus');
-    btn.disabled = true;
+    if (btn) btn.disabled = true;
     if (status) status.textContent = 'Reading...';
 
     try {
@@ -377,6 +377,6 @@ async function runCustomerInsightsImport() {
         if (status) status.textContent = '❌ ' + e.message;
         console.error(e);
     } finally {
-        btn.disabled = false;
+        if (btn) btn.disabled = false;
     }
 }
