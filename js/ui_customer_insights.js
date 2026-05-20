@@ -4,6 +4,7 @@
 
 window._ciRawData      = [];   // raw rows from Supabase
 window._ciSelectedCode = null; // currently selected customer_code
+window._ciChart        = null; // Chart.js instance
 
 const _ciFormatAmt = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -155,6 +156,7 @@ function renderCiContent(customerCode) {
     if (!panel) return;
 
     if (!customerCode) {
+        if (window._ciChart) { window._ciChart.destroy(); window._ciChart = null; }
         panel.innerHTML = `
             <div class="flex flex-col items-center justify-center py-24 text-center">
                 <div class="text-5xl mb-4">🔍</div>
@@ -218,6 +220,12 @@ function renderCiContent(customerCode) {
     // ==========================================
     const totalAmount = rows.reduce((sum, r) => sum + r.amount, 0);
 
+    // Weekly totals for bar chart
+    const weeklyTotals = {};
+    for (const row of rows) {
+        weeklyTotals[row.week_end] = (weeklyTotals[row.week_end] || 0) + row.amount;
+    }
+
     const last4Weeks = allWeeks.slice(-4);
     const prev4Weeks = allWeeks.slice(-8, -4);
     const last4Total = rows.filter(r => last4Weeks.includes(r.week_end)).reduce((sum, r) => sum + r.amount, 0);
@@ -269,6 +277,12 @@ function renderCiContent(customerCode) {
             </div>
         </div>
 
+        <!-- Weekly Trend Chart -->
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-8">
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Weekly Purchase Trend</p>
+            <canvas id="ciTrendChart" height="90"></canvas>
+        </div>
+
         <!-- Active SKUs -->
         <div class="mb-8">
             <h3 class="font-black text-green-700 text-base mb-3 flex items-center gap-2">
@@ -293,6 +307,46 @@ function renderCiContent(customerCode) {
             }
         </div>
     `;
+
+    // Initialize bar chart (must run after innerHTML is set)
+    if (window._ciChart) { window._ciChart.destroy(); window._ciChart = null; }
+    const ctx = document.getElementById('ciTrendChart');
+    if (ctx) {
+        window._ciChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: allWeeks.map(w => w.slice(5)),
+                datasets: [{
+                    data: allWeeks.map(w => weeklyTotals[w] || 0),
+                    backgroundColor: allWeeks.map(w =>
+                        last4Weeks.includes(w) ? 'rgba(20,184,166,0.85)' : 'rgba(20,184,166,0.3)'
+                    ),
+                    borderRadius: 4,
+                    borderSkipped: false,
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: { label: c => _ciFormatAmt(c.parsed.y) }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: { callback: v => '$' + (v >= 1000 ? (v / 1000).toFixed(0) + 'k' : v) },
+                        grid: { color: 'rgba(0,0,0,0.05)' }
+                    },
+                    x: {
+                        ticks: { font: { size: 10 } },
+                        grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
 }
 
 function _renderCiSkuTable(skus, displayWeeks, isDormant) {
