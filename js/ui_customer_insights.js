@@ -297,7 +297,7 @@ function renderCiContent(customerCode) {
                 <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Weekly Purchase Trend</p>
                 <canvas id="ciTrendChart"></canvas>
             </div>
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col">
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col overflow-hidden">
                 <div class="flex items-center justify-between mb-3">
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">SKU Mix</p>
                     <div class="flex gap-1">
