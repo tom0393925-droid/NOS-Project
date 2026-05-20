@@ -225,9 +225,9 @@ function renderCiContent(customerCode) {
         <!-- KPI Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-indigo-400">
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Purchase</p>
-                <p class="text-2xl font-black text-gray-800">${_ciFormatAmt(totalAmount)}</p>
-                <p class="text-xs text-gray-400 mt-1">All-time cumulative</p>
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Last 4 Weeks</p>
+                <p class="text-2xl font-black text-gray-800">${_ciFormatAmt(last4Total)}</p>
+                <p class="text-xs text-gray-400 mt-1">${last4Weeks.length ? last4Weeks[0].slice(5) + ' – ' + last4Weeks[last4Weeks.length - 1].slice(5) : '—'}</p>
             </div>
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-green-500">
                 <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Active SKUs</p>
