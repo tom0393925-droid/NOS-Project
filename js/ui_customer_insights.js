@@ -2,10 +2,13 @@
 // js/ui_customer_insights.js: Customer Insights tab
 // ==========================================
 
-window._ciRawData      = [];   // raw rows from Supabase
-window._ciSelectedCode = null; // currently selected customer_code
-window._ciChart        = null; // Chart.js instance (bar)
-window._ciDonutChart   = null; // Chart.js instance (donut)
+window._ciRawData       = [];    // raw rows from Supabase
+window._ciSelectedCode  = null;  // currently selected customer_code
+window._ciChart         = null;  // Chart.js instance (bar)
+window._ciDonutChart    = null;  // Chart.js instance (donut)
+window._ciPeriod        = '12w'; // '4w' | '12w' | 'all'
+window._ciAllSkuEntries = [];    // all SKU entries for the current client
+window._ciAllWeeks      = [];    // all week_end dates for the current client
 
 const _ciFormatAmt = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -159,6 +162,8 @@ function renderCiContent(customerCode) {
     if (!customerCode) {
         if (window._ciChart)      { window._ciChart.destroy();      window._ciChart      = null; }
         if (window._ciDonutChart) { window._ciDonutChart.destroy(); window._ciDonutChart = null; }
+        window._ciAllSkuEntries = [];
+        window._ciAllWeeks      = [];
         panel.innerHTML = `
             <div class="flex flex-col items-center justify-center py-24 text-center">
                 <div class="text-5xl mb-4">🔍</div>
@@ -211,6 +216,11 @@ function renderCiContent(customerCode) {
 
     activeSkus.sort((a, b)  => b.totalAmount - a.totalAmount);
     dormantSkus.sort((a, b) => a.weeksSince  - b.weeksSince);
+
+    // Store for period-switching (reset to default 12w on every client change)
+    window._ciPeriod        = '12w';
+    window._ciAllSkuEntries = [...activeSkus, ...dormantSkus];
+    window._ciAllWeeks      = allWeeks;
 
     const customerName = rows[0].customer_name;
 
@@ -287,11 +297,19 @@ function renderCiContent(customerCode) {
                 <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Weekly Purchase Trend</p>
                 <canvas id="ciTrendChart"></canvas>
             </div>
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">SKU Mix (Active)</p>
-                <div style="position:relative;height:220px;">
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">SKU Mix</p>
+                    <div class="flex gap-1">
+                        <button id="ciTabBtn4w"  onclick="ciSetDonutPeriod('4w')"  class="px-2 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">4 Wks</button>
+                        <button id="ciTabBtn12w" onclick="ciSetDonutPeriod('12w')" class="px-2 py-1 text-xs font-bold rounded bg-teal-500 text-white">12 Wks</button>
+                        <button id="ciTabBtnall" onclick="ciSetDonutPeriod('all')" class="px-2 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">All</button>
+                    </div>
+                </div>
+                <div style="position:relative;height:200px;">
                     <canvas id="ciDonutChart"></canvas>
                 </div>
+                <div id="ciDonutList" class="mt-3 space-y-1.5 overflow-y-auto" style="max-height:150px;"></div>
             </div>
         </div>
 
@@ -389,58 +407,7 @@ function renderCiContent(customerCode) {
         });
     }
 
-    // Initialize donut chart
-    const donutCtx = document.getElementById('ciDonutChart');
-    if (donutCtx && activeSkus.length > 0) {
-        const TOP_N     = 7;
-        const sorted    = [...activeSkus].sort((a, b) => b.totalAmount - a.totalAmount);
-        const topSkus   = sorted.slice(0, TOP_N);
-        const restTotal = sorted.slice(TOP_N).reduce((s, x) => s + x.totalAmount, 0);
-
-        const donutLabels = topSkus.map(s => s.code);
-        const donutData   = topSkus.map(s => s.totalAmount);
-        if (restTotal > 0) { donutLabels.push('Others'); donutData.push(restTotal); }
-
-        const grandTotal = donutData.reduce((a, b) => a + b, 0);
-        const palette = [
-            'rgba(20,184,166,0.85)', 'rgba(45,212,191,0.85)', 'rgba(13,148,136,0.85)',
-            'rgba(94,234,212,0.85)', 'rgba(15,118,110,0.85)', 'rgba(153,246,228,0.85)',
-            'rgba(17,94,89,0.85)',   'rgba(156,163,175,0.75)'
-        ];
-
-        window._ciDonutChart = new Chart(donutCtx, {
-            type: 'doughnut',
-            data: {
-                labels: donutLabels,
-                datasets: [{
-                    data: donutData,
-                    backgroundColor: palette.slice(0, donutData.length),
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '62%',
-                plugins: {
-                    legend: {
-                        display: true,
-                        position: 'bottom',
-                        labels: { font: { size: 11 }, boxWidth: 12, padding: 6 }
-                    },
-                    tooltip: {
-                        callbacks: {
-                            label: c => {
-                                const pct = (c.parsed / grandTotal * 100).toFixed(1);
-                                return `${_ciFormatAmt(c.parsed)}  (${pct}%)`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
+    _ciRenderDonut('12w');
 }
 
 function _renderCiSkuTable(skus, displayWeeks, isDormant) {
@@ -560,4 +527,139 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
             <tbody>${tableRows}</tbody>
         </table>
     </div>`;
+}
+
+// ==========================================
+// Donut chart: period-based rendering
+// ==========================================
+function ciSetDonutPeriod(period) {
+    window._ciPeriod = period;
+    _ciRenderDonut(period);
+}
+
+function _ciRenderDonut(period) {
+    const allSkus  = window._ciAllSkuEntries || [];
+    const allWeeks = window._ciAllWeeks || [];
+    if (!allSkus.length) return;
+
+    const periodWeeks = period === '4w'  ? allWeeks.slice(-4)
+                      : period === '12w' ? allWeeks.slice(-12)
+                      :                    allWeeks;
+    const periodLabel = period === '4w'  ? 'Last 4 Wks'
+                      : period === '12w' ? 'Last 12 Wks'
+                      :                   'All Time';
+
+    // Compute period amount per SKU; drop SKUs with 0 in this period
+    const skuPeriodData = allSkus
+        .map(sku => ({
+            ...sku,
+            periodAmount: periodWeeks.reduce((sum, w) => sum + (sku.weekMap[w]?.amount || 0), 0)
+        }))
+        .filter(sku => sku.periodAmount > 0)
+        .sort((a, b) => b.periodAmount - a.periodAmount);
+
+    const listEl = document.getElementById('ciDonutList');
+
+    if (!skuPeriodData.length) {
+        if (window._ciDonutChart) { window._ciDonutChart.destroy(); window._ciDonutChart = null; }
+        if (listEl) listEl.innerHTML = '<p class="text-xs text-gray-400 text-center py-2">No orders in this period.</p>';
+        _ciUpdateDonutTabs(period);
+        return;
+    }
+
+    const grandTotal = skuPeriodData.reduce((s, x) => s + x.periodAmount, 0);
+    const TOP_N      = 7;
+    const topSkus    = skuPeriodData.slice(0, TOP_N);
+    const restTotal  = skuPeriodData.slice(TOP_N).reduce((s, x) => s + x.periodAmount, 0);
+
+    const donutLabels = topSkus.map(s => s.code);
+    const donutData   = topSkus.map(s => s.periodAmount);
+    if (restTotal > 0) { donutLabels.push('Others'); donutData.push(restTotal); }
+
+    const palette = [
+        'rgba(20,184,166,0.85)', 'rgba(45,212,191,0.85)', 'rgba(13,148,136,0.85)',
+        'rgba(94,234,212,0.85)', 'rgba(15,118,110,0.85)', 'rgba(153,246,228,0.85)',
+        'rgba(17,94,89,0.85)',   'rgba(156,163,175,0.75)'
+    ];
+
+    const centerPlugin = {
+        id: 'ciDonutCenter',
+        beforeDraw(chart) {
+            const { ctx, chartArea: { left, top, width, height } } = chart;
+            const cx = left + width / 2;
+            const cy = top + height / 2;
+            const totalLabel = grandTotal >= 1000 ? '$' + (grandTotal / 1000).toFixed(1) + 'k' : '$' + grandTotal.toFixed(0);
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#1f2937';
+            ctx.font = 'bold 14px sans-serif';
+            ctx.fillText(totalLabel, cx, cy - 9);
+            ctx.fillStyle = '#9ca3af';
+            ctx.font = '10px sans-serif';
+            ctx.fillText(periodLabel, cx, cy + 9);
+            ctx.restore();
+        }
+    };
+
+    if (window._ciDonutChart) { window._ciDonutChart.destroy(); window._ciDonutChart = null; }
+    const donutCtx = document.getElementById('ciDonutChart');
+    if (donutCtx) {
+        window._ciDonutChart = new Chart(donutCtx, {
+            type: 'doughnut',
+            data: {
+                labels: donutLabels,
+                datasets: [{
+                    data: donutData,
+                    backgroundColor: palette.slice(0, donutData.length),
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            plugins: [centerPlugin],
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '62%',
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        callbacks: {
+                            label: c => {
+                                const pct = (c.parsed / grandTotal * 100).toFixed(1);
+                                return `${_ciFormatAmt(c.parsed)}  (${pct}%)`;
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // Custom list below the chart
+    if (listEl) {
+        listEl.innerHTML = skuPeriodData.map((sku, i) => {
+            const color = palette[Math.min(i, palette.length - 1)];
+            const pct   = (sku.periodAmount / grandTotal * 100).toFixed(1);
+            return `<div class="flex items-center gap-2 text-xs py-0.5">
+                <span style="width:10px;height:10px;border-radius:2px;background:${color};flex-shrink:0;display:inline-block;"></span>
+                <span class="font-bold text-indigo-700 whitespace-nowrap">${sku.code}</span>
+                <span class="text-gray-500 truncate flex-1" title="${sku.name}">${sku.name}</span>
+                <span class="font-mono font-bold text-gray-700 whitespace-nowrap">${_ciFormatAmt(sku.periodAmount)}</span>
+                <span class="text-gray-400 whitespace-nowrap w-11 text-right">${pct}%</span>
+            </div>`;
+        }).join('');
+    }
+
+    _ciUpdateDonutTabs(period);
+}
+
+function _ciUpdateDonutTabs(period) {
+    const active   = 'px-2 py-1 text-xs font-bold rounded bg-teal-500 text-white';
+    const inactive = 'px-2 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors';
+    const map = { '4w': 'ciTabBtn4w', '12w': 'ciTabBtn12w', 'all': 'ciTabBtnall' };
+    for (const [key, id] of Object.entries(map)) {
+        const btn = document.getElementById(id);
+        if (btn) btn.className = key === period ? active : inactive;
+    }
 }
