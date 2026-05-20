@@ -14,23 +14,26 @@ const CI_DORMANT_WEEKS = 8;
 async function initCustomerInsights() {
     const placeholder = document.getElementById('ciPlaceholder');
     const content     = document.getElementById('ciContent');
+
+    // Keep placeholder visible until data is confirmed
+    if (placeholder) placeholder.style.display = 'block';
+    if (content)     content.style.display = 'none';
+
+    let rows = [];
+    try {
+        rows = await sbLoadClientSkuOrders();
+    } catch (e) {
+        // Table may not exist yet — silently skip, import section stays visible
+        console.warn('Customer Insights load failed (table may not exist yet):', e.message);
+        return;
+    }
+
+    window._ciRawData = rows;
+
+    if (!rows.length) return; // No data yet — placeholder stays
+
     if (placeholder) placeholder.style.display = 'none';
     if (content)     content.style.display = 'block';
-
-    try {
-        window._ciRawData = await sbLoadClientSkuOrders();
-    } catch (e) {
-        if (placeholder) { placeholder.style.display = 'block'; placeholder.textContent = 'Failed to load data: ' + e.message; }
-        if (content) content.style.display = 'none';
-        return;
-    }
-
-    if (!window._ciRawData.length) {
-        if (placeholder) { placeholder.style.display = 'block'; placeholder.textContent = 'No data yet. Import a Sales By Item (Customer) Excel file.'; }
-        if (content) content.style.display = 'none';
-        return;
-    }
-
     renderCiClientDropdown();
 }
 
