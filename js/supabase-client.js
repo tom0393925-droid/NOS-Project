@@ -706,6 +706,36 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = false) {
 }
 
 // ==========================================
+// Client SKU Orders (Customer Insights)
+// ==========================================
+async function sbSaveClientSkuOrders(rows) {
+    const batchSize = 500;
+    for (let i = 0; i < rows.length; i += batchSize) {
+        const { error } = await _sb.from('client_sku_orders')
+            .upsert(rows.slice(i, i + batchSize), { onConflict: 'customer_code,sku_code,week_end' });
+        if (error) throw error;
+    }
+}
+
+async function sbLoadClientSkuOrders() {
+    const allRows = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+        const { data, error } = await _sb
+            .from('client_sku_orders')
+            .select('customer_code,customer_name,sku_code,week_end,qty,amount')
+            .order('week_end', { ascending: true })
+            .range(from, from + pageSize - 1);
+        if (error) throw error;
+        allRows.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+    }
+    return allRows;
+}
+
+// ==========================================
 // Sample Data Load
 // ==========================================
 async function sbLoadSampleData(statusCallback) {

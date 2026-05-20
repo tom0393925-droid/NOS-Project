@@ -281,6 +281,9 @@
                     onclick="switchTab('analyticsTab', this); updateAnalyticsUI();">📊 Analytics & Order Planning</button>
                 <button
                     class="tab-button flex-auto px-4 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
+                    onclick="switchTab('customerInsightsTab', this); initCustomerInsights();">👥 Customer Insights</button>
+                <button
+                    class="tab-button flex-auto px-4 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
                     onclick="switchTab('mapTab', this)">🗺️ Warehouse Map</button>
             </div>
 
@@ -654,6 +657,47 @@
                      </div>
                  </div>
 
+                <!-- Customer Insights Tab -->
+                <div id="customerInsightsTab" class="tab-content px-6 pb-6 pt-4" style="display: none;">
+
+                    <!-- Import Section -->
+                    <div class="bg-teal-50 border border-teal-200 rounded-xl p-5 mb-6">
+                        <h3 class="font-black text-teal-800 text-base mb-1">📥 Import Sales By Item (Customer) Excel</h3>
+                        <p class="text-xs text-teal-600 mb-3">Export from your system: <em>Sales By Item (Customer) · View By: Items Summary</em>. Import weekly to build history.</p>
+                        <div class="flex items-center gap-3 flex-wrap">
+                            <input type="file" id="ciFileInput" accept=".xlsx,.xls" class="hidden" onchange="runCustomerInsightsImport()">
+                            <button id="ciImportBtn"
+                                onclick="document.getElementById('ciFileInput').click()"
+                                class="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-lg font-bold transition-colors shadow-sm text-sm">
+                                📂 Select Excel File
+                            </button>
+                            <span id="ciImportStatus" class="text-sm text-gray-500 font-medium"></span>
+                        </div>
+                    </div>
+
+                    <!-- Placeholder -->
+                    <div id="ciPlaceholder" class="text-center py-20 text-gray-400 font-bold text-lg">
+                        Import a Sales By Item (Customer) Excel file to get started.
+                    </div>
+
+                    <!-- Content -->
+                    <div id="ciContent" style="display: none;">
+                        <!-- Client Dropdown -->
+                        <div class="flex items-center gap-4 mb-6">
+                            <label class="font-black text-gray-700 text-sm whitespace-nowrap">Select Client:</label>
+                            <select id="ciClientSelect"
+                                onchange="renderCiContent(this.value)"
+                                class="flex-grow max-w-sm p-2.5 border border-gray-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-teal-400 outline-none bg-white shadow-sm">
+                                <option value="">-- Select Client --</option>
+                            </select>
+                        </div>
+
+                        <!-- Per-client detail panel -->
+                        <div id="ciClientPanel"></div>
+                    </div>
+
+                </div>
+
                 <div id="mapTab" class="tab-content px-6 pb-6 pt-6" style="display: none;">
                     <div class="mb-4">
                         <div>
@@ -1015,6 +1059,7 @@
     <script src="js/ui_categories.js?v=6"></script>
     <script src="js/ui_analytics.js?v=39"></script>
     <script src="js/ui_map.js?v=22"></script>
+    <script src="js/ui_customer_insights.js?v=1"></script>
     <script src="js/ui.js?v=31"></script>
     <script src="js/main.js?v=34"></script>
 </body>

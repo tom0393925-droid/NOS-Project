@@ -285,9 +285,98 @@ async function runInvoiceAnalysis() {
         fileInput.value = ''; 
         if (typeof updateInvoiceSlot === "function") updateInvoiceSlot();
         alert("✅ Invoice data loaded and missing SKU names were auto-registered!");
-    } catch (error) { alert("❌ Invoice Error: \n" + error.message); } 
+    } catch (error) { alert("❌ Invoice Error: \n" + error.message); }
     finally {
         document.getElementById('analyzeInvoiceBtn').disabled = false;
         document.getElementById('loadingInvoice').style.display = 'none';
+    }
+}
+
+// ==========================================
+// Customer Insights: Sales By Item (Customer) Excel Import
+// ==========================================
+async function runCustomerInsightsImport() {
+    const fileInput = document.getElementById('ciFileInput');
+    const file = fileInput.files[0];
+    if (!file) { alert('Please select a Sales By Item (Customer) Excel file.'); return; }
+
+    const btn = document.getElementById('ciImportBtn');
+    const status = document.getElementById('ciImportStatus');
+    btn.disabled = true;
+    if (status) status.textContent = 'Reading...';
+
+    try {
+        const workbook = await readExcelWorkbookAsync(file);
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+        // Extract "To" date from "From: DD/MM/YYYY To: DD/MM/YYYY"
+        let weekEnd = null;
+        for (let r = 0; r < Math.min(json.length, 10); r++) {
+            const cellStr = String(json[r][0] || '');
+            const m = cellStr.match(/To:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (m) { weekEnd = `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; break; }
+        }
+        if (!weekEnd) throw new Error('Could not find date. Expected "From: DD/MM/YYYY To: DD/MM/YYYY" in the file.');
+
+        // Find header row (has "Customer Name" and "Product Name")
+        let headerRow = -1;
+        for (let r = 0; r < Math.min(json.length, 20); r++) {
+            const row = json[r];
+            const hasCustomer = row.some(c => String(c).toLowerCase().includes('customer'));
+            const hasProduct  = row.some(c => String(c).toLowerCase().includes('product'));
+            if (hasCustomer && hasProduct) { headerRow = r; break; }
+        }
+        if (headerRow === -1) throw new Error('Could not find header row with "Customer Name" and "Product Name".');
+
+        const hdr = json[headerRow].map(c => String(c).toLowerCase().replace(/\s+/g, ''));
+        const colCustomer = hdr.findIndex(h => h.includes('customer'));
+        const colProduct  = hdr.findIndex(h => h.includes('product'));
+        const colQty      = hdr.findIndex(h => h === 'qty' || h === 'quantity');
+        const colAmount   = hdr.findIndex(h => h === 'amount');
+
+        const rows = [];
+        for (let r = headerRow + 2; r < json.length; r++) {
+            const row = json[r];
+            const productCell  = String(row[colProduct]  || '').trim();
+            const customerCell = String(row[colCustomer] || '').trim();
+            if (!productCell || !customerCell) continue;
+
+            const firstCell = String(row[0] || '').toLowerCase();
+            if (firstCell.includes('total') || firstCell.includes('grand')) continue;
+
+            // "15C0000007 En Donburi" → code + name
+            const spaceIdx = customerCell.indexOf(' ');
+            if (spaceIdx === -1) continue;
+            const customerCode = customerCell.substring(0, spaceIdx).trim();
+            const customerName = customerCell.substring(spaceIdx + 1).trim();
+            if (!customerCode || !customerName) continue;
+
+            const skuCode = productCell.split(' ')[0].trim();
+            if (!skuCode) continue;
+
+            const qty    = parseFloat(String(row[colQty]    || '0').replace(/,/g, '')) || 0;
+            const amount = parseFloat(String(row[colAmount] || '0').replace(/,/g, '')) || 0;
+            if (qty <= 0) continue;
+
+            rows.push({ customer_code: customerCode, customer_name: customerName, sku_code: skuCode, week_end: weekEnd, qty, amount });
+        }
+
+        if (rows.length === 0) throw new Error('No valid data rows found. Check the file format.');
+
+        if (status) status.textContent = `Saving ${rows.length} rows...`;
+        await sbSaveClientSkuOrders(rows);
+
+        window._ciRawData = await sbLoadClientSkuOrders();
+        renderCiClientDropdown();
+        if (window._ciSelectedCode) renderCiContent(window._ciSelectedCode);
+
+        if (status) status.textContent = `✅ Imported ${rows.length} records (week ending ${weekEnd})`;
+        fileInput.value = '';
+    } catch (e) {
+        if (status) status.textContent = '❌ ' + e.message;
+        console.error(e);
+    } finally {
+        btn.disabled = false;
     }
 }
