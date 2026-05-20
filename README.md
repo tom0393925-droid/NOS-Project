@@ -17,6 +17,7 @@ NOS-Project/
 │   ├── ui.js             # 分析パネル（SKU詳細・在庫予測・発注ヒント）
 │   ├── ui_analytics.js   # Order Planningテーブル・ABCランク分析
 │   ├── ui_categories.js  # カテゴリ・コンテナ設定画面
+│   ├── ui_customer_insights.js # Customer Insightsタブ（顧客別購買分析）
 │   ├── ui_map.js         # 棚マップ（倉庫ロケーション管理）
 │   ├── ui_master.js      # SKUマスタ管理画面
 │   ├── chart.js          # 将来在庫のグラフ描画・シミュレーション
@@ -55,6 +56,7 @@ NOS-Project/
 | `ui.js` | SKUをクリックしたときに開く「分析パネル」の表示担当。在庫予測グラフ・発注ヒント・WOSの計算を行う |
 | `ui_analytics.js` | 「Order Planning」タブのテーブル表示・ABCランク分析・クロス分析を担当。全SKUをまとめて一覧で見る画面 |
 | `ui_categories.js` | カテゴリ（CFJP/RFJPなど）の設定・コンテナ到着日の入力画面 |
+| `ui_customer_insights.js` | Customer Insightsタブ。顧客別の購買履歴・アクティブ／休眠SKU分析・4週トレンドのKPIカードを表示する |
 | `ui_map.js` | 棚番号とSKUの対応を管理する倉庫ロケーション画面 |
 | `ui_master.js` | SKUの基本情報（品名・UOM・安全在庫など）を管理するマスタ画面 |
 | `chart.js` | 将来の在庫推移をグラフで描画するエンジン。欠品SKUの需要推定ロジック（`_calcStockoutAvg`）もここに定義 |
@@ -84,6 +86,7 @@ NOS-Project/
 | 発注量入力時の連鎖自動計算（カスケード） | `main.js` (`updateShipmentOrder`) + `ui_analytics.js` (`onOrderQtyChange`) |
 | Excelエクスポート | `excel.js` |
 | ABCランク分析 | `ui_analytics.js` |
+| Customer Insightsタブ（顧客別購買分析・休眠SKU検出・4週トレンド） | `ui_customer_insights.js` |
 | 棚マップ管理 | `ui_map.js` |
 | SKUマスタ管理 | `ui_master.js` |
 | ログイン認証（Google OAuth） | `supabase-client.js` |
