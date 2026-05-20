@@ -30,6 +30,16 @@ async function initCustomerInsights() {
             <p class="text-sm font-bold text-gray-400">Loading client data...</p>
         </div>`;
 
+    // Load SKU master if not yet populated (e.g. Analytics tab hasn't been opened)
+    if (typeof skuMaster !== 'undefined' && Object.keys(skuMaster).length === 0) {
+        try {
+            const masterData = await sbLoadSkuMaster();
+            skuMaster = masterData;
+        } catch (e) {
+            console.warn('[CI] skuMaster load failed:', e);
+        }
+    }
+
     let rows = [];
     try {
         rows = await sbLoadClientSkuOrders();
