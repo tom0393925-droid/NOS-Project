@@ -117,6 +117,14 @@ function ciFilterClients(query) {
     dd.classList.remove('hidden');
 }
 
+function ciClearSearch() {
+    const input = document.getElementById('ciClientSearch');
+    const dd    = document.getElementById('ciClientDropdown');
+    if (input) input.value = '';
+    if (dd)    dd.classList.add('hidden');
+    renderCiContent('');
+}
+
 function ciSelectClient(code) {
     const input  = document.getElementById('ciClientSearch');
     const dd     = document.getElementById('ciClientDropdown');
