@@ -37,7 +37,7 @@ async function initCustomerInsights() {
             const errEl = document.createElement('p');
             errEl.id = 'ciErrorMsg';
             errEl.className = 'text-red-500 text-sm mt-3 font-bold bg-red-50 px-4 py-2 rounded-lg border border-red-200';
-            errEl.textContent = 'データ読み込みエラー: ' + (e.message || String(e));
+            errEl.textContent = 'Load error: ' + (e.message || String(e));
             placeholder.appendChild(errEl);
         }
         return;
@@ -61,7 +61,7 @@ async function initCustomerInsights() {
         if (content) {
             const errEl = document.createElement('p');
             errEl.className = 'text-red-500 text-sm font-bold bg-red-50 px-4 py-2 rounded-lg border border-red-200 mb-4';
-            errEl.textContent = 'ドロップダウン構築エラー: ' + (e.message || String(e));
+            errEl.textContent = 'Dropdown build error: ' + (e.message || String(e));
             content.insertBefore(errEl, content.firstChild);
         }
     }
@@ -168,11 +168,11 @@ function renderCiContent(customerCode) {
     if (prev4Weeks.length === 0) {
         trendCardHtml = `
             <p class="text-2xl font-black text-gray-400">—</p>
-            <p class="text-xs text-gray-400 mt-1">データ不足</p>`;
+            <p class="text-xs text-gray-400 mt-1">Not enough data</p>`;
     } else if (prev4Total === 0) {
         trendCardHtml = `
             <p class="text-2xl font-black text-blue-500">NEW</p>
-            <p class="text-xs text-gray-400 mt-1">前4週の注文なし</p>`;
+            <p class="text-xs text-gray-400 mt-1">No orders in prev 4 wks</p>`;
     } else {
         const trendPct = (last4Total - prev4Total) / prev4Total * 100;
         const isUp = trendPct >= 0;
@@ -180,7 +180,7 @@ function renderCiContent(customerCode) {
         const arrow  = isUp ? '↑' : '↓';
         trendCardHtml = `
             <p class="text-2xl font-black ${color}">${arrow} ${Math.abs(trendPct).toFixed(1)}%</p>
-            <p class="text-xs text-gray-400 mt-1">前4週比（$${prev4Total.toFixed(0)} → $${last4Total.toFixed(0)}）</p>`;
+            <p class="text-xs text-gray-400 mt-1">vs prev 4 wks ($${prev4Total.toFixed(0)} → $${last4Total.toFixed(0)})</p>`;
     }
     const trendBorder = (prev4Total > 0 && last4Total >= prev4Total) ? 'border-l-green-500' : (prev4Total > 0 ? 'border-l-red-400' : 'border-l-gray-300');
 
@@ -195,14 +195,14 @@ function renderCiContent(customerCode) {
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-indigo-400">
                 <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Purchase</p>
                 <p class="text-2xl font-black text-gray-800">$${totalAmount.toFixed(2)}</p>
-                <p class="text-xs text-gray-400 mt-1">累計購買金額（全期間）</p>
+                <p class="text-xs text-gray-400 mt-1">All-time cumulative</p>
             </div>
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-green-500">
                 <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Active SKUs</p>
                 <p class="text-2xl font-black text-green-600">${activeSkus.length}
                     <span class="text-sm font-bold text-gray-300 ml-1">/ ${activeSkus.length + dormantSkus.length}</span>
                 </p>
-                <p class="text-xs text-gray-400 mt-1">直近${CI_WARN_WEEKS}週以内に発注あり &nbsp;|&nbsp; <span class="text-red-400 font-bold">${dormantSkus.length} dormant</span></p>
+                <p class="text-xs text-gray-400 mt-1">ordered within last ${CI_WARN_WEEKS} wks &nbsp;|&nbsp; <span class="text-red-400 font-bold">${dormantSkus.length} dormant</span></p>
             </div>
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 ${trendBorder}">
                 <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">4-Week Trend</p>
