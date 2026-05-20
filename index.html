@@ -151,6 +151,20 @@
                     <div id="sbUploadStatus" class="text-sm mt-3"></div>
                 </div>
 
+                <!-- Customer Insights Import -->
+                <div class="bg-teal-50 p-6 rounded-xl shadow-sm border border-teal-200 mt-6">
+                    <h3 class="font-bold text-teal-900 text-lg mb-1">☁️ Upload Customer Sales Data</h3>
+                    <p class="text-xs text-teal-700 mb-4">Export <em>Sales By Item (Customer) · View By: Items Summary</em> from your system and import weekly to build purchase history.</p>
+                    <div class="border-2 border-dashed border-teal-400 rounded-xl p-6 text-center cursor-pointer transition-colors"
+                        onclick="document.getElementById('ciFileInput').click()">
+                        <div class="text-3xl mb-2">👥</div>
+                        <p class="font-bold text-teal-800">Click to select Sales By Item (Customer) Excel file</p>
+                        <p class="text-xs text-teal-600 mt-1">.xlsx / .xls</p>
+                        <input type="file" id="ciFileInput" accept=".xlsx,.xls" class="hidden" onchange="runCustomerInsightsImport()">
+                    </div>
+                    <div id="ciImportStatus" class="text-sm mt-3 font-medium"></div>
+                </div>
+
                 <!-- Update SKU Master -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mt-6">
                     <div class="mb-4 border-b pb-3">
@@ -660,24 +674,9 @@
                 <!-- Customer Insights Tab -->
                 <div id="customerInsightsTab" class="tab-content px-6 pb-6 pt-4" style="display: none;">
 
-                    <!-- Import Section -->
-                    <div class="bg-teal-50 border border-teal-200 rounded-xl p-5 mb-6">
-                        <h3 class="font-black text-teal-800 text-base mb-1">📥 Import Sales By Item (Customer) Excel</h3>
-                        <p class="text-xs text-teal-600 mb-3">Export from your system: <em>Sales By Item (Customer) · View By: Items Summary</em>. Import weekly to build history.</p>
-                        <div class="flex items-center gap-3 flex-wrap">
-                            <input type="file" id="ciFileInput" accept=".xlsx,.xls" class="hidden" onchange="runCustomerInsightsImport()">
-                            <button id="ciImportBtn"
-                                onclick="document.getElementById('ciFileInput').click()"
-                                class="bg-teal-600 hover:bg-teal-700 text-white px-5 py-2.5 rounded-lg font-bold transition-colors shadow-sm text-sm">
-                                📂 Select Excel File
-                            </button>
-                            <span id="ciImportStatus" class="text-sm text-gray-500 font-medium"></span>
-                        </div>
-                    </div>
-
                     <!-- Placeholder -->
                     <div id="ciPlaceholder" class="text-center py-20 text-gray-400 font-bold text-lg">
-                        Import a Sales By Item (Customer) Excel file to get started.
+                        Go to <strong>Settings</strong> to import a Sales By Item (Customer) Excel file.
                     </div>
 
                     <!-- Content -->
