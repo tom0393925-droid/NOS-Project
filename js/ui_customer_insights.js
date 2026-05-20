@@ -5,6 +5,8 @@
 window._ciRawData      = [];   // raw rows from Supabase
 window._ciSelectedCode = null; // currently selected customer_code
 
+const _ciFormatAmt = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
 const CI_WARN_WEEKS   = 4;
 const CI_DORMANT_WEEKS = 8;
 
@@ -180,7 +182,7 @@ function renderCiContent(customerCode) {
         const arrow  = isUp ? '↑' : '↓';
         trendCardHtml = `
             <p class="text-2xl font-black ${color}">${arrow} ${Math.abs(trendPct).toFixed(1)}%</p>
-            <p class="text-xs text-gray-400 mt-1">vs prev 4 wks ($${prev4Total.toFixed(0)} → $${last4Total.toFixed(0)})</p>`;
+            <p class="text-xs text-gray-400 mt-1">vs prev 4 wks (${_ciFormatAmt(prev4Total)} → ${_ciFormatAmt(last4Total)})</p>`;
     }
     const trendBorder = (prev4Total > 0 && last4Total >= prev4Total) ? 'border-l-green-500' : (prev4Total > 0 ? 'border-l-red-400' : 'border-l-gray-300');
 
@@ -194,7 +196,7 @@ function renderCiContent(customerCode) {
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-indigo-400">
                 <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Total Purchase</p>
-                <p class="text-2xl font-black text-gray-800">$${totalAmount.toFixed(2)}</p>
+                <p class="text-2xl font-black text-gray-800">${_ciFormatAmt(totalAmount)}</p>
                 <p class="text-xs text-gray-400 mt-1">All-time cumulative</p>
             </div>
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-green-500">
@@ -237,7 +239,7 @@ function renderCiContent(customerCode) {
 }
 
 function _renderCiSkuTable(skus, displayWeeks, isDormant) {
-    const fmtAmt = v => '$' + v.toFixed(2);
+    const fmtAmt = _ciFormatAmt;
 
     const headerCols = displayWeeks.map(w => `<th class="p-2 text-center text-xs font-bold text-gray-500 whitespace-nowrap">${w.slice(5)}</th>`).join('');
 
@@ -282,7 +284,7 @@ function _renderCiDormantTable(skus) {
         return `<tr class="border-b border-gray-100 hover:bg-red-50/20">
             <td class="p-3 font-bold text-indigo-700 text-sm">${sku.code}</td>
             <td class="p-3 text-sm text-gray-700 max-w-[250px] truncate" title="${sku.name}">${sku.name}</td>
-            <td class="p-3 text-right font-mono text-sm text-gray-500">$${sku.totalAmount.toFixed(2)}</td>
+            <td class="p-3 text-right font-mono text-sm text-gray-500">${_ciFormatAmt(sku.totalAmount)}</td>
             <td class="p-3 text-center text-xs text-gray-500">${sku.lastWeek || 'Never'}</td>
             <td class="p-3 text-center">${badge}</td>
         </tr>`;
