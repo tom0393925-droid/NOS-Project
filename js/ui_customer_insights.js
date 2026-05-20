@@ -292,12 +292,14 @@ function renderCiContent(customerCode) {
         </div>
 
         <!-- Charts Row: Trend + Donut -->
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
-            <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8" style="height:440px;">
+            <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-5 h-full flex flex-col">
                 <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Weekly Purchase Trend</p>
-                <canvas id="ciTrendChart"></canvas>
+                <div class="flex-1 min-h-0" style="position:relative;">
+                    <canvas id="ciTrendChart"></canvas>
+                </div>
             </div>
-            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 flex flex-col overflow-hidden">
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 h-full flex flex-col overflow-hidden">
                 <div class="flex items-center justify-between mb-3">
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">SKU Mix</p>
                     <div class="flex gap-1">
@@ -376,7 +378,7 @@ function renderCiContent(customerCode) {
             }],
             options: {
                 responsive: true,
-                aspectRatio: 2.5,
+                maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
                     tooltip: {
