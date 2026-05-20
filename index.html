@@ -684,14 +684,20 @@
 
                     <!-- Content -->
                     <div id="ciContent" style="display: none;">
-                        <!-- Client Dropdown -->
+                        <!-- Client Search -->
                         <div class="flex items-center gap-4 mb-6">
                             <label class="font-black text-gray-700 text-sm whitespace-nowrap">Select Client:</label>
-                            <select id="ciClientSelect"
-                                onchange="renderCiContent(this.value)"
-                                class="flex-grow max-w-sm p-2.5 border border-gray-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-teal-400 outline-none bg-white shadow-sm">
-                                <option value="">-- Select Client --</option>
-                            </select>
+                            <div class="relative flex-grow max-w-sm" id="ciSearchWrapper">
+                                <input type="text" id="ciClientSearch"
+                                    placeholder="Search client name..."
+                                    autocomplete="off"
+                                    oninput="ciFilterClients(this.value)"
+                                    onfocus="ciFilterClients(this.value)"
+                                    class="w-full p-2.5 border border-gray-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-teal-400 outline-none bg-white shadow-sm">
+                                <div id="ciClientDropdown"
+                                    class="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden">
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Per-client detail panel -->

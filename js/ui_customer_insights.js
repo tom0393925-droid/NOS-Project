@@ -70,30 +70,59 @@ async function initCustomerInsights() {
 }
 
 // ==========================================
-// Build client dropdown from raw data
+// Build client list for search combobox
 // ==========================================
+window._ciClients = []; // [{code, name}]
+
 function renderCiClientDropdown() {
-    const select = document.getElementById('ciClientSelect');
-    if (!select) return;
-
-    // Collect unique customers (code → name)
-    const clients = {};
+    const clientMap = {};
     for (const row of window._ciRawData) {
-        clients[row.customer_code] = row.customer_name;
+        clientMap[row.customer_code] = row.customer_name;
+    }
+    window._ciClients = Object.entries(clientMap)
+        .map(([code, name]) => ({ code, name: name || '' }))
+        .sort((a, b) => a.name.localeCompare(b.name));
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', e => {
+        const wrapper = document.getElementById('ciSearchWrapper');
+        if (wrapper && !wrapper.contains(e.target)) {
+            const dd = document.getElementById('ciClientDropdown');
+            if (dd) dd.classList.add('hidden');
+        }
+    }, { capture: true });
+}
+
+function ciFilterClients(query) {
+    const dd = document.getElementById('ciClientDropdown');
+    if (!dd) return;
+
+    const q = query.trim().toLowerCase();
+    const matches = q
+        ? window._ciClients.filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q))
+        : window._ciClients;
+
+    if (!matches.length) {
+        dd.innerHTML = '<p class="px-4 py-3 text-sm text-gray-400">No clients found.</p>';
+        dd.classList.remove('hidden');
+        return;
     }
 
-    const sorted = Object.entries(clients).sort((a, b) => (a[1] || '').localeCompare(b[1] || ''));
-    const prev = select.value;
+    dd.innerHTML = matches.map(c => `
+        <div class="px-4 py-2.5 text-sm cursor-pointer hover:bg-teal-50 hover:text-teal-700 font-bold border-b border-gray-50 last:border-0"
+             onmousedown="ciSelectClient('${c.code}', ${JSON.stringify(c.name)})">
+            ${c.name}
+            <span class="text-xs font-normal text-gray-400 ml-1">(${c.code})</span>
+        </div>`).join('');
+    dd.classList.remove('hidden');
+}
 
-    select.innerHTML = '<option value="">-- Select Client --</option>';
-    for (const [code, name] of sorted) {
-        const opt = document.createElement('option');
-        opt.value = code;
-        opt.textContent = `${name} (${code})`;
-        select.appendChild(opt);
-    }
-
-    if (prev && clients[prev]) select.value = prev;
+function ciSelectClient(code, name) {
+    const input = document.getElementById('ciClientSearch');
+    const dd    = document.getElementById('ciClientDropdown');
+    if (input) input.value = name + ' (' + code + ')';
+    if (dd)    dd.classList.add('hidden');
+    renderCiContent(code);
 }
 
 // ==========================================
