@@ -12,29 +12,59 @@ const CI_DORMANT_WEEKS = 8;
 // Entry: load data from Supabase and init tab
 // ==========================================
 async function initCustomerInsights() {
+    console.log('[CI] initCustomerInsights called');
     const placeholder = document.getElementById('ciPlaceholder');
     const content     = document.getElementById('ciContent');
 
+    console.log('[CI] placeholder:', placeholder, '/ content:', content);
+
     // Keep placeholder visible until data is confirmed
-    if (placeholder) placeholder.style.display = 'block';
+    if (placeholder) placeholder.style.display = 'flex';
     if (content)     content.style.display = 'none';
+
+    // Clear any previous error message
+    const prevErr = document.getElementById('ciErrorMsg');
+    if (prevErr) prevErr.remove();
 
     let rows = [];
     try {
         rows = await sbLoadClientSkuOrders();
+        console.log('[CI] rows fetched:', rows.length);
     } catch (e) {
-        // Table may not exist yet — silently skip, import section stays visible
-        console.warn('Customer Insights load failed (table may not exist yet):', e.message);
+        console.error('[CI] load failed:', e);
+        // Show error visually inside placeholder
+        if (placeholder) {
+            const errEl = document.createElement('p');
+            errEl.id = 'ciErrorMsg';
+            errEl.className = 'text-red-500 text-sm mt-3 font-bold bg-red-50 px-4 py-2 rounded-lg border border-red-200';
+            errEl.textContent = 'データ読み込みエラー: ' + (e.message || String(e));
+            placeholder.appendChild(errEl);
+        }
         return;
     }
 
     window._ciRawData = rows;
 
-    if (!rows.length) return; // No data yet — placeholder stays
+    if (!rows.length) {
+        console.log('[CI] No rows — showing placeholder');
+        return; // No data yet — placeholder stays
+    }
 
+    console.log('[CI] Showing content');
     if (placeholder) placeholder.style.display = 'none';
     if (content)     content.style.display = 'block';
-    renderCiClientDropdown();
+
+    try {
+        renderCiClientDropdown();
+    } catch (e) {
+        console.error('[CI] renderCiClientDropdown failed:', e);
+        if (content) {
+            const errEl = document.createElement('p');
+            errEl.className = 'text-red-500 text-sm font-bold bg-red-50 px-4 py-2 rounded-lg border border-red-200 mb-4';
+            errEl.textContent = 'ドロップダウン構築エラー: ' + (e.message || String(e));
+            content.insertBefore(errEl, content.firstChild);
+        }
+    }
 }
 
 // ==========================================
@@ -50,7 +80,7 @@ function renderCiClientDropdown() {
         clients[row.customer_code] = row.customer_name;
     }
 
-    const sorted = Object.entries(clients).sort((a, b) => a[1].localeCompare(b[1]));
+    const sorted = Object.entries(clients).sort((a, b) => (a[1] || '').localeCompare(b[1] || ''));
     const prev = select.value;
 
     select.innerHTML = '<option value="">-- Select Client --</option>';
