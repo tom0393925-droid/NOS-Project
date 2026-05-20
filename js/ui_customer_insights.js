@@ -365,13 +365,17 @@ function renderCiContent(customerCode) {
                     chart.getDatasetMeta(0).data.forEach((bar, i) => {
                         const val = chart.data.datasets[0].data[i];
                         if (!val) return;
-                        const label = val >= 1000 ? '$' + (val / 1000).toFixed(1) + 'k' : '$' + val.toFixed(0);
+                        const amtLabel = val >= 1000 ? '$' + (val / 1000).toFixed(1) + 'k' : '$' + val.toFixed(0);
+                        const skuCount = weeklySkuCounts[allWeeks[i]] || 0;
                         ctx.save();
+                        ctx.textAlign = 'center';
                         ctx.fillStyle = '#374151';
                         ctx.font = 'bold 13px sans-serif';
-                        ctx.textAlign = 'center';
                         ctx.textBaseline = 'bottom';
-                        ctx.fillText(label, bar.x, bar.y - 6);
+                        ctx.fillText(amtLabel, bar.x, bar.y - 20);
+                        ctx.fillStyle = '#6b7280';
+                        ctx.font = '11px sans-serif';
+                        ctx.fillText(skuCount + ' SKUs', bar.x, bar.y - 5);
                         ctx.restore();
                     });
                 }
@@ -381,15 +385,7 @@ function renderCiContent(customerCode) {
                 maintainAspectRatio: false,
                 plugins: {
                     legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: c => {
-                                const week = allWeeks[c.dataIndex];
-                                const skuCount = weeklySkuCounts[week] || 0;
-                                return [_ciFormatAmt(c.parsed.y), `${skuCount} SKUs ordered`];
-                            }
-                        }
-                    }
+                    tooltip: { enabled: false },
                 },
                 scales: {
                     y: {
