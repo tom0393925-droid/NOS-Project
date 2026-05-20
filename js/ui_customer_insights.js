@@ -4,7 +4,8 @@
 
 window._ciRawData      = [];   // raw rows from Supabase
 window._ciSelectedCode = null; // currently selected customer_code
-window._ciChart        = null; // Chart.js instance
+window._ciChart        = null; // Chart.js instance (bar)
+window._ciDonutChart   = null; // Chart.js instance (donut)
 
 const _ciFormatAmt = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -156,7 +157,8 @@ function renderCiContent(customerCode) {
     if (!panel) return;
 
     if (!customerCode) {
-        if (window._ciChart) { window._ciChart.destroy(); window._ciChart = null; }
+        if (window._ciChart)      { window._ciChart.destroy();      window._ciChart      = null; }
+        if (window._ciDonutChart) { window._ciDonutChart.destroy(); window._ciDonutChart = null; }
         panel.innerHTML = `
             <div class="flex flex-col items-center justify-center py-24 text-center">
                 <div class="text-5xl mb-4">🔍</div>
@@ -279,10 +281,18 @@ function renderCiContent(customerCode) {
             </div>
         </div>
 
-        <!-- Weekly Trend Chart -->
-        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-8">
-            <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Weekly Purchase Trend</p>
-            <canvas id="ciTrendChart" height="90"></canvas>
+        <!-- Charts Row: Trend + Donut -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-8">
+            <div class="lg:col-span-2 bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">Weekly Purchase Trend</p>
+                <canvas id="ciTrendChart"></canvas>
+            </div>
+            <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">SKU Mix (Active)</p>
+                <div style="position:relative;height:220px;">
+                    <canvas id="ciDonutChart"></canvas>
+                </div>
+            </div>
         </div>
 
         <!-- Active SKUs -->
@@ -293,7 +303,7 @@ function renderCiContent(customerCode) {
             </h3>
             ${activeSkus.length === 0
                 ? '<p class="text-gray-400 text-sm">No active SKUs in the last ' + CI_WARN_WEEKS + ' weeks.</p>'
-                : _renderCiSkuTable(activeSkus, displayWeeks, false)
+                : _renderCiSkuHeatmap(activeSkus, displayWeeks)
             }
         </div>
 
@@ -310,8 +320,9 @@ function renderCiContent(customerCode) {
         </div>
     `;
 
-    // Initialize bar chart (must run after innerHTML is set)
-    if (window._ciChart) { window._ciChart.destroy(); window._ciChart = null; }
+    // Initialize charts (must run after innerHTML is set)
+    if (window._ciChart)      { window._ciChart.destroy();      window._ciChart      = null; }
+    if (window._ciDonutChart) { window._ciDonutChart.destroy(); window._ciDonutChart = null; }
     const ctx = document.getElementById('ciTrendChart');
     if (ctx) {
         window._ciChart = new Chart(ctx, {
@@ -347,7 +358,7 @@ function renderCiContent(customerCode) {
             }],
             options: {
                 responsive: true,
-                aspectRatio: 4,
+                aspectRatio: 2.5,
                 plugins: {
                     legend: { display: false },
                     tooltip: {
@@ -372,6 +383,59 @@ function renderCiContent(customerCode) {
                     x: {
                         ticks: { font: { size: 12 } },
                         grid: { display: false }
+                    }
+                }
+            }
+        });
+    }
+
+    // Initialize donut chart
+    const donutCtx = document.getElementById('ciDonutChart');
+    if (donutCtx && activeSkus.length > 0) {
+        const TOP_N     = 7;
+        const sorted    = [...activeSkus].sort((a, b) => b.totalAmount - a.totalAmount);
+        const topSkus   = sorted.slice(0, TOP_N);
+        const restTotal = sorted.slice(TOP_N).reduce((s, x) => s + x.totalAmount, 0);
+
+        const donutLabels = topSkus.map(s => s.code);
+        const donutData   = topSkus.map(s => s.totalAmount);
+        if (restTotal > 0) { donutLabels.push('Others'); donutData.push(restTotal); }
+
+        const grandTotal = donutData.reduce((a, b) => a + b, 0);
+        const palette = [
+            'rgba(20,184,166,0.85)', 'rgba(45,212,191,0.85)', 'rgba(13,148,136,0.85)',
+            'rgba(94,234,212,0.85)', 'rgba(15,118,110,0.85)', 'rgba(153,246,228,0.85)',
+            'rgba(17,94,89,0.85)',   'rgba(156,163,175,0.75)'
+        ];
+
+        window._ciDonutChart = new Chart(donutCtx, {
+            type: 'doughnut',
+            data: {
+                labels: donutLabels,
+                datasets: [{
+                    data: donutData,
+                    backgroundColor: palette.slice(0, donutData.length),
+                    borderWidth: 2,
+                    borderColor: '#fff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '62%',
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'bottom',
+                        labels: { font: { size: 11 }, boxWidth: 12, padding: 6 }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: c => {
+                                const pct = (c.parsed / grandTotal * 100).toFixed(1);
+                                return `${_ciFormatAmt(c.parsed)}  (${pct}%)`;
+                            }
+                        }
                     }
                 }
             }
@@ -443,6 +507,57 @@ function _renderCiDormantTable(skus) {
                 </tr>
             </thead>
             <tbody>${rows}</tbody>
+        </table>
+    </div>`;
+}
+
+function _renderCiSkuHeatmap(skus, displayWeeks) {
+    let maxAmt = 0;
+    for (const sku of skus) {
+        for (const w of displayWeeks) {
+            const a = sku.weekMap[w]?.amount || 0;
+            if (a > maxAmt) maxAmt = a;
+        }
+    }
+
+    const headerCols = displayWeeks.map(w =>
+        `<th class="p-2 text-center text-xs font-bold text-gray-500 whitespace-nowrap">${w.slice(5)}</th>`
+    ).join('');
+
+    const tableRows = skus.map(sku => {
+        const weekCols = displayWeeks.map(w => {
+            const amt = sku.weekMap[w]?.amount || 0;
+            if (amt === 0) {
+                return `<td class="p-2 text-center text-xs text-gray-200" style="background:rgba(0,0,0,0.02)">—</td>`;
+            }
+            const intensity = maxAmt > 0 ? amt / maxAmt : 1;
+            const alpha     = (0.15 + intensity * 0.65).toFixed(2);
+            const textColor = intensity > 0.55 ? '#fff' : '#0f766e';
+            const label     = amt >= 1000 ? '$' + (amt / 1000).toFixed(1) + 'k' : '$' + amt.toFixed(0);
+            return `<td class="p-2 text-center text-xs font-bold whitespace-nowrap" style="background:rgba(20,184,166,${alpha});color:${textColor};">${label}</td>`;
+        }).join('');
+
+        return `<tr class="border-b border-gray-100 hover:bg-slate-50">
+            <td class="p-3 font-bold text-indigo-700 text-sm whitespace-nowrap">${sku.code}</td>
+            <td class="p-3 text-sm text-gray-700 max-w-[180px] truncate" title="${sku.name}">${sku.name}</td>
+            <td class="p-3 text-right font-mono font-black text-green-700 text-sm whitespace-nowrap">${_ciFormatAmt(sku.totalAmount)}</td>
+            ${weekCols}
+            <td class="p-3 text-center text-xs text-gray-400 whitespace-nowrap">${sku.lastWeek || '—'}</td>
+        </tr>`;
+    }).join('');
+
+    return `<div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+        <table class="w-full text-left text-sm">
+            <thead class="bg-gray-50 border-b border-gray-200">
+                <tr>
+                    <th class="p-3 font-bold text-gray-600 text-xs">SKU</th>
+                    <th class="p-3 font-bold text-gray-600 text-xs">Item Name</th>
+                    <th class="p-3 text-right font-bold text-gray-600 text-xs">Total</th>
+                    ${headerCols}
+                    <th class="p-3 text-center font-bold text-gray-600 text-xs">Last Order</th>
+                </tr>
+            </thead>
+            <tbody>${tableRows}</tbody>
         </table>
     </div>`;
 }
