@@ -489,17 +489,22 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
         `<th class="p-2 text-center text-xs font-bold text-gray-500 whitespace-nowrap">${w.slice(5)}</th>`
     ).join('');
 
+    const HEAT_LEVELS = [
+        { maxRatio: 0.33, alpha: '0.20', textColor: '#0f766e', label: 'Low'  },
+        { maxRatio: 0.66, alpha: '0.50', textColor: '#0f766e', label: 'Mid'  },
+        { maxRatio: 1.00, alpha: '0.82', textColor: '#fff',    label: 'High' },
+    ];
+
     const tableRows = skus.map(sku => {
         const weekCols = displayWeeks.map(w => {
             const amt = sku.weekMap[w]?.amount || 0;
             if (amt === 0) {
                 return `<td class="p-2 text-center text-xs text-gray-200" style="background:rgba(0,0,0,0.02)">—</td>`;
             }
-            const intensity = maxAmt > 0 ? amt / maxAmt : 1;
-            const alpha     = (0.15 + intensity * 0.65).toFixed(2);
-            const textColor = intensity > 0.55 ? '#fff' : '#0f766e';
-            const label     = amt >= 1000 ? '$' + (amt / 1000).toFixed(1) + 'k' : '$' + amt.toFixed(0);
-            return `<td class="p-2 text-center text-xs font-bold whitespace-nowrap" style="background:rgba(20,184,166,${alpha});color:${textColor};">${label}</td>`;
+            const ratio = maxAmt > 0 ? amt / maxAmt : 1;
+            const tier  = HEAT_LEVELS.find(l => ratio <= l.maxRatio) || HEAT_LEVELS[2];
+            const label = amt >= 1000 ? '$' + (amt / 1000).toFixed(1) + 'k' : '$' + amt.toFixed(0);
+            return `<td class="p-2 text-center text-xs font-bold whitespace-nowrap" style="background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};">${label}</td>`;
         }).join('');
 
         return `<tr class="border-b border-gray-100 hover:bg-slate-50">
@@ -511,7 +516,23 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
         </tr>`;
     }).join('');
 
-    return `<div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+    const maxLabel = maxAmt >= 1000 ? '$' + (maxAmt / 1000).toFixed(1) + 'k' : '$' + maxAmt.toFixed(0);
+    const legend = `
+        <div class="flex items-center gap-4 px-1 pb-2 flex-wrap">
+            <span class="text-xs text-gray-400 font-semibold">Shade:</span>
+            <span class="flex items-center gap-1 text-xs text-gray-500">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(0,0,0,0.06);border:1px solid #e5e7eb;"></span> No order
+            </span>
+            ${HEAT_LEVELS.map(l => `
+            <span class="flex items-center gap-1 text-xs text-gray-500">
+                <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(20,184,166,${l.alpha});"></span> ${l.label}
+            </span>`).join('')}
+            <span class="text-xs text-gray-400 ml-2">— relative to table max <span class="font-bold text-gray-600">${maxLabel}</span></span>
+        </div>`;
+
+    return `<div>
+        ${legend}
+        <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
         <table class="w-full text-left text-sm">
             <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
@@ -524,6 +545,7 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
             </thead>
             <tbody>${tableRows}</tbody>
         </table>
+        </div>
     </div>`;
 }
 
