@@ -24,6 +24,20 @@ async function initCustomerInsights() {
     const placeholder = document.getElementById('ciPlaceholder');
     const content     = document.getElementById('ciContent');
 
+    // 2nd+ visit: restore from cache instantly, no server call
+    if (window._ciClients && window._ciClients.length > 0) {
+        if (placeholder) placeholder.style.display = 'none';
+        if (content)     content.style.display = 'block';
+        if (window._ciSelectedCode && window._ciCache.has(window._ciSelectedCode)) {
+            window._ciRawData = window._ciCache.get(window._ciSelectedCode);
+            const client = window._ciClients.find(c => c.code === window._ciSelectedCode);
+            const input  = document.getElementById('ciClientSearch');
+            if (input && client) input.value = client.name + ' (' + window._ciSelectedCode + ')';
+            renderCiContent(window._ciSelectedCode);
+        }
+        return;
+    }
+
     if (placeholder) placeholder.style.display = 'flex';
     if (content)     content.style.display = 'none';
 
