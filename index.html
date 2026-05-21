@@ -158,9 +158,9 @@
                     <div class="border-2 border-dashed border-teal-400 rounded-xl p-6 text-center cursor-pointer transition-colors"
                         onclick="document.getElementById('ciFileInput').click()">
                         <div class="text-3xl mb-2">👥</div>
-                        <p class="font-bold text-teal-800">Click to select Sales By Item (Customer) Excel file</p>
-                        <p class="text-xs text-teal-600 mt-1">.xlsx / .xls</p>
-                        <input type="file" id="ciFileInput" class="hidden" onchange="runCustomerInsightsImport()">
+                        <p class="font-bold text-teal-800">Click to select Sales By Item (Customer) Excel file(s)</p>
+                        <p class="text-xs text-teal-600 mt-1">Multiple files supported · .xlsx / .xls</p>
+                        <input type="file" id="ciFileInput" class="hidden" multiple onchange="runCustomerInsightsImport()">
                     </div>
                     <div id="ciImportStatus" class="text-sm mt-3 font-medium"></div>
                 </div>

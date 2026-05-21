@@ -297,86 +297,99 @@ async function runInvoiceAnalysis() {
 // ==========================================
 async function runCustomerInsightsImport() {
     const fileInput = document.getElementById('ciFileInput');
-    const file = fileInput.files[0];
-    if (!file) { alert('Please select a Sales By Item (Customer) Excel file.'); return; }
+    const files = Array.from(fileInput.files);
+    if (files.length === 0) { alert('Please select at least one Sales By Item (Customer) Excel file.'); return; }
 
-    const btn = document.getElementById('ciImportBtn');
     const status = document.getElementById('ciImportStatus');
-    if (btn) btn.disabled = true;
-    if (status) status.textContent = 'Reading...';
+    const dropArea = fileInput.closest('.border-dashed') || fileInput.parentElement;
 
-    try {
-        const workbook = await readExcelWorkbookAsync(file);
-        const sheet = workbook.Sheets[workbook.SheetNames[0]];
-        const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+    // Disable drop area during import
+    dropArea.style.pointerEvents = 'none';
+    dropArea.style.opacity = '0.6';
 
-        // Extract "From" date from "From: DD/MM/YYYY To: DD/MM/YYYY"
-        let weekStart = null;
-        for (let r = 0; r < Math.min(json.length, 10); r++) {
-            const cellStr = String(json[r][0] || '');
-            const m = cellStr.match(/From:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-            if (m) { weekStart = `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; break; }
+    let totalRows = 0;
+    const results = [];
+
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (status) status.textContent = `(${i + 1}/${files.length}) Reading ${file.name}...`;
+
+        try {
+            const workbook = await readExcelWorkbookAsync(file);
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+            // Extract "From" date from "From: DD/MM/YYYY To: DD/MM/YYYY"
+            let weekStart = null;
+            for (let r = 0; r < Math.min(json.length, 10); r++) {
+                const cellStr = String(json[r][0] || '');
+                const m = cellStr.match(/From:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                if (m) { weekStart = `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; break; }
+            }
+            if (!weekStart) throw new Error(`${file.name}: Could not find date. Expected "From: DD/MM/YYYY To: DD/MM/YYYY".`);
+
+            // Find header row (has "Customer Name" and "Product Name")
+            let headerRow = -1;
+            for (let r = 0; r < Math.min(json.length, 20); r++) {
+                const row = json[r];
+                const hasCustomer = row.some(c => String(c).toLowerCase().includes('customer'));
+                const hasProduct  = row.some(c => String(c).toLowerCase().includes('product'));
+                if (hasCustomer && hasProduct) { headerRow = r; break; }
+            }
+            if (headerRow === -1) throw new Error(`${file.name}: Could not find header row with "Customer Name" and "Product Name".`);
+
+            const hdr = json[headerRow].map(c => String(c).toLowerCase().replace(/\s+/g, ''));
+            const colCustomer = hdr.findIndex(h => h.includes('customer'));
+            const colProduct  = hdr.findIndex(h => h.includes('product'));
+            const colQty      = hdr.findIndex(h => h === 'qty' || h === 'quantity');
+            const colAmount   = hdr.findIndex(h => h === 'amount');
+
+            const rows = [];
+            for (let r = headerRow + 2; r < json.length; r++) {
+                const row = json[r];
+                const productCell  = String(row[colProduct]  || '').trim();
+                const customerCell = String(row[colCustomer] || '').trim();
+                if (!productCell || !customerCell) continue;
+
+                const firstCell = String(row[0] || '').toLowerCase();
+                if (firstCell.includes('total') || firstCell.includes('grand')) continue;
+
+                const spaceIdx = customerCell.indexOf(' ');
+                if (spaceIdx === -1) continue;
+                const customerCode = customerCell.substring(0, spaceIdx).trim();
+                const customerName = customerCell.substring(spaceIdx + 1).trim();
+                if (!customerCode || !customerName) continue;
+
+                const skuCode = productCell.split(' ')[0].trim();
+                if (!skuCode) continue;
+
+                const qty    = parseFloat(String(row[colQty]    || '0').replace(/,/g, '')) || 0;
+                const amount = parseFloat(String(row[colAmount] || '0').replace(/,/g, '')) || 0;
+                if (qty <= 0) continue;
+
+                rows.push({ customer_code: customerCode, customer_name: customerName, sku_code: skuCode, week_start: weekStart, qty, amount });
+            }
+
+            if (rows.length === 0) throw new Error(`${file.name}: No valid data rows found.`);
+
+            if (status) status.textContent = `(${i + 1}/${files.length}) Saving ${rows.length} rows (week starting ${weekStart})...`;
+            await sbSaveClientSkuOrders(rows);
+            totalRows += rows.length;
+            results.push(`✅ ${weekStart}: ${rows.length} records`);
+
+        } catch (e) {
+            results.push(`❌ ${file.name}: ${e.message}`);
+            console.error(e);
         }
-        if (!weekStart) throw new Error('Could not find date. Expected "From: DD/MM/YYYY To: DD/MM/YYYY" in the file.');
-
-        // Find header row (has "Customer Name" and "Product Name")
-        let headerRow = -1;
-        for (let r = 0; r < Math.min(json.length, 20); r++) {
-            const row = json[r];
-            const hasCustomer = row.some(c => String(c).toLowerCase().includes('customer'));
-            const hasProduct  = row.some(c => String(c).toLowerCase().includes('product'));
-            if (hasCustomer && hasProduct) { headerRow = r; break; }
-        }
-        if (headerRow === -1) throw new Error('Could not find header row with "Customer Name" and "Product Name".');
-
-        const hdr = json[headerRow].map(c => String(c).toLowerCase().replace(/\s+/g, ''));
-        const colCustomer = hdr.findIndex(h => h.includes('customer'));
-        const colProduct  = hdr.findIndex(h => h.includes('product'));
-        const colQty      = hdr.findIndex(h => h === 'qty' || h === 'quantity');
-        const colAmount   = hdr.findIndex(h => h === 'amount');
-
-        const rows = [];
-        for (let r = headerRow + 2; r < json.length; r++) {
-            const row = json[r];
-            const productCell  = String(row[colProduct]  || '').trim();
-            const customerCell = String(row[colCustomer] || '').trim();
-            if (!productCell || !customerCell) continue;
-
-            const firstCell = String(row[0] || '').toLowerCase();
-            if (firstCell.includes('total') || firstCell.includes('grand')) continue;
-
-            // "15C0000007 En Donburi" → code + name
-            const spaceIdx = customerCell.indexOf(' ');
-            if (spaceIdx === -1) continue;
-            const customerCode = customerCell.substring(0, spaceIdx).trim();
-            const customerName = customerCell.substring(spaceIdx + 1).trim();
-            if (!customerCode || !customerName) continue;
-
-            const skuCode = productCell.split(' ')[0].trim();
-            if (!skuCode) continue;
-
-            const qty    = parseFloat(String(row[colQty]    || '0').replace(/,/g, '')) || 0;
-            const amount = parseFloat(String(row[colAmount] || '0').replace(/,/g, '')) || 0;
-            if (qty <= 0) continue;
-
-            rows.push({ customer_code: customerCode, customer_name: customerName, sku_code: skuCode, week_start: weekStart, qty, amount });
-        }
-
-        if (rows.length === 0) throw new Error('No valid data rows found. Check the file format.');
-
-        if (status) status.textContent = `Saving ${rows.length} rows...`;
-        await sbSaveClientSkuOrders(rows);
-
-        window._ciRawData = await sbLoadClientSkuOrders();
-        renderCiClientDropdown();
-        if (window._ciSelectedCode) renderCiContent(window._ciSelectedCode);
-
-        if (status) status.textContent = `✅ Imported ${rows.length} records (week starting ${weekStart})`;
-        fileInput.value = '';
-    } catch (e) {
-        if (status) status.textContent = '❌ ' + e.message;
-        console.error(e);
-    } finally {
-        if (btn) btn.disabled = false;
     }
+
+    // Reload data once after all files are processed
+    window._ciRawData = await sbLoadClientSkuOrders();
+    renderCiClientDropdown();
+    if (window._ciSelectedCode) renderCiContent(window._ciSelectedCode);
+
+    if (status) status.innerHTML = results.map(r => `<div>${r}</div>`).join('');
+    fileInput.value = '';
+    dropArea.style.pointerEvents = '';
+    dropArea.style.opacity = '';
 }
