@@ -243,8 +243,9 @@ function renderCiContent(customerCode) {
             : 999;
 
         const skuName = (typeof skuMaster !== 'undefined' && skuMaster[code]?.name) || code;
+        const skuUom  = (typeof skuMaster !== 'undefined' && skuMaster[code]?.uom)  || 'ea';
 
-        const entry = { code, name: skuName, totalAmount: data.totalAmount, totalQty: data.totalQty, lastWeek, weeksSince, weekMap: data.weekMap };
+        const entry = { code, name: skuName, uom: skuUom, totalAmount: data.totalAmount, totalQty: data.totalQty, lastWeek, weeksSince, weekMap: data.weekMap };
 
         if (weeksSince < CI_WARN_WEEKS) {
             activeSkus.push(entry);
@@ -542,21 +543,23 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
                 return `<td class="p-2 text-center text-xs text-gray-200" style="background:rgba(0,0,0,0.02)">—</td>`;
             }
             const qty = sku.weekMap[w]?.qty || 0;
+            const uom = sku.uom || 'ea';
             const unitPrice = qty > 0 ? amt / qty : 0;
-            const unitLabel = unitPrice >= 1000 ? '$' + (unitPrice / 1000).toFixed(1) + 'k/ea' : '$' + unitPrice.toFixed(0) + '/ea';
+            const unitLabel = unitPrice >= 1000 ? '$' + (unitPrice / 1000).toFixed(1) + 'k/' + uom : '$' + unitPrice.toFixed(0) + '/' + uom;
             const ratio = maxAmt > 0 ? amt / maxAmt : 1;
             const tier  = HEAT_LEVELS.find(l => ratio <= l.maxRatio) || HEAT_LEVELS[2];
             const label = amt >= 1000 ? '$' + (amt / 1000).toFixed(1) + 'k' : '$' + amt.toFixed(0);
-            return `<td class="p-2 text-center text-xs font-bold whitespace-nowrap" title="${qty} units · ${unitLabel}" style="background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};cursor:default;">${label}</td>`;
+            return `<td class="p-2 text-center text-xs font-bold whitespace-nowrap" title="${qty} ${uom} · ${unitLabel}" style="background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};cursor:default;">${label}</td>`;
         }).join('');
 
         const lastW = sku.lastWeek;
         const lastAmt = sku.weekMap[lastW]?.amount || 0;
         const lastQty = sku.weekMap[lastW]?.qty || 0;
+        const uom = sku.uom || 'ea';
         const lastUnitPrice = lastQty > 0 ? lastAmt / lastQty : 0;
         const lastUnitLabel = lastUnitPrice >= 1000
-            ? '$' + (lastUnitPrice / 1000).toFixed(1) + 'k/ea'
-            : '$' + lastUnitPrice.toFixed(0) + '/ea';
+            ? '$' + (lastUnitPrice / 1000).toFixed(1) + 'k/' + uom
+            : '$' + lastUnitPrice.toFixed(0) + '/' + uom;
 
         return `<tr class="border-b border-gray-100 hover:bg-slate-50">
             <td class="p-3 font-bold text-indigo-700 text-sm whitespace-nowrap">${sku.code}</td>
