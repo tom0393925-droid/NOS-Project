@@ -2,7 +2,8 @@
 // js/ui_customer_insights.js: Customer Insights tab
 // ==========================================
 
-window._ciRawData       = [];    // raw rows from Supabase
+window._ciRawData       = [];    // raw rows for the currently selected client only
+window._ciCache         = new Map(); // customer_code → rows[] (session cache)
 window._ciSelectedCode  = null;  // currently selected customer_code
 window._ciChart         = null;  // Chart.js instance (bar)
 window._ciDonutChart    = null;  // Chart.js instance (donut)
@@ -46,9 +47,9 @@ async function initCustomerInsights() {
         }
     }
 
-    let rows = [];
+    let clients = [];
     try {
-        rows = await sbLoadClientSkuOrders();
+        clients = await sbLoadClientList();
     } catch (e) {
         if (placeholder) placeholder.innerHTML = `
             <p class="text-red-500 text-sm font-bold bg-red-50 px-4 py-2 rounded-lg border border-red-200">
@@ -57,9 +58,9 @@ async function initCustomerInsights() {
         return;
     }
 
-    window._ciRawData = rows;
+    window._ciClients = clients;
 
-    if (!rows.length) {
+    if (!clients.length) {
         // Restore "no data" message
         if (placeholder) placeholder.innerHTML = `
             <div class="text-5xl mb-4">👥</div>
@@ -92,15 +93,7 @@ async function initCustomerInsights() {
 window._ciClients = []; // [{code, name}]
 
 function renderCiClientDropdown() {
-    const clientMap = {};
-    for (const row of window._ciRawData) {
-        clientMap[row.customer_code] = row.customer_name;
-    }
-    window._ciClients = Object.entries(clientMap)
-        .map(([code, name]) => ({ code, name: name || '' }))
-        .sort((a, b) => a.name.localeCompare(b.name));
-
-    // Close dropdown when clicking outside
+    // _ciClients is already populated from sbLoadClientList() before this is called
     document.addEventListener('click', e => {
         const wrapper = document.getElementById('ciSearchWrapper');
         if (wrapper && !wrapper.contains(e.target)) {
@@ -142,12 +135,36 @@ function ciClearSearch() {
     renderCiContent('');
 }
 
-function ciSelectClient(code) {
+async function ciSelectClient(code) {
     const input  = document.getElementById('ciClientSearch');
     const dd     = document.getElementById('ciClientDropdown');
     const client = window._ciClients.find(c => c.code === code);
     if (input) input.value = client ? client.name + ' (' + code + ')' : code;
     if (dd)    dd.classList.add('hidden');
+
+    if (!window._ciCache.has(code)) {
+        const panel = document.getElementById('ciClientPanel');
+        if (panel) panel.innerHTML = `
+            <div class="flex flex-col items-center justify-center py-24 gap-3">
+                <svg class="animate-spin h-8 w-8 text-teal-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
+                </svg>
+                <p class="text-sm font-bold text-gray-400">Loading client data...</p>
+            </div>`;
+        try {
+            const rows = await sbLoadClientOrdersByCode(code);
+            window._ciCache.set(code, rows);
+        } catch (e) {
+            if (panel) panel.innerHTML = `
+                <p class="text-red-500 text-sm font-bold bg-red-50 px-4 py-2 rounded-lg border border-red-200">
+                    Load error: ${e.message || String(e)}
+                </p>`;
+            return;
+        }
+    }
+
+    window._ciRawData = window._ciCache.get(code);
     renderCiContent(code);
 }
 

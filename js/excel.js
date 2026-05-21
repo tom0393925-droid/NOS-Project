@@ -391,8 +391,14 @@ async function runCustomerInsightsImport() {
         }
     }
 
-    // Reload data once after all files are processed
-    window._ciRawData = await sbLoadClientSkuOrders();
+    // Clear session cache and reload client list after upload
+    if (window._ciCache) window._ciCache = new Map();
+    window._ciClients = await sbLoadClientList();
+    if (window._ciSelectedCode) {
+        const rows = await sbLoadClientOrdersByCode(window._ciSelectedCode);
+        window._ciCache.set(window._ciSelectedCode, rows);
+        window._ciRawData = rows;
+    }
     renderCiClientDropdown();
     if (window._ciSelectedCode) renderCiContent(window._ciSelectedCode);
 
