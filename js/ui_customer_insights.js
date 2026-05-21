@@ -601,9 +601,9 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
                 class="w-full max-w-xs px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
         </div>
-        <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
+        <div class="rounded-xl border border-gray-200 shadow-sm" style="overflow:auto;max-height:420px;">
         <table class="w-full text-left text-sm" id="ci-heatmap-table">
-            <thead class="bg-gray-50 border-b border-gray-200">
+            <thead class="bg-gray-50 border-b border-gray-200" style="position:sticky;top:0;z-index:2;">
                 <tr>
                     <th class="p-3 font-bold text-gray-600 text-xs">SKU</th>
                     <th class="p-3 font-bold text-gray-600 text-xs">Item Name</th>
