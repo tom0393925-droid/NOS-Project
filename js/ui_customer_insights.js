@@ -177,8 +177,15 @@ function renderCiContent(customerCode) {
     const rows = window._ciRawData.filter(r => r.customer_code === customerCode);
     if (!rows.length) { panel.innerHTML = '<p class="text-gray-400 text-center py-10">No data for this client.</p>'; return; }
 
-    // All unique week_start dates, sorted ascending
-    const allWeeks = [...new Set(rows.map(r => r.week_start))].sort();
+    // All weeks from first to last, filling gaps with zero (7-day steps)
+    const dataWeeks = [...new Set(rows.map(r => r.week_start))].sort();
+    const allWeeks = [];
+    if (dataWeeks.length) {
+        const end = new Date(dataWeeks[dataWeeks.length - 1]);
+        for (let d = new Date(dataWeeks[0]); d <= end; d.setDate(d.getDate() + 7)) {
+            allWeeks.push(d.toISOString().slice(0, 10));
+        }
+    }
     const latestWeek = allWeeks[allWeeks.length - 1];
     const latestDate = new Date(latestWeek);
 
