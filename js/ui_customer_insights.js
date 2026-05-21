@@ -8,16 +8,10 @@ window._ciChart         = null;  // Chart.js instance (bar)
 window._ciDonutChart    = null;  // Chart.js instance (donut)
 window._ciPeriod        = '12w'; // '4w' | '12w' | 'all'
 window._ciAllSkuEntries = [];    // all SKU entries for the current client
-window._ciAllWeeks      = [];    // all week_end dates for the current client
+window._ciAllWeeks      = [];    // all week_start dates for the current client
 
 const _ciFormatAmt = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-// Convert week_end (YYYY-MM-DD) → week start label (MM-DD), i.e. 6 days earlier
-function _ciWeekStart(weekEndStr) {
-    const d = new Date(weekEndStr);
-    d.setDate(d.getDate() - 6);
-    return String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-}
 
 const CI_WARN_WEEKS   = 4;
 const CI_DORMANT_WEEKS = 8;
@@ -183,12 +177,12 @@ function renderCiContent(customerCode) {
     const rows = window._ciRawData.filter(r => r.customer_code === customerCode);
     if (!rows.length) { panel.innerHTML = '<p class="text-gray-400 text-center py-10">No data for this client.</p>'; return; }
 
-    // All unique week_end dates, sorted ascending
-    const allWeeks = [...new Set(rows.map(r => r.week_end))].sort();
+    // All unique week_start dates, sorted ascending
+    const allWeeks = [...new Set(rows.map(r => r.week_start))].sort();
     const latestWeek = allWeeks[allWeeks.length - 1];
     const latestDate = new Date(latestWeek);
 
-    // Aggregate per SKU: { sku_code → { name, totalAmount, totalQty, weekMap: {week_end → {qty,amount}} } }
+    // Aggregate per SKU: { sku_code → { name, totalAmount, totalQty, weekMap: {week_start → {qty,amount}} } }
     const skuMap = {};
     for (const row of rows) {
         if (!skuMap[row.sku_code]) {
@@ -196,7 +190,7 @@ function renderCiContent(customerCode) {
         }
         skuMap[row.sku_code].totalAmount += row.amount;
         skuMap[row.sku_code].totalQty    += row.qty;
-        skuMap[row.sku_code].weekMap[row.week_end] = { qty: row.qty, amount: row.amount };
+        skuMap[row.sku_code].weekMap[row.week_start] = { qty: row.qty, amount: row.amount };
     }
 
     // Determine last order date and status per SKU
@@ -243,14 +237,14 @@ function renderCiContent(customerCode) {
     const weeklyTotals = {};
     const weeklySkuCounts = {};
     for (const row of rows) {
-        weeklyTotals[row.week_end] = (weeklyTotals[row.week_end] || 0) + row.amount;
-        weeklySkuCounts[row.week_end] = (weeklySkuCounts[row.week_end] || 0) + 1;
+        weeklyTotals[row.week_start] = (weeklyTotals[row.week_start] || 0) + row.amount;
+        weeklySkuCounts[row.week_start] = (weeklySkuCounts[row.week_start] || 0) + 1;
     }
 
     const last4Weeks = allWeeks.slice(-4);
     const prev4Weeks = allWeeks.slice(-8, -4);
-    const last4Total = rows.filter(r => last4Weeks.includes(r.week_end)).reduce((sum, r) => sum + r.amount, 0);
-    const prev4Total = rows.filter(r => prev4Weeks.includes(r.week_end)).reduce((sum, r) => sum + r.amount, 0);
+    const last4Total = rows.filter(r => last4Weeks.includes(r.week_start)).reduce((sum, r) => sum + r.amount, 0);
+    const prev4Total = rows.filter(r => prev4Weeks.includes(r.week_start)).reduce((sum, r) => sum + r.amount, 0);
 
     let trendCardHtml;
     if (prev4Weeks.length === 0) {
@@ -283,7 +277,7 @@ function renderCiContent(customerCode) {
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-indigo-400">
                 <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Last 4 Weeks</p>
                 <p class="text-2xl font-black text-gray-800">${_ciFormatAmt(last4Total)}</p>
-                <p class="text-xs text-gray-400 mt-1">${last4Weeks.length ? _ciWeekStart(last4Weeks[0]) + ' – ' + _ciWeekStart(last4Weeks[last4Weeks.length - 1]) : '—'}</p>
+                <p class="text-xs text-gray-400 mt-1">${last4Weeks.length ? last4Weeks[0].slice(5) + ' – ' + last4Weeks[last4Weeks.length - 1].slice(5) : '—'}</p>
             </div>
             <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-green-500">
                 <p class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Active SKUs</p>
@@ -355,7 +349,7 @@ function renderCiContent(customerCode) {
         window._ciChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: allWeeks.map(w => _ciWeekStart(w)),
+                labels: allWeeks.map(w => w.slice(5)),
                 datasets: [{
                     data: allWeeks.map(w => weeklyTotals[w] || 0),
                     backgroundColor: allWeeks.map(w =>
@@ -418,7 +412,7 @@ function renderCiContent(customerCode) {
 function _renderCiSkuTable(skus, displayWeeks, isDormant) {
     const fmtAmt = _ciFormatAmt;
 
-    const headerCols = displayWeeks.map(w => `<th class="p-2 text-center text-xs font-bold text-gray-500 whitespace-nowrap">${_ciWeekStart(w)}</th>`).join('');
+    const headerCols = displayWeeks.map(w => `<th class="p-2 text-center text-xs font-bold text-gray-500 whitespace-nowrap">${w.slice(5)}</th>`).join('');
 
     const rows = skus.map(sku => {
         const weekCols = displayWeeks.map(w => {
@@ -493,7 +487,7 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
     }
 
     const headerCols = displayWeeks.map(w =>
-        `<th class="p-2 text-center text-xs font-bold text-gray-500 whitespace-nowrap">${_ciWeekStart(w)}</th>`
+        `<th class="p-2 text-center text-xs font-bold text-gray-500 whitespace-nowrap">${w.slice(5)}</th>`
     ).join('');
 
     const HEAT_LEVELS = [
@@ -534,7 +528,7 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
             <span class="flex items-center gap-1 text-xs text-gray-500">
                 <span style="display:inline-block;width:14px;height:14px;border-radius:3px;background:rgba(20,184,166,${l.alpha});"></span> ${l.label}
             </span>`).join('')}
-            <span class="text-xs text-gray-400 ml-2">— relative to table max <span class="font-bold text-gray-600">${maxLabel}</span> · Dates = week starting</span>
+            <span class="text-xs text-gray-400 ml-2">— relative to table max <span class="font-bold text-gray-600">${maxLabel}</span> · Dates = week start</span>
         </div>`;
 
     return `<div>

@@ -310,14 +310,14 @@ async function runCustomerInsightsImport() {
         const sheet = workbook.Sheets[workbook.SheetNames[0]];
         const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
 
-        // Extract "To" date from "From: DD/MM/YYYY To: DD/MM/YYYY"
-        let weekEnd = null;
+        // Extract "From" date from "From: DD/MM/YYYY To: DD/MM/YYYY"
+        let weekStart = null;
         for (let r = 0; r < Math.min(json.length, 10); r++) {
             const cellStr = String(json[r][0] || '');
-            const m = cellStr.match(/To:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-            if (m) { weekEnd = `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; break; }
+            const m = cellStr.match(/From:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+            if (m) { weekStart = `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; break; }
         }
-        if (!weekEnd) throw new Error('Could not find date. Expected "From: DD/MM/YYYY To: DD/MM/YYYY" in the file.');
+        if (!weekStart) throw new Error('Could not find date. Expected "From: DD/MM/YYYY To: DD/MM/YYYY" in the file.');
 
         // Find header row (has "Customer Name" and "Product Name")
         let headerRow = -1;
@@ -359,7 +359,7 @@ async function runCustomerInsightsImport() {
             const amount = parseFloat(String(row[colAmount] || '0').replace(/,/g, '')) || 0;
             if (qty <= 0) continue;
 
-            rows.push({ customer_code: customerCode, customer_name: customerName, sku_code: skuCode, week_end: weekEnd, qty, amount });
+            rows.push({ customer_code: customerCode, customer_name: customerName, sku_code: skuCode, week_start: weekStart, qty, amount });
         }
 
         if (rows.length === 0) throw new Error('No valid data rows found. Check the file format.');
@@ -371,7 +371,7 @@ async function runCustomerInsightsImport() {
         renderCiClientDropdown();
         if (window._ciSelectedCode) renderCiContent(window._ciSelectedCode);
 
-        if (status) status.textContent = `✅ Imported ${rows.length} records (week ending ${weekEnd})`;
+        if (status) status.textContent = `✅ Imported ${rows.length} records (week starting ${weekStart})`;
         fileInput.value = '';
     } catch (e) {
         if (status) status.textContent = '❌ ' + e.message;

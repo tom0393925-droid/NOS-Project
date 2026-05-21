@@ -712,7 +712,7 @@ async function sbSaveClientSkuOrders(rows) {
     const batchSize = 500;
     for (let i = 0; i < rows.length; i += batchSize) {
         const { error } = await _sb.from('client_sku_orders')
-            .upsert(rows.slice(i, i + batchSize), { onConflict: 'customer_code,sku_code,week_end' });
+            .upsert(rows.slice(i, i + batchSize), { onConflict: 'customer_code,sku_code,week_start' });
         if (error) throw error;
     }
 }
@@ -724,8 +724,8 @@ async function sbLoadClientSkuOrders() {
     while (true) {
         const { data, error } = await _sb
             .from('client_sku_orders')
-            .select('customer_code,customer_name,sku_code,week_end,qty,amount')
-            .order('week_end', { ascending: true })
+            .select('customer_code,customer_name,sku_code,week_start,qty,amount')
+            .order('week_start', { ascending: true })
             .range(from, from + pageSize - 1);
         if (error) throw error;
         allRows.push(...data);
