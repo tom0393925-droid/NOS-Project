@@ -636,7 +636,9 @@ function _ciRenderDonut(period) {
             const { ctx, chartArea: { left, top, width, height } } = chart;
             const cx = left + width / 2;
             const cy = top + height / 2;
-            const totalLabel = grandTotal >= 1000 ? '$' + (grandTotal / 1000).toFixed(1) + 'k' : '$' + grandTotal.toFixed(0);
+            const gt = chart._ciGrandTotal || 0;
+            const pl = chart._ciPeriodLabel || '';
+            const totalLabel = gt >= 1000 ? '$' + (gt / 1000).toFixed(1) + 'k' : '$' + gt.toFixed(0);
             ctx.save();
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
@@ -645,43 +647,60 @@ function _ciRenderDonut(period) {
             ctx.fillText(totalLabel, cx, cy - 9);
             ctx.fillStyle = '#9ca3af';
             ctx.font = '10px sans-serif';
-            ctx.fillText(periodLabel, cx, cy + 9);
+            ctx.fillText(pl, cx, cy + 9);
             ctx.restore();
         }
     };
 
-    if (window._ciDonutChart) { window._ciDonutChart.destroy(); window._ciDonutChart = null; }
-    const donutCtx = document.getElementById('ciDonutChart');
-    if (donutCtx) {
-        window._ciDonutChart = new Chart(donutCtx, {
-            type: 'doughnut',
-            data: {
-                labels: donutLabels,
-                datasets: [{
-                    data: donutData,
-                    backgroundColor: palette.slice(0, donutData.length),
-                    borderWidth: 2,
-                    borderColor: '#fff'
-                }]
-            },
-            plugins: [centerPlugin],
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                cutout: '62%',
-                plugins: {
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: c => {
-                                const pct = (c.parsed / grandTotal * 100).toFixed(1);
-                                return `${_ciFormatAmt(c.parsed)}  (${pct}%)`;
+    if (window._ciDonutChart) {
+        // Update in place for smooth animation
+        const ch = window._ciDonutChart;
+        ch._ciGrandTotal  = grandTotal;
+        ch._ciPeriodLabel = periodLabel;
+        ch.data.labels = donutLabels;
+        ch.data.datasets[0].data = donutData;
+        ch.data.datasets[0].backgroundColor = palette.slice(0, donutData.length);
+        ch.options.plugins.tooltip.callbacks.label = c => {
+            const pct = (c.parsed / grandTotal * 100).toFixed(1);
+            return `${_ciFormatAmt(c.parsed)}  (${pct}%)`;
+        };
+        ch.update();
+    } else {
+        const donutCtx = document.getElementById('ciDonutChart');
+        if (donutCtx) {
+            window._ciDonutChart = new Chart(donutCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: donutLabels,
+                    datasets: [{
+                        data: donutData,
+                        backgroundColor: palette.slice(0, donutData.length),
+                        borderWidth: 2,
+                        borderColor: '#fff'
+                    }]
+                },
+                plugins: [centerPlugin],
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '62%',
+                    animation: { duration: 500, easing: 'easeInOutQuart' },
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: c => {
+                                    const pct = (c.parsed / grandTotal * 100).toFixed(1);
+                                    return `${_ciFormatAmt(c.parsed)}  (${pct}%)`;
+                                }
                             }
                         }
                     }
                 }
-            }
-        });
+            });
+            window._ciDonutChart._ciGrandTotal  = grandTotal;
+            window._ciDonutChart._ciPeriodLabel = periodLabel;
+        }
     }
 
     // Custom list below the chart
