@@ -344,7 +344,7 @@ async function runCustomerInsightsImport() {
             const colQty      = hdr.findIndex(h => h === 'qty' || h === 'quantity');
             const colAmount   = hdr.findIndex(h => h === 'amount');
 
-            const rows = [];
+            const rowMap = new Map();
             for (let r = headerRow + 2; r < json.length; r++) {
                 const row = json[r];
                 const productCell  = String(row[colProduct]  || '').trim();
@@ -367,9 +367,17 @@ async function runCustomerInsightsImport() {
                 const amount = parseFloat(String(row[colAmount] || '0').replace(/,/g, '')) || 0;
                 if (qty <= 0) continue;
 
-                rows.push({ customer_code: customerCode, customer_name: customerName, sku_code: skuCode, week_start: weekStart, qty, amount });
+                const key = `${customerCode}|${skuCode}|${weekStart}`;
+                if (rowMap.has(key)) {
+                    const existing = rowMap.get(key);
+                    existing.qty += qty;
+                    existing.amount += amount;
+                } else {
+                    rowMap.set(key, { customer_code: customerCode, customer_name: customerName, sku_code: skuCode, week_start: weekStart, qty, amount });
+                }
             }
 
+            const rows = [...rowMap.values()];
             if (rows.length === 0) throw new Error(`${file.name}: No valid data rows found.`);
 
             if (status) status.textContent = `(${i + 1}/${files.length}) Saving ${rows.length} rows (week starting ${weekStart})...`;
