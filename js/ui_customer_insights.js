@@ -533,8 +533,16 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
 
     return `<div>
         ${legend}
+        <div class="mb-2">
+            <input
+                type="text"
+                placeholder="Search by SKU or item name..."
+                oninput="window._ciFilterHeatmap(this.value)"
+                class="w-full max-w-xs px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400"
+            />
+        </div>
         <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm">
-        <table class="w-full text-left text-sm">
+        <table class="w-full text-left text-sm" id="ci-heatmap-table">
             <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
                     <th class="p-3 font-bold text-gray-600 text-xs">SKU</th>
@@ -544,11 +552,22 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
                     <th class="p-3 text-center font-bold text-gray-600 text-xs">Last Order</th>
                 </tr>
             </thead>
-            <tbody>${tableRows}</tbody>
+            <tbody id="ci-heatmap-tbody">${tableRows}</tbody>
         </table>
         </div>
     </div>`;
 }
+
+window._ciFilterHeatmap = function(query) {
+    const tbody = document.getElementById('ci-heatmap-tbody');
+    if (!tbody) return;
+    const q = query.trim().toLowerCase();
+    for (const tr of tbody.rows) {
+        const sku  = tr.cells[0]?.textContent.toLowerCase() || '';
+        const name = tr.cells[1]?.textContent.toLowerCase() || '';
+        tr.style.display = (!q || sku.includes(q) || name.includes(q)) ? '' : 'none';
+    }
+};
 
 // ==========================================
 // Donut chart: period-based rendering
