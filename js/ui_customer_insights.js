@@ -510,16 +510,30 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
             if (amt === 0) {
                 return `<td class="p-2 text-center text-xs text-gray-200" style="background:rgba(0,0,0,0.02)">—</td>`;
             }
+            const qty = sku.weekMap[w]?.qty || 0;
+            const unitPrice = qty > 0 ? amt / qty : 0;
+            const unitLabel = unitPrice >= 1000 ? '$' + (unitPrice / 1000).toFixed(1) + 'k/ea' : '$' + unitPrice.toFixed(0) + '/ea';
             const ratio = maxAmt > 0 ? amt / maxAmt : 1;
             const tier  = HEAT_LEVELS.find(l => ratio <= l.maxRatio) || HEAT_LEVELS[2];
             const label = amt >= 1000 ? '$' + (amt / 1000).toFixed(1) + 'k' : '$' + amt.toFixed(0);
-            return `<td class="p-2 text-center text-xs font-bold whitespace-nowrap" style="background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};">${label}</td>`;
+            return `<td class="p-2 text-center text-xs font-bold whitespace-nowrap" title="${qty} units · ${unitLabel}" style="background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};cursor:default;">${label}</td>`;
         }).join('');
+
+        const lastW = sku.lastWeek;
+        const lastAmt = sku.weekMap[lastW]?.amount || 0;
+        const lastQty = sku.weekMap[lastW]?.qty || 0;
+        const lastUnitPrice = lastQty > 0 ? lastAmt / lastQty : 0;
+        const lastUnitLabel = lastUnitPrice >= 1000
+            ? '$' + (lastUnitPrice / 1000).toFixed(1) + 'k/ea'
+            : '$' + lastUnitPrice.toFixed(0) + '/ea';
 
         return `<tr class="border-b border-gray-100 hover:bg-slate-50">
             <td class="p-3 font-bold text-indigo-700 text-sm whitespace-nowrap">${sku.code}</td>
             <td class="p-3 text-sm text-gray-700 max-w-[180px] truncate" title="${sku.name}">${sku.name}</td>
-            <td class="p-3 text-right font-mono font-black text-green-700 text-sm whitespace-nowrap">${_ciFormatAmt(sku.totalAmount)}</td>
+            <td class="p-3 text-right font-mono whitespace-nowrap">
+                <span class="font-black text-green-700 text-sm">${_ciFormatAmt(sku.totalAmount)}</span>
+                ${lastUnitPrice > 0 ? `<span class="block text-xs text-gray-400 font-normal">${lastUnitLabel}</span>` : ''}
+            </td>
             ${weekCols}
             <td class="p-3 text-center text-xs text-gray-400 whitespace-nowrap">${sku.lastWeek || '—'}</td>
         </tr>`;
