@@ -447,6 +447,57 @@ function renderCiContent(customerCode) {
     }
 
     _ciRenderDonut('12w');
+    _ciInitHeatmapTooltip();
+}
+
+function _ciInitHeatmapTooltip() {
+    // Ensure tooltip div exists
+    let tip = document.getElementById('ci-week-tip');
+    if (!tip) {
+        tip = document.createElement('div');
+        tip.id = 'ci-week-tip';
+        tip.style.cssText = [
+            'position:fixed', 'z-index:9999', 'pointer-events:none',
+            'background:#1f2937', 'color:#fff', 'border-radius:8px',
+            'padding:10px 14px', 'font-size:13px', 'line-height:1.6',
+            'box-shadow:0 4px 16px rgba(0,0,0,0.25)', 'display:none',
+            'min-width:130px', 'text-align:left'
+        ].join(';');
+        document.body.appendChild(tip);
+    }
+
+    const table = document.getElementById('ci-heatmap-table');
+    if (!table) return;
+
+    table.addEventListener('mouseover', e => {
+        const td = e.target.closest('td.ci-week-cell');
+        if (!td) { tip.style.display = 'none'; return; }
+        const qty       = td.dataset.qty;
+        const uom       = td.dataset.uom;
+        const unitPrice = td.dataset.unitPrice;
+        const amt       = td.dataset.amt;
+        tip.innerHTML = `
+            <div style="font-weight:700;font-size:15px;margin-bottom:4px;">${amt}</div>
+            <div style="color:#9ca3af;font-size:12px;">${qty} ${uom}</div>
+            <div style="color:#34d399;font-size:12px;">${unitPrice}</div>`;
+        tip.style.display = 'block';
+    });
+
+    table.addEventListener('mousemove', e => {
+        if (tip.style.display === 'none') return;
+        const x = e.clientX + 14;
+        const y = e.clientY - 10;
+        const tipW = tip.offsetWidth;
+        const tipH = tip.offsetHeight;
+        tip.style.left = (x + tipW > window.innerWidth  ? e.clientX - tipW - 10 : x) + 'px';
+        tip.style.top  = (y + tipH > window.innerHeight ? e.clientY - tipH - 10 : y) + 'px';
+    });
+
+    table.addEventListener('mouseout', e => {
+        if (!e.relatedTarget || !e.relatedTarget.closest('td.ci-week-cell')) {
+            tip.style.display = 'none';
+        }
+    });
 }
 
 function _renderCiSkuTable(skus, displayWeeks, isDormant) {
@@ -549,7 +600,7 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
             const ratio = maxAmt > 0 ? amt / maxAmt : 1;
             const tier  = HEAT_LEVELS.find(l => ratio <= l.maxRatio) || HEAT_LEVELS[2];
             const label = amt >= 1000 ? '$' + (amt / 1000).toFixed(1) + 'k' : '$' + amt.toFixed(0);
-            return `<td class="p-2 text-center text-xs font-bold whitespace-nowrap" title="${qty} ${uom} · ${unitLabel}" style="background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};cursor:default;">${label}</td>`;
+            return `<td class="p-2 text-center text-xs font-bold whitespace-nowrap ci-week-cell" data-qty="${qty}" data-uom="${uom}" data-unit-price="${unitLabel}" data-amt="${label}" style="background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};cursor:default;">${label}</td>`;
         }).join('');
 
         const lastW = sku.lastWeek;
