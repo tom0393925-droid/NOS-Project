@@ -385,6 +385,81 @@ function renderCiContent(customerCode) {
     if (window._ciDonutChart) { window._ciDonutChart.destroy(); window._ciDonutChart = null; }
     const ctx = document.getElementById('ciTrendChart');
     if (ctx) {
+        // Build week → [{code, name, uom, qty, amount}] lookup, sorted by amount desc
+        const weekSkuMap = {};
+        for (const sku of (window._ciAllSkuEntries || [])) {
+            for (const [week, data] of Object.entries(sku.weekMap || {})) {
+                if (!weekSkuMap[week]) weekSkuMap[week] = [];
+                weekSkuMap[week].push({ code: sku.code, name: sku.name, uom: sku.uom || 'ea', qty: data.qty, amount: data.amount });
+            }
+        }
+        for (const week of Object.keys(weekSkuMap)) {
+            weekSkuMap[week].sort((a, b) => b.amount - a.amount);
+        }
+
+        // Tooltip element
+        const oldTip = document.getElementById('ciTrendTooltip');
+        if (oldTip) oldTip.remove();
+        const tipEl = document.createElement('div');
+        tipEl.id = 'ciTrendTooltip';
+        tipEl.style.cssText = 'display:none;position:absolute;background:#fff;border:1px solid #e5e7eb;border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.13);padding:12px 14px;min-width:270px;max-width:320px;z-index:50;pointer-events:none;';
+        ctx.parentElement.appendChild(tipEl);
+
+        let tipPinned = false;
+        let tipPinnedIdx = -1;
+
+        function _ciShowTip(weekIdx, barX, barY) {
+            const week = allWeeks[weekIdx];
+            const skus = weekSkuMap[week] || [];
+            const top10 = skus.slice(0, 10);
+            const totalAmt = weeklyTotals[week] || 0;
+            const fmtA = v => v >= 1000 ? '$' + (v / 1000).toFixed(1) + 'k' : '$' + v.toFixed(0);
+
+            let html = `<div style="font-size:12px;font-weight:800;color:#374151;border-bottom:1px solid #f3f4f6;padding-bottom:7px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;">
+                <span>Week of ${week.slice(5)}</span>
+                <span style="color:#14b8a6;">${fmtA(totalAmt)} &nbsp;<span style="color:#9ca3af;font-weight:600;">${skus.length} SKUs</span></span>
+            </div>
+            <div style="max-height:240px;overflow-y:auto;">`;
+
+            for (const sku of top10) {
+                html += `<div style="display:flex;justify-content:space-between;align-items:flex-start;padding:4px 0;border-bottom:1px solid #f9fafb;gap:8px;">
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:700;color:#4f46e5;font-size:11px;">${sku.code}</div>
+                        <div style="color:#6b7280;font-size:10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:170px;">${sku.name}</div>
+                    </div>
+                    <div style="text-align:right;flex-shrink:0;">
+                        <div style="font-weight:800;color:#059669;font-size:12px;">${fmtA(sku.amount)}</div>
+                        <div style="color:#9ca3af;font-size:10px;">${sku.qty} ${sku.uom}</div>
+                    </div>
+                </div>`;
+            }
+
+            html += '</div>';
+            if (skus.length > 10) {
+                html += `<div style="color:#9ca3af;font-size:10px;text-align:center;margin-top:6px;">+${skus.length - 10} more SKUs</div>`;
+            }
+            if (tipPinned) {
+                html += `<div style="color:#9ca3af;font-size:10px;text-align:center;margin-top:7px;border-top:1px solid #f3f4f6;padding-top:6px;">📌 Pinned · click bar to unpin</div>`;
+            }
+
+            tipEl.innerHTML = html;
+
+            // Position: prefer right of bar, flip left if near edge
+            const containerW = ctx.parentElement.offsetWidth;
+            const tipW = 320;
+            let left = barX + 14;
+            if (left + tipW > containerW) left = barX - tipW - 14;
+            const top = Math.max(4, barY - tipEl.offsetHeight / 2);
+            tipEl.style.left = left + 'px';
+            tipEl.style.top = top + 'px';
+            tipEl.style.display = 'block';
+            tipEl.style.pointerEvents = tipPinned ? 'auto' : 'none';
+        }
+
+        function _ciHideTip() {
+            if (!tipPinned) tipEl.style.display = 'none';
+        }
+
         window._ciChart = new Chart(ctx, {
             type: 'bar',
             data: {
@@ -427,6 +502,34 @@ function renderCiContent(customerCode) {
                 plugins: {
                     legend: { display: false },
                     tooltip: { enabled: false },
+                },
+                onHover: (event, elements) => {
+                    if (tipPinned) return;
+                    if (elements.length > 0) {
+                        const bar = elements[0].element;
+                        _ciShowTip(elements[0].index, bar.x, bar.y);
+                    } else {
+                        _ciHideTip();
+                    }
+                },
+                onClick: (event, elements) => {
+                    if (elements.length > 0) {
+                        const idx = elements[0].index;
+                        if (tipPinned && tipPinnedIdx === idx) {
+                            tipPinned = false;
+                            tipPinnedIdx = -1;
+                            tipEl.style.display = 'none';
+                        } else {
+                            tipPinned = true;
+                            tipPinnedIdx = idx;
+                            const bar = elements[0].element;
+                            _ciShowTip(idx, bar.x, bar.y);
+                        }
+                    } else {
+                        tipPinned = false;
+                        tipPinnedIdx = -1;
+                        tipEl.style.display = 'none';
+                    }
                 },
                 scales: {
                     y: {
