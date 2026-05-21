@@ -384,6 +384,7 @@ function renderCiContent(customerCode) {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
+                layout: { padding: { top: 40 } },
                 plugins: {
                     legend: { display: false },
                     tooltip: { enabled: false },
