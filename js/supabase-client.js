@@ -759,17 +759,19 @@ async function sbLoadClientList() {
     return clients;
 }
 
-async function sbLoadClientOrdersByCode(customerCode) {
+async function sbLoadClientOrdersByCode(customerCode, since = null) {
     const allRows = [];
     const pageSize = 1000;
     let from = 0;
     while (true) {
-        const { data, error } = await _sb
+        let q = _sb
             .from('client_sku_orders')
             .select('customer_code,customer_name,sku_code,week_start,qty,amount')
             .eq('customer_code', customerCode)
             .order('week_start', { ascending: true })
             .range(from, from + pageSize - 1);
+        if (since) q = q.gte('week_start', since);
+        const { data, error } = await q;
         if (error) throw error;
         allRows.push(...data);
         if (data.length < pageSize) break;
