@@ -267,6 +267,7 @@ function renderCiContent(customerCode) {
     const customerName = rows[0].customer_name;
 
     const displayWeeks = allWeeks;
+    const chartWeeks   = allWeeks.slice(-12); // bar chart always shows last 12 weeks
 
     // ==========================================
     // KPI calculations
@@ -424,7 +425,7 @@ function renderCiContent(customerCode) {
         let tipPinnedIdx = -1;
 
         function _ciShowTip(weekIdx, barX, barY) {
-            const week = allWeeks[weekIdx];
+            const week = chartWeeks[weekIdx];
             const skus = weekSkuMap[week] || [];
             const top10 = skus.slice(0, 10);
             const totalAmt = weeklyTotals[week] || 0;
@@ -478,10 +479,10 @@ function renderCiContent(customerCode) {
         window._ciChart = new Chart(ctx, {
             type: 'bar',
             data: {
-                labels: allWeeks.map(w => w.slice(5)),
+                labels: chartWeeks.map(w => w.slice(5)),
                 datasets: [{
-                    data: allWeeks.map(w => weeklyTotals[w] || 0),
-                    backgroundColor: allWeeks.map(w =>
+                    data: chartWeeks.map(w => weeklyTotals[w] || 0),
+                    backgroundColor: chartWeeks.map(w =>
                         last4Weeks.includes(w) ? 'rgba(20,184,166,0.85)' : 'rgba(20,184,166,0.3)'
                     ),
                     borderRadius: 4,
@@ -496,7 +497,7 @@ function renderCiContent(customerCode) {
                         const val = chart.data.datasets[0].data[i];
                         if (!val) return;
                         const amtLabel = val >= 1000 ? '$' + (val / 1000).toFixed(1) + 'k' : '$' + val.toFixed(0);
-                        const skuCount = weeklySkuCounts[allWeeks[i]] || 0;
+                        const skuCount = weeklySkuCounts[chartWeeks[i]] || 0;
                         ctx.save();
                         ctx.textAlign = 'center';
                         ctx.fillStyle = '#374151';
