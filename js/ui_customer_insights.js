@@ -350,8 +350,8 @@ function renderCiContent(customerCode) {
                 <div class="flex items-center justify-between mb-3">
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">SKU Mix</p>
                     <div class="flex gap-1">
-                        <button id="ciTabBtn12w" onclick="ciSetDonutPeriod('12w')" class="px-2 py-1 text-xs font-bold rounded bg-teal-500 text-white">12 Wks</button>
-                        <button id="ciTabBtn26w" onclick="ciSetDonutPeriod('26w')" class="px-2 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">26 Wks</button>
+                        <button id="ciTabBtn4w"  onclick="ciSetDonutPeriod('4w')"  class="px-2 py-1 text-xs font-bold rounded bg-teal-500 text-white">4 Wks</button>
+                        <button id="ciTabBtn12w" onclick="ciSetDonutPeriod('12w')" class="px-2 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">12 Wks</button>
                         <button id="ciTabBtnall" onclick="ciSetDonutPeriod('all')" class="px-2 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">All</button>
                     </div>
                 </div>
@@ -799,11 +799,11 @@ function _ciRenderDonut(period) {
     const allWeeks = window._ciAllWeeks || [];
     if (!allSkus.length) return;
 
-    const periodWeeks = period === '12w' ? allWeeks.slice(-12)
-                      : period === '26w' ? allWeeks.slice(-26)
+    const periodWeeks = period === '4w'  ? allWeeks.slice(-4)
+                      : period === '12w' ? allWeeks.slice(-12)
                       :                   allWeeks;
-    const periodLabel = period === '12w' ? 'Last 12 Wks'
-                      : period === '26w' ? 'Last 26 Wks'
+    const periodLabel = period === '4w'  ? 'Last 4 Wks'
+                      : period === '12w' ? 'Last 12 Wks'
                       :                   'All Time';
 
     // Compute period amount per SKU; drop SKUs with 0 in this period
@@ -933,7 +933,7 @@ function _ciRenderDonut(period) {
 function _ciUpdateDonutTabs(period) {
     const active   = 'px-2 py-1 text-xs font-bold rounded bg-teal-500 text-white';
     const inactive = 'px-2 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors';
-    const map = { '12w': 'ciTabBtn12w', '26w': 'ciTabBtn26w', 'all': 'ciTabBtnall' };
+    const map = { '4w': 'ciTabBtn4w', '12w': 'ciTabBtn12w', 'all': 'ciTabBtnall' };
     for (const [key, id] of Object.entries(map)) {
         const btn = document.getElementById(id);
         if (btn) btn.className = key === period ? active : inactive;
