@@ -7,7 +7,8 @@ window._ciCache         = new Map(); // customer_code → rows[] (session cache)
 window._ciSelectedCode  = null;  // currently selected customer_code
 window._ciChart         = null;  // Chart.js instance (bar)
 window._ciDonutChart    = null;  // Chart.js instance (donut)
-window._ciPeriod        = '12w'; // '12w' | '26w' | 'all'
+window._ciPeriod        = '12w'; // '12w' | '26w' | 'all'  (heatmap history range)
+window._ciDonutPeriod   = '4w';  // '4w' | '12w' | 'all'   (SKU Mix donut — independent)
 window._ciAllSkuEntries = [];    // all SKU entries for the current client
 window._ciAllWeeks      = [];    // all week_start dates for the current client
 
@@ -156,7 +157,8 @@ async function ciSelectClient(code) {
     if (input) input.value = client ? client.name + ' (' + code + ')' : code;
     if (dd)    dd.classList.add('hidden');
 
-    window._ciPeriod = '12w';
+    window._ciPeriod      = '12w';
+    window._ciDonutPeriod = '4w';
     const _initCacheKey = code + '_12w';
     if (!window._ciCache.has(_initCacheKey)) {
         const panel = document.getElementById('ciClientPanel');
@@ -312,9 +314,12 @@ function renderCiContent(customerCode) {
             </div>
             <div class="flex items-center gap-2 mt-1">
                 <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">History:</span>
-                <button id="ciRangeBtn12w" onclick="ciSetTablePeriod('12w')" class="px-3 py-1 text-xs font-bold rounded bg-teal-500 text-white">12 Wks</button>
-                <button id="ciRangeBtn26w" onclick="ciSetTablePeriod('26w')" class="px-3 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">26 Wks</button>
-                <button id="ciRangeBtnall" onclick="ciSetTablePeriod('all')" class="px-3 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">All</button>
+                ${['12w','26w','all'].map(p => {
+                    const active = p === window._ciPeriod;
+                    const label  = p === '12w' ? '12 Wks' : p === '26w' ? '26 Wks' : 'All';
+                    const cls    = active ? 'px-3 py-1 text-xs font-bold rounded bg-teal-500 text-white' : 'px-3 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors';
+                    return `<button id="ciRangeBtn${p}" onclick="ciSetTablePeriod('${p}')" class="${cls}">${label}</button>`;
+                }).join('')}
             </div>
         </div>
 
@@ -350,9 +355,12 @@ function renderCiContent(customerCode) {
                 <div class="flex items-center justify-between mb-3">
                     <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">SKU Mix</p>
                     <div class="flex gap-1">
-                        <button id="ciTabBtn4w"  onclick="ciSetDonutPeriod('4w')"  class="px-2 py-1 text-xs font-bold rounded bg-teal-500 text-white">4 Wks</button>
-                        <button id="ciTabBtn12w" onclick="ciSetDonutPeriod('12w')" class="px-2 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">12 Wks</button>
-                        <button id="ciTabBtnall" onclick="ciSetDonutPeriod('all')" class="px-2 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">All</button>
+                        ${['4w','12w','all'].map(p => {
+                            const active = p === window._ciDonutPeriod;
+                            const label  = p === '4w' ? '4 Wks' : p === '12w' ? '12 Wks' : 'All';
+                            const cls    = active ? 'px-2 py-1 text-xs font-bold rounded bg-teal-500 text-white' : 'px-2 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors';
+                            return `<button id="ciTabBtn${p}" onclick="ciSetDonutPeriod('${p}')" class="${cls}">${label}</button>`;
+                        }).join('')}
                     </div>
                 </div>
                 <div style="position:relative;height:200px;">
@@ -556,8 +564,7 @@ function renderCiContent(customerCode) {
         });
     }
 
-    _ciRenderDonut('12w');
-    _ciUpdateRangeBtns(window._ciPeriod);
+    _ciRenderDonut(window._ciDonutPeriod);
 }
 
 function _renderCiSkuTable(skus, displayWeeks, isDormant) {
@@ -791,6 +798,7 @@ async function ciSetTablePeriod(period) {
 }
 
 function ciSetDonutPeriod(period) {
+    window._ciDonutPeriod = period;
     _ciRenderDonut(period);
 }
 
