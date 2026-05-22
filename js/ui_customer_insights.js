@@ -714,13 +714,13 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
         </div>
         <div class="rounded-xl border border-gray-200 shadow-sm" style="overflow:auto;max-height:560px;">
         <table class="text-left text-sm" style="min-width:100%;table-layout:auto;" id="ci-heatmap-table">
-            <thead class="bg-gray-50 border-b border-gray-200">
+            <thead class="bg-gray-50 border-b border-gray-200" style="position:sticky;top:0;z-index:3;">
                 <tr>
-                    <th style="position:sticky;top:0;left:0;z-index:4;width:90px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs whitespace-nowrap">SKU</th>
-                    <th style="position:sticky;top:0;left:90px;z-index:4;width:180px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs">Item Name</th>
-                    <th style="position:sticky;top:0;left:270px;z-index:4;width:110px;background:#f9fafb;box-shadow:2px 0 4px rgba(0,0,0,0.06);" class="p-3 text-right font-bold text-gray-600 text-xs">Total</th>
+                    <th style="position:sticky;left:0;z-index:4;width:90px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs whitespace-nowrap">SKU</th>
+                    <th style="position:sticky;left:90px;z-index:4;width:180px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs">Item Name</th>
+                    <th style="position:sticky;left:270px;z-index:4;width:110px;background:#f9fafb;box-shadow:2px 0 4px rgba(0,0,0,0.06);" class="p-3 text-right font-bold text-gray-600 text-xs">Total</th>
                     ${headerCols}
-                    <th style="position:sticky;top:0;z-index:3;background:#f9fafb;" class="p-3 text-center font-bold text-gray-600 text-xs">Last Order</th>
+                    <th style="background:#f9fafb;" class="p-3 text-center font-bold text-gray-600 text-xs">Last Order</th>
                 </tr>
             </thead>
             <tbody id="ci-heatmap-tbody">${tableRows}</tbody>
