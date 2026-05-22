@@ -754,7 +754,10 @@ function _ciSinceDate(period) {
     if (period === 'all') return null;
     const weeks = period === '26w' ? 26 : 12;
     const d = new Date();
-    d.setDate(d.getDate() - weeks * 7);
+    // Round down to this week's Monday first, then go back N weeks
+    const dayOfWeek = d.getDay(); // 0=Sun,1=Mon,...,6=Sat
+    const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    d.setDate(d.getDate() - daysToMonday - weeks * 7);
     return d.toISOString().slice(0, 10);
 }
 
