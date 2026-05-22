@@ -305,9 +305,17 @@ function renderCiContent(customerCode) {
     const trendBorder = (prev4Total > 0 && last4Total >= prev4Total) ? 'border-l-green-500' : (prev4Total > 0 ? 'border-l-red-400' : 'border-l-gray-300');
 
     panel.innerHTML = `
-        <div class="mb-5">
-            <h2 class="text-xl font-black text-gray-800">${customerName}</h2>
-            <p class="text-xs text-gray-400 mt-0.5">Code: ${customerCode} &nbsp;|&nbsp; Data up to: ${latestWeek}</p>
+        <div class="flex items-start justify-between mb-5">
+            <div>
+                <h2 class="text-xl font-black text-gray-800">${customerName}</h2>
+                <p class="text-xs text-gray-400 mt-0.5">Code: ${customerCode} &nbsp;|&nbsp; Data up to: ${latestWeek}</p>
+            </div>
+            <div class="flex items-center gap-2 mt-1">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">History:</span>
+                <button id="ciRangeBtn12w" onclick="ciSetTablePeriod('12w')" class="px-3 py-1 text-xs font-bold rounded bg-teal-500 text-white">12 Wks</button>
+                <button id="ciRangeBtn26w" onclick="ciSetTablePeriod('26w')" class="px-3 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">26 Wks</button>
+                <button id="ciRangeBtnall" onclick="ciSetTablePeriod('all')" class="px-3 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">All</button>
+            </div>
         </div>
 
         <!-- KPI Cards -->
@@ -352,14 +360,6 @@ function renderCiContent(customerCode) {
                 </div>
                 <div id="ciDonutList" class="mt-3 space-y-1.5 overflow-y-auto flex-1 min-h-0"></div>
             </div>
-        </div>
-
-        <!-- History range selector -->
-        <div class="flex items-center gap-2 mb-5">
-            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">History:</span>
-            <button id="ciRangeBtn12w" onclick="ciSetTablePeriod('12w')" class="px-3 py-1 text-xs font-bold rounded bg-teal-500 text-white">12 Wks</button>
-            <button id="ciRangeBtn26w" onclick="ciSetTablePeriod('26w')" class="px-3 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">26 Wks</button>
-            <button id="ciRangeBtnall" onclick="ciSetTablePeriod('all')" class="px-3 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors">All</button>
         </div>
 
         <!-- Active SKUs -->
@@ -677,9 +677,9 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
             : '$' + lastUnitPrice.toFixed(0) + '/' + uom;
 
         return `<tr class="border-b border-gray-100 hover:bg-slate-50">
-            <td class="p-3 font-bold text-indigo-700 text-sm whitespace-nowrap">${sku.code}</td>
-            <td class="p-3 text-sm text-gray-700 max-w-[180px] truncate" title="${sku.name}">${sku.name}</td>
-            <td class="p-3 text-right font-mono whitespace-nowrap">
+            <td style="position:sticky;left:0;z-index:1;width:90px;background:#fff;" class="p-3 font-bold text-indigo-700 text-sm whitespace-nowrap">${sku.code}</td>
+            <td style="position:sticky;left:90px;z-index:1;width:180px;background:#fff;" class="p-3 text-sm text-gray-700 truncate" title="${sku.name}">${sku.name}</td>
+            <td style="position:sticky;left:270px;z-index:1;width:110px;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,0.06);" class="p-3 text-right font-mono whitespace-nowrap">
                 <span class="font-black text-green-700 text-sm">${_ciFormatAmt(sku.totalAmount)}</span>
                 ${lastUnitPrice > 0 ? `<span class="block text-xs text-gray-400 font-normal">${lastUnitLabel}</span>` : ''}
             </td>
@@ -713,14 +713,14 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
             />
         </div>
         <div class="rounded-xl border border-gray-200 shadow-sm" style="overflow:auto;max-height:560px;">
-        <table class="w-full text-left text-sm" id="ci-heatmap-table">
-            <thead class="bg-gray-50 border-b border-gray-200" style="position:sticky;top:0;z-index:2;">
+        <table class="text-left text-sm" style="min-width:100%;table-layout:auto;" id="ci-heatmap-table">
+            <thead class="bg-gray-50 border-b border-gray-200">
                 <tr>
-                    <th class="p-3 font-bold text-gray-600 text-xs">SKU</th>
-                    <th class="p-3 font-bold text-gray-600 text-xs">Item Name</th>
-                    <th class="p-3 text-right font-bold text-gray-600 text-xs">Total</th>
+                    <th style="position:sticky;top:0;left:0;z-index:4;width:90px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs whitespace-nowrap">SKU</th>
+                    <th style="position:sticky;top:0;left:90px;z-index:4;width:180px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs">Item Name</th>
+                    <th style="position:sticky;top:0;left:270px;z-index:4;width:110px;background:#f9fafb;box-shadow:2px 0 4px rgba(0,0,0,0.06);" class="p-3 text-right font-bold text-gray-600 text-xs">Total</th>
                     ${headerCols}
-                    <th class="p-3 text-center font-bold text-gray-600 text-xs">Last Order</th>
+                    <th style="position:sticky;top:0;z-index:3;background:#f9fafb;" class="p-3 text-center font-bold text-gray-600 text-xs">Last Order</th>
                 </tr>
             </thead>
             <tbody id="ci-heatmap-tbody">${tableRows}</tbody>
