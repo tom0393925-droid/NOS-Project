@@ -308,20 +308,9 @@ function renderCiContent(customerCode) {
     const trendBorder = (prev4Total > 0 && last4Total >= prev4Total) ? 'border-l-green-500' : (prev4Total > 0 ? 'border-l-red-400' : 'border-l-gray-300');
 
     panel.innerHTML = `
-        <div class="flex items-start justify-between mb-5">
-            <div>
-                <h2 class="text-xl font-black text-gray-800">${customerName}</h2>
-                <p class="text-xs text-gray-400 mt-0.5">Code: ${customerCode} &nbsp;|&nbsp; Data up to: ${latestWeek}</p>
-            </div>
-            <div class="flex items-center gap-2 mt-1">
-                <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">History:</span>
-                ${['12w','26w','all'].map(p => {
-                    const active = p === window._ciPeriod;
-                    const label  = p === '12w' ? '12 Wks' : p === '26w' ? '26 Wks' : 'All';
-                    const cls    = active ? 'px-3 py-1 text-xs font-bold rounded bg-teal-500 text-white' : 'px-3 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors';
-                    return `<button id="ciRangeBtn${p}" onclick="ciSetTablePeriod('${p}')" class="${cls}">${label}</button>`;
-                }).join('')}
-            </div>
+        <div class="mb-5">
+            <h2 class="text-xl font-black text-gray-800">${customerName}</h2>
+            <p class="text-xs text-gray-400 mt-0.5">Code: ${customerCode} &nbsp;|&nbsp; Data up to: ${latestWeek}</p>
         </div>
 
         <!-- KPI Cards -->
@@ -373,10 +362,21 @@ function renderCiContent(customerCode) {
 
         <!-- Active SKUs -->
         <div class="mb-8">
-            <h3 class="font-black text-green-700 text-base mb-3 flex items-center gap-2">
-                ✅ Active SKUs
-                <span class="text-xs font-normal text-gray-400">ordered within last ${CI_WARN_WEEKS} weeks · sorted by total amount</span>
-            </h3>
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="font-black text-green-700 text-base flex items-center gap-2">
+                    ✅ Active SKUs
+                    <span class="text-xs font-normal text-gray-400">ordered within last ${CI_WARN_WEEKS} weeks · sorted by total amount</span>
+                </h3>
+                <div class="flex items-center gap-1.5">
+                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mr-1">History:</span>
+                    ${['12w','26w','all'].map(p => {
+                        const active = p === window._ciPeriod;
+                        const label  = p === '12w' ? '12 Wks' : p === '26w' ? '26 Wks' : 'All';
+                        const cls    = active ? 'px-2.5 py-1 text-xs font-bold rounded bg-teal-500 text-white' : 'px-2.5 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors';
+                        return `<button id="ciRangeBtn${p}" onclick="ciSetTablePeriod('${p}')" class="${cls}">${label}</button>`;
+                    }).join('')}
+                </div>
+            </div>
             ${activeSkus.length === 0
                 ? '<p class="text-gray-400 text-sm">No active SKUs in the last ' + CI_WARN_WEEKS + ' weeks.</p>'
                 : _renderCiSkuHeatmap(activeSkus, displayWeeks)
