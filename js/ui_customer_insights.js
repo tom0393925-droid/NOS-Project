@@ -1044,7 +1044,7 @@ function ciToggleSkuChart(code) {
                 id: 'ciSkuAvgLine',
                 afterDatasetsDraw(chart) {
                     if (!avgQty) return;
-                    const { ctx, chartArea: { left, right, top }, scales: { y } } = chart;
+                    const { ctx, chartArea: { left, right }, scales: { y } } = chart;
                     const yPos = y.getPixelForValue(avgQty);
                     ctx.save();
                     ctx.beginPath();
@@ -1052,21 +1052,14 @@ function ciToggleSkuChart(code) {
                     ctx.strokeStyle = 'rgba(239,68,68,0.7)';
                     ctx.lineWidth = 1.5;
                     ctx.moveTo(left, yPos);
-                    ctx.lineTo(right, yPos);
+                    ctx.lineTo(right + 80, yPos);
                     ctx.stroke();
                     ctx.setLineDash([]);
-                    const label = `avg ${avgQty.toFixed(1)} ${sku.uom}`;
-                    ctx.font = 'bold 10px sans-serif';
-                    const tw = ctx.measureText(label).width;
-                    const pad = 3;
-                    const lx = right - tw - pad * 2 - 2;
-                    const ly = Math.max(top + 2, yPos - 15);
-                    ctx.fillStyle = 'rgba(255,255,255,0.88)';
-                    ctx.fillRect(lx - pad, ly, tw + pad * 2, 13);
                     ctx.fillStyle = 'rgba(239,68,68,0.9)';
+                    ctx.font = 'bold 10px sans-serif';
                     ctx.textAlign = 'left';
-                    ctx.textBaseline = 'top';
-                    ctx.fillText(label, lx, ly + 1);
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`avg ${avgQty.toFixed(1)} ${sku.uom}`, right + 5, yPos);
                     ctx.restore();
                 }
             },
@@ -1091,7 +1084,7 @@ function ciToggleSkuChart(code) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            layout: { padding: { top: 22 } },
+            layout: { padding: { top: 22, right: 85 } },
             plugins: {
                 legend: { display: false },
                 tooltip: {
