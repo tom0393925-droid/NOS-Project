@@ -695,9 +695,9 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
         const _esc = sku.code.replace(/'/g, "\\'");
         return `
         <tr class="border-b border-gray-100 hover:bg-teal-50/30 cursor-pointer transition-colors" id="ci-heatmap-row-${_sid}" onclick="ciToggleSkuChart('${_esc}')">
-            <td style="position:sticky;left:0;z-index:1;width:90px;background:#fff;" class="p-3 font-bold text-indigo-700 text-sm whitespace-nowrap">${sku.code}</td>
-            <td style="position:sticky;left:90px;z-index:1;width:180px;background:#fff;" class="p-3 text-sm text-gray-700 truncate" title="${sku.name}">${sku.name}</td>
-            <td style="position:sticky;left:270px;z-index:1;width:110px;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,0.06);" class="p-3 text-right font-mono whitespace-nowrap">
+            <td style="position:sticky;left:0;z-index:1;width:90px;max-width:90px;overflow:hidden;background:#fff;" class="p-3 font-bold text-indigo-700 text-sm whitespace-nowrap">${sku.code}</td>
+            <td style="position:sticky;left:90px;z-index:1;width:180px;max-width:180px;background:#fff;" class="p-3 text-sm text-gray-700 truncate" title="${sku.name}">${sku.name}</td>
+            <td style="position:sticky;left:270px;z-index:1;width:110px;max-width:110px;overflow:hidden;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,0.06);" class="p-3 text-right font-mono whitespace-nowrap">
                 <span class="font-black text-green-700 text-sm">${_ciFormatAmt(sku.totalAmount)}</span>
                 ${lastUnitPrice > 0 ? `<span class="block text-xs text-gray-400 font-normal">${lastUnitLabel}</span>` : ''}
             </td>
@@ -744,9 +744,9 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
         <table class="text-left text-sm" style="table-layout:auto;min-width:100%;" id="ci-heatmap-table">
             <thead class="bg-gray-50 border-b border-gray-200" style="position:sticky;top:0;z-index:3;">
                 <tr>
-                    <th style="position:sticky;left:0;z-index:4;width:90px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs whitespace-nowrap">SKU</th>
-                    <th style="position:sticky;left:90px;z-index:4;width:180px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs">Item Name</th>
-                    <th style="position:sticky;left:270px;z-index:4;width:110px;background:#f9fafb;box-shadow:2px 0 4px rgba(0,0,0,0.06);" class="p-3 text-right font-bold text-gray-600 text-xs">Total</th>
+                    <th style="position:sticky;left:0;z-index:4;width:90px;max-width:90px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs whitespace-nowrap">SKU</th>
+                    <th style="position:sticky;left:90px;z-index:4;width:180px;max-width:180px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs">Item Name</th>
+                    <th style="position:sticky;left:270px;z-index:4;width:110px;max-width:110px;background:#f9fafb;box-shadow:2px 0 4px rgba(0,0,0,0.06);" class="p-3 text-right font-bold text-gray-600 text-xs">Total</th>
                     ${headerCols}
                     <th style="position:sticky;right:0;z-index:4;background:#f9fafb;box-shadow:-2px 0 4px rgba(0,0,0,0.06);" class="p-3 text-center font-bold text-gray-600 text-xs whitespace-nowrap">Last Order</th>
                 </tr>
@@ -1044,7 +1044,7 @@ function ciToggleSkuChart(code) {
                 id: 'ciSkuAvgLine',
                 afterDatasetsDraw(chart) {
                     if (!avgQty) return;
-                    const { ctx, chartArea: { left, right }, scales: { y } } = chart;
+                    const { ctx, chartArea: { left, right, top }, scales: { y } } = chart;
                     const yPos = y.getPixelForValue(avgQty);
                     ctx.save();
                     ctx.beginPath();
@@ -1055,10 +1055,18 @@ function ciToggleSkuChart(code) {
                     ctx.lineTo(right, yPos);
                     ctx.stroke();
                     ctx.setLineDash([]);
-                    ctx.fillStyle = 'rgba(239,68,68,0.9)';
+                    const label = `avg ${avgQty.toFixed(1)} ${sku.uom}`;
                     ctx.font = 'bold 10px sans-serif';
-                    ctx.textAlign = 'right';
-                    ctx.fillText(`avg ${avgQty.toFixed(1)} ${sku.uom}`, right - 4, yPos - 4);
+                    const tw = ctx.measureText(label).width;
+                    const pad = 3;
+                    const lx = right - tw - pad * 2 - 2;
+                    const ly = Math.max(top + 2, yPos - 15);
+                    ctx.fillStyle = 'rgba(255,255,255,0.88)';
+                    ctx.fillRect(lx - pad, ly, tw + pad * 2, 13);
+                    ctx.fillStyle = 'rgba(239,68,68,0.9)';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'top';
+                    ctx.fillText(label, lx, ly + 1);
                     ctx.restore();
                 }
             },
