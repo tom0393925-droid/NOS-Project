@@ -653,7 +653,7 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
     }
 
     const headerCols = displayWeeks.map(w =>
-        `<th class="p-2 text-center text-xs font-bold text-gray-500 whitespace-nowrap">${w.slice(5)}</th>`
+        `<th class="p-2 text-center text-xs font-bold text-gray-500 whitespace-nowrap" style="min-width:80px;">${w.slice(5)}</th>`
     ).join('');
 
     const HEAT_LEVELS = [
@@ -666,7 +666,7 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
         const weekCols = displayWeeks.map(w => {
             const amt = sku.weekMap[w]?.amount || 0;
             if (amt === 0) {
-                return `<td class="p-2 text-center text-xs text-gray-200" style="background:rgba(0,0,0,0.02)">—</td>`;
+                return `<td class="p-2 text-center text-xs text-gray-200" style="background:rgba(0,0,0,0.02);min-width:80px;">—</td>`;
             }
             const qty = sku.weekMap[w]?.qty || 0;
             const uom = sku.uom || 'ea';
@@ -676,7 +676,7 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
             const tier  = HEAT_LEVELS.find(l => ratio <= l.maxRatio) || HEAT_LEVELS[2];
             const label = amt >= 1000 ? '$' + (amt / 1000).toFixed(1) + 'k' : '$' + amt.toFixed(0);
             const qtyLabel = qty + ' ' + uom;
-            return `<td class="p-2 text-center whitespace-nowrap" style="background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};">
+            return `<td class="p-2 text-center whitespace-nowrap" style="background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};min-width:80px;">
                 <div class="font-bold text-xs">${label}</div>
                 <div style="font-size:10px;opacity:0.8;font-weight:500;">${qtyLabel}</div>
             </td>`;
@@ -741,7 +741,7 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
             />
         </div>
         <div class="rounded-xl border border-gray-200 shadow-sm" style="overflow:auto;max-height:560px;">
-        <table class="text-left text-sm" style="min-width:100%;table-layout:auto;" id="ci-heatmap-table">
+        <table class="text-left text-sm" style="width:max-content;table-layout:fixed;" id="ci-heatmap-table">
             <thead class="bg-gray-50 border-b border-gray-200" style="position:sticky;top:0;z-index:3;">
                 <tr>
                     <th style="position:sticky;left:0;z-index:4;width:90px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs whitespace-nowrap">SKU</th>
