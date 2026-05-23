@@ -7,6 +7,8 @@ window._ciCache         = new Map(); // customer_code → rows[] (session cache)
 window._ciSelectedCode  = null;  // currently selected customer_code
 window._ciChart         = null;  // Chart.js instance (bar)
 window._ciDonutChart    = null;  // Chart.js instance (donut)
+window._ciSkuChart      = null;  // Chart.js instance (SKU detail accordion)
+window._ciOpenSkuCode   = null;  // currently open SKU detail code
 window._ciPeriod        = '12w'; // '12w' | '26w' | 'all'  (heatmap history range)
 window._ciDonutPeriod   = '4w';  // '4w' | '12w' | 'all'   (SKU Mix donut — independent)
 window._ciAllSkuEntries = [];    // all SKU entries for the current client
@@ -399,6 +401,8 @@ function renderCiContent(customerCode) {
     // Initialize charts (must run after innerHTML is set)
     if (window._ciChart)      { window._ciChart.destroy();      window._ciChart      = null; }
     if (window._ciDonutChart) { window._ciDonutChart.destroy(); window._ciDonutChart = null; }
+    if (window._ciSkuChart)   { window._ciSkuChart.destroy();   window._ciSkuChart   = null; }
+    window._ciOpenSkuCode = null;
     const ctx = document.getElementById('ciTrendChart');
     if (ctx) {
         // Build week → [{code, name, uom, qty, amount}] lookup, sorted by amount desc
@@ -684,7 +688,10 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
             ? '$' + (lastUnitPrice / 1000).toFixed(1) + 'k/' + uom
             : '$' + lastUnitPrice.toFixed(0) + '/' + uom;
 
-        return `<tr class="border-b border-gray-100 hover:bg-slate-50">
+        const _sid = String(sku.code).replace(/[^a-zA-Z0-9]/g, '_');
+        const _esc = sku.code.replace(/'/g, "\\'");
+        return `
+        <tr class="border-b border-gray-100 hover:bg-teal-50/30 cursor-pointer transition-colors" id="ci-heatmap-row-${_sid}" onclick="ciToggleSkuChart('${_esc}')">
             <td style="position:sticky;left:0;z-index:1;width:90px;background:#fff;" class="p-3 font-bold text-indigo-700 text-sm whitespace-nowrap">${sku.code}</td>
             <td style="position:sticky;left:90px;z-index:1;width:180px;background:#fff;" class="p-3 text-sm text-gray-700 truncate" title="${sku.name}">${sku.name}</td>
             <td style="position:sticky;left:270px;z-index:1;width:110px;background:#fff;box-shadow:2px 0 4px rgba(0,0,0,0.06);" class="p-3 text-right font-mono whitespace-nowrap">
@@ -692,7 +699,17 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
                 ${lastUnitPrice > 0 ? `<span class="block text-xs text-gray-400 font-normal">${lastUnitLabel}</span>` : ''}
             </td>
             ${weekCols}
-            <td class="p-3 text-center text-xs text-gray-400 whitespace-nowrap">${sku.lastWeek || '—'}</td>
+            <td class="p-3 text-center whitespace-nowrap">
+                <span class="text-xs text-gray-400">${sku.lastWeek || '—'}</span>
+                <span class="ml-1 text-gray-300 text-[10px]" id="ci-chart-arrow-${_sid}">▼</span>
+            </td>
+        </tr>
+        <tr id="ci-chart-row-${_sid}" class="hidden bg-gray-50/50">
+            <td colspan="100" class="px-8 pb-5 pt-3">
+                <div style="position:relative;height:160px;">
+                    <canvas id="ci-sku-canvas-${_sid}"></canvas>
+                </div>
+            </td>
         </tr>`;
     }).join('');
 
@@ -950,4 +967,133 @@ function _ciUpdateDonutTabs(period) {
         const btn = document.getElementById(id);
         if (btn) btn.className = key === period ? active : inactive;
     }
+}
+
+// ==========================================
+// SKU detail accordion chart
+// ==========================================
+function ciToggleSkuChart(code) {
+    const sanitized = String(code).replace(/[^a-zA-Z0-9]/g, '_');
+    const chartRow  = document.getElementById(`ci-chart-row-${sanitized}`);
+    if (!chartRow) return;
+
+    const isOpen = !chartRow.classList.contains('hidden');
+
+    // Close previously open chart (different SKU)
+    if (window._ciOpenSkuCode && window._ciOpenSkuCode !== code) {
+        const prevS     = String(window._ciOpenSkuCode).replace(/[^a-zA-Z0-9]/g, '_');
+        const prevRow   = document.getElementById(`ci-chart-row-${prevS}`);
+        const prevArrow = document.getElementById(`ci-chart-arrow-${prevS}`);
+        if (prevRow)   prevRow.classList.add('hidden');
+        if (prevArrow) prevArrow.textContent = '▼';
+        if (window._ciSkuChart) { window._ciSkuChart.destroy(); window._ciSkuChart = null; }
+        window._ciOpenSkuCode = null;
+    }
+
+    const arrow = document.getElementById(`ci-chart-arrow-${sanitized}`);
+
+    if (isOpen) {
+        chartRow.classList.add('hidden');
+        if (arrow) arrow.textContent = '▼';
+        if (window._ciSkuChart) { window._ciSkuChart.destroy(); window._ciSkuChart = null; }
+        window._ciOpenSkuCode = null;
+        return;
+    }
+
+    // Open
+    chartRow.classList.remove('hidden');
+    if (arrow) arrow.textContent = '▲';
+    window._ciOpenSkuCode = code;
+
+    const sku = (window._ciAllSkuEntries || []).find(s => s.code === code);
+    if (!sku) return;
+
+    const allWeeks   = window._ciAllWeeks || [];
+    const chartWeeks = allWeeks.slice(-26);
+    const last4      = allWeeks.slice(-4);
+    const qtys       = chartWeeks.map(w => sku.weekMap[w]?.qty || 0);
+    const nonZero    = qtys.filter(q => q > 0);
+    const avgQty     = nonZero.length ? nonZero.reduce((s, q) => s + q, 0) / nonZero.length : 0;
+
+    const canvas = document.getElementById(`ci-sku-canvas-${sanitized}`);
+    if (!canvas) return;
+    if (window._ciSkuChart) { window._ciSkuChart.destroy(); window._ciSkuChart = null; }
+
+    window._ciSkuChart = new Chart(canvas, {
+        type: 'bar',
+        data: {
+            labels: chartWeeks.map(w => w.slice(5)),
+            datasets: [{
+                data: qtys,
+                backgroundColor: chartWeeks.map(w =>
+                    last4.includes(w) ? 'rgba(20,184,166,0.85)' : 'rgba(20,184,166,0.30)'
+                ),
+                borderRadius: 3,
+                borderSkipped: false,
+            }]
+        },
+        plugins: [
+            {
+                id: 'ciSkuAvgLine',
+                afterDatasetsDraw(chart) {
+                    if (!avgQty) return;
+                    const { ctx, chartArea: { left, right }, scales: { y } } = chart;
+                    const yPos = y.getPixelForValue(avgQty);
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.setLineDash([5, 4]);
+                    ctx.strokeStyle = 'rgba(239,68,68,0.7)';
+                    ctx.lineWidth = 1.5;
+                    ctx.moveTo(left, yPos);
+                    ctx.lineTo(right, yPos);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                    ctx.fillStyle = 'rgba(239,68,68,0.9)';
+                    ctx.font = 'bold 10px sans-serif';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(`avg ${avgQty.toFixed(1)} ${sku.uom}`, right - 4, yPos - 4);
+                    ctx.restore();
+                }
+            },
+            {
+                id: 'ciSkuBarLabels',
+                afterDatasetsDraw(chart) {
+                    const { ctx } = chart;
+                    chart.getDatasetMeta(0).data.forEach((bar, i) => {
+                        const val = chart.data.datasets[0].data[i];
+                        if (!val) return;
+                        ctx.save();
+                        ctx.textAlign = 'center';
+                        ctx.fillStyle = '#374151';
+                        ctx.font = 'bold 10px sans-serif';
+                        ctx.textBaseline = 'bottom';
+                        ctx.fillText(val.toLocaleString(), bar.x, bar.y - 2);
+                        ctx.restore();
+                    });
+                }
+            }
+        ],
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 22 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: { label: ctx => `${ctx.parsed.y} ${sku.uom}` }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: { font: { size: 11 } },
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                x: {
+                    ticks: { font: { size: 10 }, maxRotation: 45, minRotation: 0 },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
 }
