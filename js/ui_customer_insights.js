@@ -1044,22 +1044,45 @@ function ciToggleSkuChart(code) {
                 id: 'ciSkuAvgLine',
                 afterDatasetsDraw(chart) {
                     if (!avgQty) return;
-                    const { ctx, chartArea: { left, right }, scales: { y } } = chart;
-                    const yPos = y.getPixelForValue(avgQty);
+                    const { ctx, chartArea: { left, right, bottom }, scales: { y } } = chart;
+                    const yPos    = y.getPixelForValue(avgQty);
+                    const barLeft = right + 10;
+                    const barW    = 44;
+                    const barCx   = barLeft + barW / 2;
                     ctx.save();
+                    // Red dashed avg line (stops at bar left edge)
                     ctx.beginPath();
                     ctx.setLineDash([5, 4]);
                     ctx.strokeStyle = 'rgba(239,68,68,0.7)';
                     ctx.lineWidth = 1.5;
                     ctx.moveTo(left, yPos);
-                    ctx.lineTo(right + 80, yPos);
+                    ctx.lineTo(barLeft, yPos);
                     ctx.stroke();
                     ctx.setLineDash([]);
-                    ctx.fillStyle = 'rgba(239,68,68,0.9)';
+                    // Gray avg bar (rounded top corners)
+                    const r = 3;
+                    ctx.beginPath();
+                    ctx.moveTo(barLeft + r, yPos);
+                    ctx.lineTo(barLeft + barW - r, yPos);
+                    ctx.quadraticCurveTo(barLeft + barW, yPos, barLeft + barW, yPos + r);
+                    ctx.lineTo(barLeft + barW, bottom);
+                    ctx.lineTo(barLeft, bottom);
+                    ctx.lineTo(barLeft, yPos + r);
+                    ctx.quadraticCurveTo(barLeft, yPos, barLeft + r, yPos);
+                    ctx.closePath();
+                    ctx.fillStyle = 'rgba(156,163,175,0.75)';
+                    ctx.fill();
+                    // Value above bar
+                    ctx.fillStyle = '#374151';
                     ctx.font = 'bold 10px sans-serif';
-                    ctx.textAlign = 'left';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(`avg ${avgQty.toFixed(1)} ${sku.uom}`, right + 5, yPos);
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(Math.round(avgQty).toLocaleString(), barCx, yPos - 2);
+                    // "Avg" label below (same level as x-axis dates)
+                    ctx.fillStyle = '#6b7280';
+                    ctx.font = '10px sans-serif';
+                    ctx.textBaseline = 'top';
+                    ctx.fillText('Avg', barCx, bottom + 4);
                     ctx.restore();
                 }
             },
