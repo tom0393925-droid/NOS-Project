@@ -342,6 +342,7 @@ async function runCustomerInsightsImport() {
             const colCustomer = hdr.findIndex(h => h.includes('customer'));
             const colProduct  = hdr.findIndex(h => h.includes('product'));
             const colQty      = hdr.findIndex(h => h === 'qty' || h === 'quantity');
+            const colUom      = hdr.findIndex(h => h === 'uom' || h === 'unit' || h === 'unitofmeasure');
             const colAmount   = hdr.findIndex(h => h === 'amount');
 
             const rowMap = new Map();
@@ -365,6 +366,7 @@ async function runCustomerInsightsImport() {
 
                 const qty    = parseFloat(String(row[colQty]    || '0').replace(/,/g, '')) || 0;
                 const amount = parseFloat(String(row[colAmount] || '0').replace(/,/g, '')) || 0;
+                const uom    = colUom >= 0 ? (String(row[colUom] || '').trim() || null) : null;
                 if (qty <= 0) continue;
 
                 const key = `${customerCode}|${skuCode}|${weekStart}`;
@@ -373,7 +375,7 @@ async function runCustomerInsightsImport() {
                     existing.qty += qty;
                     existing.amount += amount;
                 } else {
-                    rowMap.set(key, { customer_code: customerCode, customer_name: customerName, sku_code: skuCode, week_start: weekStart, qty, amount });
+                    rowMap.set(key, { customer_code: customerCode, customer_name: customerName, sku_code: skuCode, week_start: weekStart, qty, amount, uom });
                 }
             }
 

@@ -230,11 +230,14 @@ function renderCiContent(customerCode) {
     const skuMap = {};
     for (const row of rows) {
         if (!skuMap[row.sku_code]) {
-            skuMap[row.sku_code] = { totalAmount: 0, totalQty: 0, weekMap: {} };
+            skuMap[row.sku_code] = { totalAmount: 0, totalQty: 0, weekMap: {}, dataUom: null };
         }
         skuMap[row.sku_code].totalAmount += row.amount;
         skuMap[row.sku_code].totalQty    += row.qty;
         skuMap[row.sku_code].weekMap[row.week_start] = { qty: row.qty, amount: row.amount };
+        if (row.uom && !skuMap[row.sku_code].dataUom) {
+            skuMap[row.sku_code].dataUom = row.uom;
+        }
     }
 
     // Determine last order date and status per SKU
@@ -249,7 +252,7 @@ function renderCiContent(customerCode) {
             : 999;
 
         const skuName = (typeof skuMaster !== 'undefined' && skuMaster[code]?.name) || code;
-        const skuUom  = (typeof skuMaster !== 'undefined' && skuMaster[code]?.uom)  || 'ea';
+        const skuUom  = skuMap[code].dataUom || (typeof skuMaster !== 'undefined' && skuMaster[code]?.uom) || 'ea';
 
         const entry = { code, name: skuName, uom: skuUom, totalAmount: data.totalAmount, totalQty: data.totalQty, lastWeek, weeksSince, weekMap: data.weekMap };
 

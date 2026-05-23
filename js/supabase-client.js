@@ -724,7 +724,7 @@ async function sbLoadClientSkuOrders() {
     while (true) {
         const { data, error } = await _sb
             .from('client_sku_orders')
-            .select('customer_code,customer_name,sku_code,week_start,qty,amount')
+            .select('customer_code,customer_name,sku_code,week_start,qty,amount,uom')
             .order('week_start', { ascending: true })
             .range(from, from + pageSize - 1);
         if (error) throw error;
@@ -766,7 +766,7 @@ async function sbLoadClientOrdersByCode(customerCode, since = null) {
     while (true) {
         let q = _sb
             .from('client_sku_orders')
-            .select('customer_code,customer_name,sku_code,week_start,qty,amount')
+            .select('customer_code,customer_name,sku_code,week_start,qty,amount,uom')
             .eq('customer_code', customerCode)
             .order('week_start', { ascending: true })
             .range(from, from + pageSize - 1);
