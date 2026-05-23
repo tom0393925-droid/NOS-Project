@@ -653,7 +653,7 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
     }
 
     const headerCols = displayWeeks.map(w =>
-        `<th class="p-2 text-center text-xs font-bold text-gray-500 whitespace-nowrap" style="min-width:80px;">${w.slice(5)}</th>`
+        `<th class="p-2 text-center text-xs font-bold text-gray-500 whitespace-nowrap" style="min-width:76px;">${w.slice(5)}</th>`
     ).join('');
 
     const HEAT_LEVELS = [
@@ -666,7 +666,7 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
         const weekCols = displayWeeks.map(w => {
             const amt = sku.weekMap[w]?.amount || 0;
             if (amt === 0) {
-                return `<td class="p-2 text-center text-xs text-gray-200" style="background:rgba(0,0,0,0.02);min-width:80px;">—</td>`;
+                return `<td class="p-2 text-center text-xs text-gray-200" style="background:rgba(0,0,0,0.02);min-width:76px;">—</td>`;
             }
             const qty = sku.weekMap[w]?.qty || 0;
             const uom = sku.uom || 'ea';
@@ -676,7 +676,7 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
             const tier  = HEAT_LEVELS.find(l => ratio <= l.maxRatio) || HEAT_LEVELS[2];
             const label = amt >= 1000 ? '$' + (amt / 1000).toFixed(1) + 'k' : '$' + amt.toFixed(0);
             const qtyLabel = qty + ' ' + uom;
-            return `<td class="p-2 text-center whitespace-nowrap" style="background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};min-width:80px;">
+            return `<td class="p-2 text-center whitespace-nowrap" style="background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};min-width:76px;">
                 <div class="font-bold text-xs">${label}</div>
                 <div style="font-size:10px;opacity:0.8;font-weight:500;">${qtyLabel}</div>
             </td>`;
@@ -702,7 +702,7 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
                 ${lastUnitPrice > 0 ? `<span class="block text-xs text-gray-400 font-normal">${lastUnitLabel}</span>` : ''}
             </td>
             ${weekCols}
-            <td class="p-3 text-center whitespace-nowrap">
+            <td class="p-3 text-center whitespace-nowrap" style="position:sticky;right:0;z-index:1;background:#fff;box-shadow:-2px 0 4px rgba(0,0,0,0.06);">
                 <span class="text-xs text-gray-400">${sku.lastWeek || '—'}</span>
                 <span class="ml-1 text-gray-300 text-[10px]" id="ci-chart-arrow-${_sid}">▼</span>
             </td>
@@ -740,15 +740,15 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
                 class="w-full max-w-xs px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400"
             />
         </div>
-        <div class="rounded-xl border border-gray-200 shadow-sm" style="overflow:auto;max-height:560px;">
-        <table class="text-left text-sm" style="width:max-content;table-layout:fixed;" id="ci-heatmap-table">
+        <div class="rounded-xl border border-gray-200 shadow-sm" id="ci-heatmap-scroll" style="overflow:auto;max-height:560px;">
+        <table class="text-left text-sm" style="table-layout:auto;min-width:100%;" id="ci-heatmap-table">
             <thead class="bg-gray-50 border-b border-gray-200" style="position:sticky;top:0;z-index:3;">
                 <tr>
                     <th style="position:sticky;left:0;z-index:4;width:90px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs whitespace-nowrap">SKU</th>
                     <th style="position:sticky;left:90px;z-index:4;width:180px;background:#f9fafb;" class="p-3 font-bold text-gray-600 text-xs">Item Name</th>
                     <th style="position:sticky;left:270px;z-index:4;width:110px;background:#f9fafb;box-shadow:2px 0 4px rgba(0,0,0,0.06);" class="p-3 text-right font-bold text-gray-600 text-xs">Total</th>
                     ${headerCols}
-                    <th style="background:#f9fafb;" class="p-3 text-center font-bold text-gray-600 text-xs">Last Order</th>
+                    <th style="position:sticky;right:0;z-index:4;background:#f9fafb;box-shadow:-2px 0 4px rgba(0,0,0,0.06);" class="p-3 text-center font-bold text-gray-600 text-xs whitespace-nowrap">Last Order</th>
                 </tr>
             </thead>
             <tbody id="ci-heatmap-tbody">${tableRows}</tbody>
@@ -819,6 +819,10 @@ async function ciSetTablePeriod(period) {
     }
     window._ciRawData = window._ciCache.get(cacheKey);
     renderCiContent(code);
+    setTimeout(() => {
+        const el = document.getElementById('ci-heatmap-scroll');
+        if (el) el.scrollLeft = el.scrollWidth;
+    }, 0);
 }
 
 function ciSetDonutPeriod(period) {
