@@ -781,6 +781,31 @@ async function sbLoadClientOrdersByCode(customerCode, since = null) {
 }
 
 // ==========================================
+// Order Reservations
+// ==========================================
+async function sbGetReservationsByDate(shipmentDate) {
+    const { data, error } = await _sb.from('order_reservations')
+        .select('*')
+        .eq('shipment_date', shipmentDate)
+        .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data;
+}
+
+async function sbAddReservation(skuCode, shipmentDate, customerName, quantity) {
+    const { data, error } = await _sb.from('order_reservations')
+        .insert({ sku_code: skuCode, shipment_date: shipmentDate, customer_name: customerName, quantity })
+        .select().single();
+    if (error) throw error;
+    return data;
+}
+
+async function sbDeleteReservation(id) {
+    const { error } = await _sb.from('order_reservations').delete().eq('id', id);
+    if (error) throw error;
+}
+
+// ==========================================
 // Sample Data Load
 // ==========================================
 async function sbLoadSampleData(statusCallback) {

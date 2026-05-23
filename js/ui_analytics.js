@@ -702,7 +702,7 @@ function renderOrderTable() {
             <td class="p-3 text-right font-mono text-red-500 font-bold">${row.safety.toLocaleString()}</td>
             <td class="p-3 text-right font-mono font-bold text-gray-800">${row.currentQty.toLocaleString()}</td>
             <td class="p-3 text-right bg-blue-50">${fmtPred(row.predNext, row.safety)}</td>
-            <td class="p-3 bg-blue-50"><input type="text" inputmode="numeric" value="${row.orderNext.toLocaleString()}" data-sid="${sid}" data-field="orderNext" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-blue-200 rounded px-2 py-1 text-xs font-bold text-blue-800 focus:ring-1 focus:ring-blue-400 outline-none bg-white">${autoHint(`hint_next_${sid}`, row.orderNext, row.autoOrderNext)}</td>
+            <td class="p-3 bg-blue-50"><div class="flex items-center gap-1"><input type="text" inputmode="numeric" value="${row.orderNext.toLocaleString()}" data-sid="${sid}" data-field="orderNext" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-blue-200 rounded px-2 py-1 text-xs font-bold text-blue-800 focus:ring-1 focus:ring-blue-400 outline-none bg-white">${dates.next ? `<button id="resbtn_${sid}" onclick="openReservationModal('${sid}','${dates.next}')" class="text-gray-300 hover:text-purple-500 text-base leading-none transition-colors" title="Reservations">📋</button>` : ''}</div>${autoHint(`hint_next_${sid}`, row.orderNext, row.autoOrderNext)}<div id="resbadge_${sid}" class="hidden text-[10px] font-bold mt-0.5"></div></td>
             <td class="p-3 text-right bg-indigo-50" id="op2_${sid}">${fmtPred(row.pred2nd, row.safety)}</td>
             <td class="p-3 bg-indigo-50"><input type="text" inputmode="numeric" value="${row.order2nd.toLocaleString()}" data-sid="${sid}" data-field="order2nd" onchange="onOrderQtyChange(this)" class="w-24 text-right border border-indigo-200 rounded px-2 py-1 text-xs font-bold text-indigo-800 focus:ring-1 focus:ring-indigo-400 outline-none bg-white">${autoHint(`hint_2nd_${sid}`, row.order2nd, row.autoOrder2nd)}</td>
             <td class="p-3 text-right bg-violet-50" id="op3_${sid}">${fmtPred(row.pred3rd, row.safety)}</td>
@@ -710,6 +710,8 @@ function renderOrderTable() {
         `;
         tbody.appendChild(tr);
     });
+
+    if (dates.next) _refreshReservationBadges(dates.next);
 }
 
 function onOrderQtyChange(input) {
@@ -1058,5 +1060,139 @@ async function confirmOrderImport() {
         alert('Import failed: ' + e.message);
         btn.disabled = false;
         btn.textContent = 'Confirm & Import';
+    }
+}
+
+// ==========================================
+// Order Reservations
+// ==========================================
+let _resMod = { sid: null, date: null, skuCode: null, orderedQty: 0 };
+
+async function openReservationModal(sid, date) {
+    const row = _orderData.find(r => String(r.code).replace(/[^a-zA-Z0-9]/g, '_') === sid);
+    if (!row) return;
+    _resMod = { sid, date, skuCode: row.code, orderedQty: row.orderNext };
+    document.getElementById('resMod_title').textContent = `Reservations — ${row.name}`;
+    document.getElementById('resMod_date').textContent = date;
+    document.getElementById('resMod_ordered').textContent = row.orderNext.toLocaleString();
+    document.getElementById('resMod_addForm').classList.add('hidden');
+    document.getElementById('reservationModal').style.display = 'flex';
+    await _refreshResModalList();
+}
+
+function closeReservationModal() {
+    document.getElementById('reservationModal').style.display = 'none';
+    const { date } = _resMod;
+    if (date && window._reservationsByDate) delete window._reservationsByDate[date];
+    if (date) _refreshReservationBadges(date);
+}
+
+function _escHtml(s) {
+    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function _refreshResModalList() {
+    const { skuCode, date, orderedQty } = _resMod;
+    let rows = [];
+    try {
+        const all = await sbGetReservationsByDate(date);
+        rows = all.filter(r => r.sku_code === skuCode);
+        window._reservationsByDate = window._reservationsByDate || {};
+        if (!window._reservationsByDate[date]) window._reservationsByDate[date] = {};
+        window._reservationsByDate[date][skuCode] = rows;
+    } catch (e) {
+        console.warn('Failed to load reservations:', e);
+    }
+    const total = rows.reduce((s, r) => s + (r.quantity || 0), 0);
+    const avail = orderedQty - total;
+    document.getElementById('resMod_reserved').textContent = total.toLocaleString();
+    const availEl = document.getElementById('resMod_avail');
+    availEl.textContent = avail.toLocaleString();
+    availEl.className = avail < 0 ? 'font-black text-red-600' : 'font-black text-green-700';
+    const list = document.getElementById('resMod_list');
+    if (rows.length === 0) {
+        list.innerHTML = `<p class="text-sm text-gray-400 italic py-2">No reservations yet. Click + Add to create one.</p>`;
+        return;
+    }
+    list.innerHTML = rows.map(r => `
+        <div class="flex items-center gap-2 bg-white border border-gray-200 rounded-lg px-3 py-2">
+            <span class="flex-grow text-sm font-bold text-gray-700">${_escHtml(r.customer_name)}</span>
+            <span class="text-sm font-mono font-bold text-blue-700 w-16 text-right">${(r.quantity || 0).toLocaleString()}</span>
+            <button onclick="deleteReservation('${r.id}')" class="text-red-400 hover:text-red-600 text-sm px-1 transition-colors" title="Remove">✕</button>
+        </div>
+    `).join('');
+}
+
+function showAddReservationForm() {
+    const form = document.getElementById('resMod_addForm');
+    form.classList.remove('hidden');
+    document.getElementById('resMod_newCust').value = '';
+    document.getElementById('resMod_newQty').value = '';
+    document.getElementById('resMod_newCust').focus();
+}
+
+function hideAddReservationForm() {
+    document.getElementById('resMod_addForm').classList.add('hidden');
+}
+
+async function saveNewReservation() {
+    const custEl = document.getElementById('resMod_newCust');
+    const qtyEl = document.getElementById('resMod_newQty');
+    const customerName = custEl.value.trim();
+    const quantity = parseInt(qtyEl.value) || 0;
+    if (!customerName) { custEl.focus(); return; }
+    const { skuCode, date } = _resMod;
+    try {
+        await sbAddReservation(skuCode, date, customerName, quantity);
+        hideAddReservationForm();
+        await _refreshResModalList();
+    } catch (e) {
+        alert('Failed to save: ' + e.message);
+    }
+}
+
+async function deleteReservation(id) {
+    try {
+        await sbDeleteReservation(id);
+        await _refreshResModalList();
+    } catch (e) {
+        alert('Failed to delete: ' + e.message);
+    }
+}
+
+async function _refreshReservationBadges(date) {
+    if (!date) return;
+    window._reservationsByDate = window._reservationsByDate || {};
+    if (!window._reservationsByDate[date]) {
+        try {
+            const rows = await sbGetReservationsByDate(date);
+            const byCode = {};
+            for (const r of rows) {
+                if (!byCode[r.sku_code]) byCode[r.sku_code] = [];
+                byCode[r.sku_code].push(r);
+            }
+            window._reservationsByDate[date] = byCode;
+        } catch (e) {
+            console.warn('Failed to load reservation badges:', e);
+            return;
+        }
+    }
+    const byCode = window._reservationsByDate[date];
+    for (const [code, reservations] of Object.entries(byCode)) {
+        const sid = String(code).replace(/[^a-zA-Z0-9]/g, '_');
+        const btnEl = document.getElementById(`resbtn_${sid}`);
+        const badgeEl = document.getElementById(`resbadge_${sid}`);
+        if (!btnEl) continue;
+        const total = reservations.reduce((s, r) => s + (r.quantity || 0), 0);
+        if (total > 0) {
+            btnEl.className = 'text-orange-500 hover:text-orange-700 text-base leading-none transition-colors';
+            const row = _orderData.find(r => r.code === code);
+            const avail = (row ? row.orderNext : 0) - total;
+            if (badgeEl) {
+                badgeEl.textContent = `Res: ${total.toLocaleString()} / Avail: ${avail.toLocaleString()}`;
+                badgeEl.className = `text-[10px] font-bold mt-0.5 ${avail < 0 ? 'text-red-600' : 'text-orange-500'}`;
+                badgeEl.classList.remove('hidden');
+            }
+        }
     }
 }

@@ -1060,7 +1060,40 @@
         </div>
     </div>
 
-  <script src="js/supabase-client.js?v=12"></script>
+    <!-- Reservation Modal -->
+    <div id="reservationModal" class="fixed inset-0 z-50 items-center justify-center bg-black/40" style="display:none" onclick="if(event.target===this)closeReservationModal()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <div class="flex items-center justify-between mb-1">
+                <h3 class="font-black text-gray-800 text-base" id="resMod_title">Reservations</h3>
+                <button onclick="closeReservationModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <p class="text-xs text-gray-400 mb-4">Shipment: <span id="resMod_date" class="font-bold text-gray-600"></span></p>
+            <div id="resMod_list" class="space-y-2 mb-3 max-h-56 overflow-y-auto"></div>
+            <div id="resMod_addForm" class="hidden flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 mb-3">
+                <input type="text" id="resMod_newCust" placeholder="Customer name" class="flex-grow border border-gray-300 rounded px-2 py-1 text-sm focus:ring-1 focus:ring-purple-400 outline-none bg-white" onkeydown="if(event.key==='Enter')document.getElementById('resMod_newQty').focus()">
+                <input type="number" id="resMod_newQty" placeholder="Qty" min="0" class="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-right focus:ring-1 focus:ring-purple-400 outline-none bg-white" onkeydown="if(event.key==='Enter')saveNewReservation()">
+                <button onclick="saveNewReservation()" class="text-white bg-purple-600 hover:bg-purple-700 rounded px-2 py-1 text-xs font-bold transition-colors whitespace-nowrap">Save</button>
+                <button onclick="hideAddReservationForm()" class="text-gray-400 hover:text-gray-600 text-sm">&#10005;</button>
+            </div>
+            <button onclick="showAddReservationForm()" class="text-sm text-purple-600 hover:text-purple-800 font-bold flex items-center gap-1 mb-4 transition-colors">+ Add Customer</button>
+            <div class="border-t border-gray-200 pt-4 -mx-6 -mb-6 px-6 pb-5 bg-gray-50 rounded-b-2xl flex gap-6">
+                <div>
+                    <div class="text-gray-400 text-xs mb-0.5">Ordered</div>
+                    <div class="font-black text-blue-700" id="resMod_ordered">-</div>
+                </div>
+                <div>
+                    <div class="text-gray-400 text-xs mb-0.5">Reserved</div>
+                    <div class="font-black text-orange-600" id="resMod_reserved">-</div>
+                </div>
+                <div>
+                    <div class="text-gray-400 text-xs mb-0.5">Available</div>
+                    <div class="font-black text-green-700" id="resMod_avail">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+  <script src="js/supabase-client.js?v=13"></script>
     <script src="js/supabase-upload.js?v=4"></script>
     <script src="js/state.js?v=23"></script>
     <script src="js/utils.js?v=22"></script>
@@ -1068,7 +1101,7 @@
     <script src="js/chart.js?v=29"></script>
     <script src="js/ui_master.js?v=26"></script>
     <script src="js/ui_categories.js?v=6"></script>
-    <script src="js/ui_analytics.js?v=39"></script>
+    <script src="js/ui_analytics.js?v=40"></script>
     <script src="js/ui_map.js?v=22"></script>
     <script src="js/ui_customer_insights.js?v=4"></script>
     <script src="js/ui.js?v=31"></script>
