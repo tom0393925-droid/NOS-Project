@@ -662,7 +662,18 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
         { maxRatio: 1.00, alpha: '0.82', textColor: '#fff',    label: 'High' },
     ];
 
+    const RANK_BADGE = {
+        1: { bg: '#d97706', text: '#1' },
+        2: { bg: '#94a3b8', text: '#2' },
+        3: { bg: '#b45309', text: '#3' },
+    };
+
     const tableRows = skus.map(sku => {
+        // Compute top-3 rank map for this SKU (dense ranking, ties share same rank)
+        const uniqueAmts = [...new Set(displayWeeks.map(w => sku.weekMap[w]?.amount || 0).filter(a => a > 0))].sort((a, b) => b - a);
+        const amtRank = {};
+        uniqueAmts.slice(0, 3).forEach((a, i) => { amtRank[a] = i + 1; });
+
         const weekCols = displayWeeks.map(w => {
             const amt = sku.weekMap[w]?.amount || 0;
             if (amt === 0) {
@@ -676,7 +687,10 @@ function _renderCiSkuHeatmap(skus, displayWeeks) {
             const tier  = HEAT_LEVELS.find(l => ratio <= l.maxRatio) || HEAT_LEVELS[2];
             const label = amt >= 1000 ? '$' + (amt / 1000).toFixed(1) + 'k' : '$' + amt.toFixed(0);
             const qtyLabel = qty + ' ' + uom;
-            return `<td class="p-2 text-center whitespace-nowrap" style="background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};min-width:76px;">
+            const rank = amtRank[amt];
+            const badge = rank ? `<span style="position:absolute;top:2px;left:2px;background:${RANK_BADGE[rank].bg};color:#fff;font-size:9px;font-weight:700;padding:0 3px;border-radius:3px;line-height:14px;">${RANK_BADGE[rank].text}</span>` : '';
+            return `<td class="p-2 text-center whitespace-nowrap" style="position:relative;background:rgba(20,184,166,${tier.alpha});color:${tier.textColor};min-width:76px;">
+                ${badge}
                 <div class="font-bold text-xs">${label}</div>
                 <div style="font-size:10px;opacity:0.8;font-weight:500;">${qtyLabel}</div>
             </td>`;
