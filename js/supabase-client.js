@@ -706,6 +706,106 @@ async function sbLoadAllData(statusCallback, weeks = 52, activeOnly = false) {
 }
 
 // ==========================================
+// Client SKU Orders (Customer Insights)
+// ==========================================
+async function sbSaveClientSkuOrders(rows) {
+    const batchSize = 500;
+    for (let i = 0; i < rows.length; i += batchSize) {
+        const { error } = await _sb.from('client_sku_orders')
+            .upsert(rows.slice(i, i + batchSize), { onConflict: 'customer_code,sku_code,week_start' });
+        if (error) throw error;
+    }
+}
+
+async function sbLoadClientSkuOrders() {
+    const allRows = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+        const { data, error } = await _sb
+            .from('client_sku_orders')
+            .select('customer_code,customer_name,sku_code,week_start,qty,amount,uom')
+            .order('week_start', { ascending: true })
+            .range(from, from + pageSize - 1);
+        if (error) throw error;
+        allRows.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+    }
+    return allRows;
+}
+
+async function sbLoadClientList() {
+    const seen = new Set();
+    const clients = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+        const { data, error } = await _sb
+            .from('client_sku_orders')
+            .select('customer_code,customer_name')
+            .order('customer_name', { ascending: true })
+            .range(from, from + pageSize - 1);
+        if (error) throw error;
+        for (const row of data) {
+            if (!seen.has(row.customer_code)) {
+                seen.add(row.customer_code);
+                clients.push({ code: row.customer_code, name: row.customer_name || '' });
+            }
+        }
+        if (data.length < pageSize) break;
+        from += pageSize;
+    }
+    return clients;
+}
+
+async function sbLoadClientOrdersByCode(customerCode, since = null) {
+    const allRows = [];
+    const pageSize = 1000;
+    let from = 0;
+    while (true) {
+        let q = _sb
+            .from('client_sku_orders')
+            .select('customer_code,customer_name,sku_code,week_start,qty,amount,uom')
+            .eq('customer_code', customerCode)
+            .order('week_start', { ascending: true })
+            .range(from, from + pageSize - 1);
+        if (since) q = q.gte('week_start', since);
+        const { data, error } = await q;
+        if (error) throw error;
+        allRows.push(...data);
+        if (data.length < pageSize) break;
+        from += pageSize;
+    }
+    return allRows;
+}
+
+// ==========================================
+// Order Reservations
+// ==========================================
+async function sbGetReservationsByDate(shipmentDate) {
+    const { data, error } = await _sb.from('order_reservations')
+        .select('*')
+        .eq('shipment_date', shipmentDate)
+        .order('created_at', { ascending: true });
+    if (error) throw error;
+    return data;
+}
+
+async function sbAddReservation(skuCode, shipmentDate, customerName, quantity) {
+    const { data, error } = await _sb.from('order_reservations')
+        .insert({ sku_code: skuCode, shipment_date: shipmentDate, customer_name: customerName, quantity })
+        .select().single();
+    if (error) throw error;
+    return data;
+}
+
+async function sbDeleteReservation(id) {
+    const { error } = await _sb.from('order_reservations').delete().eq('id', id);
+    if (error) throw error;
+}
+
+// ==========================================
 // Sample Data Load
 // ==========================================
 async function sbLoadSampleData(statusCallback) {

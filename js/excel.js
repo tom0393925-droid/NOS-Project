@@ -285,9 +285,127 @@ async function runInvoiceAnalysis() {
         fileInput.value = ''; 
         if (typeof updateInvoiceSlot === "function") updateInvoiceSlot();
         alert("✅ Invoice data loaded and missing SKU names were auto-registered!");
-    } catch (error) { alert("❌ Invoice Error: \n" + error.message); } 
+    } catch (error) { alert("❌ Invoice Error: \n" + error.message); }
     finally {
         document.getElementById('analyzeInvoiceBtn').disabled = false;
         document.getElementById('loadingInvoice').style.display = 'none';
     }
+}
+
+// ==========================================
+// Customer Insights: Sales By Item (Customer) Excel Import
+// ==========================================
+async function runCustomerInsightsImport() {
+    const fileInput = document.getElementById('ciFileInput');
+    const files = Array.from(fileInput.files);
+    if (files.length === 0) { alert('Please select at least one Sales By Item (Customer) Excel file.'); return; }
+
+    const status = document.getElementById('ciImportStatus');
+    const dropArea = fileInput.closest('.border-dashed') || fileInput.parentElement;
+
+    // Disable drop area during import
+    dropArea.style.pointerEvents = 'none';
+    dropArea.style.opacity = '0.6';
+
+    let totalRows = 0;
+    const results = [];
+
+    for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        if (status) status.textContent = `(${i + 1}/${files.length}) Reading ${file.name}...`;
+
+        try {
+            const workbook = await readExcelWorkbookAsync(file);
+            const sheet = workbook.Sheets[workbook.SheetNames[0]];
+            const json = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+
+            // Extract "From" date from "From: DD/MM/YYYY To: DD/MM/YYYY"
+            let weekStart = null;
+            for (let r = 0; r < Math.min(json.length, 10); r++) {
+                const cellStr = String(json[r][0] || '');
+                const m = cellStr.match(/From:\s*(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+                if (m) { weekStart = `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`; break; }
+            }
+            if (!weekStart) throw new Error(`${file.name}: Could not find date. Expected "From: DD/MM/YYYY To: DD/MM/YYYY".`);
+
+            // Find header row (has "Customer Name" and "Product Name")
+            let headerRow = -1;
+            for (let r = 0; r < Math.min(json.length, 20); r++) {
+                const row = json[r];
+                const hasCustomer = row.some(c => String(c).toLowerCase().includes('customer'));
+                const hasProduct  = row.some(c => String(c).toLowerCase().includes('product'));
+                if (hasCustomer && hasProduct) { headerRow = r; break; }
+            }
+            if (headerRow === -1) throw new Error(`${file.name}: Could not find header row with "Customer Name" and "Product Name".`);
+
+            const hdr = json[headerRow].map(c => String(c).toLowerCase().replace(/\s+/g, ''));
+            const colCustomer = hdr.findIndex(h => h.includes('customer'));
+            const colProduct  = hdr.findIndex(h => h.includes('product'));
+            const colQty      = hdr.findIndex(h => h === 'qty' || h === 'quantity');
+            const colUom      = hdr.findIndex(h => h === 'uom' || h === 'unit' || h === 'unitofmeasure');
+            const colAmount   = hdr.findIndex(h => h === 'amount');
+
+            const rowMap = new Map();
+            for (let r = headerRow + 2; r < json.length; r++) {
+                const row = json[r];
+                const productCell  = String(row[colProduct]  || '').trim();
+                const customerCell = String(row[colCustomer] || '').trim();
+                if (!productCell || !customerCell) continue;
+
+                const firstCell = String(row[0] || '').toLowerCase();
+                if (firstCell.includes('total') || firstCell.includes('grand')) continue;
+
+                const spaceIdx = customerCell.indexOf(' ');
+                if (spaceIdx === -1) continue;
+                const customerCode = customerCell.substring(0, spaceIdx).trim();
+                const customerName = customerCell.substring(spaceIdx + 1).trim();
+                if (!customerCode || !customerName) continue;
+
+                const skuCode = productCell.split(' ')[0].trim();
+                if (!skuCode) continue;
+
+                const qty    = parseFloat(String(row[colQty]    || '0').replace(/,/g, '')) || 0;
+                const amount = parseFloat(String(row[colAmount] || '0').replace(/,/g, '')) || 0;
+                const uom    = colUom >= 0 ? (String(row[colUom] || '').trim() || null) : null;
+                if (qty <= 0) continue;
+
+                const key = `${customerCode}|${skuCode}|${weekStart}`;
+                if (rowMap.has(key)) {
+                    const existing = rowMap.get(key);
+                    existing.qty += qty;
+                    existing.amount += amount;
+                } else {
+                    rowMap.set(key, { customer_code: customerCode, customer_name: customerName, sku_code: skuCode, week_start: weekStart, qty, amount, uom });
+                }
+            }
+
+            const rows = [...rowMap.values()];
+            if (rows.length === 0) throw new Error(`${file.name}: No valid data rows found.`);
+
+            if (status) status.textContent = `(${i + 1}/${files.length}) Saving ${rows.length} rows (week starting ${weekStart})...`;
+            await sbSaveClientSkuOrders(rows);
+            totalRows += rows.length;
+            results.push(`✅ ${weekStart}: ${rows.length} records`);
+
+        } catch (e) {
+            results.push(`❌ ${file.name}: ${e.message}`);
+            console.error(e);
+        }
+    }
+
+    // Clear session cache and reload client list after upload
+    if (window._ciCache) window._ciCache = new Map();
+    window._ciClients = await sbLoadClientList();
+    if (window._ciSelectedCode) {
+        const rows = await sbLoadClientOrdersByCode(window._ciSelectedCode);
+        window._ciCache.set(window._ciSelectedCode, rows);
+        window._ciRawData = rows;
+    }
+    renderCiClientDropdown();
+    if (window._ciSelectedCode) renderCiContent(window._ciSelectedCode);
+
+    if (status) status.innerHTML = results.map(r => `<div>${r}</div>`).join('');
+    fileInput.value = '';
+    dropArea.style.pointerEvents = '';
+    dropArea.style.opacity = '';
 }

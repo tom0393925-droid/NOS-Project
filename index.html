@@ -151,6 +151,20 @@
                     <div id="sbUploadStatus" class="text-sm mt-3"></div>
                 </div>
 
+                <!-- Customer Insights Import -->
+                <div class="bg-teal-50 p-6 rounded-xl shadow-sm border border-teal-200 mt-6">
+                    <h3 class="font-bold text-teal-900 text-lg mb-1">☁️ Upload Customer Sales Data</h3>
+                    <p class="text-xs text-teal-700 mb-4">Export <em>Sales By Item (Customer) · View By: Items Summary</em> from your system and import weekly to build purchase history.</p>
+                    <div class="border-2 border-dashed border-teal-400 rounded-xl p-6 text-center cursor-pointer transition-colors"
+                        onclick="document.getElementById('ciFileInput').click()">
+                        <div class="text-3xl mb-2">👥</div>
+                        <p class="font-bold text-teal-800">Click to select Sales By Item (Customer) Excel file(s)</p>
+                        <p class="text-xs text-teal-600 mt-1">Multiple files supported · .xlsx / .xls</p>
+                        <input type="file" id="ciFileInput" class="hidden" multiple onchange="runCustomerInsightsImport()">
+                    </div>
+                    <div id="ciImportStatus" class="text-sm mt-3 font-medium"></div>
+                </div>
+
                 <!-- Update SKU Master -->
                 <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 mt-6">
                     <div class="mb-4 border-b pb-3">
@@ -279,6 +293,9 @@
                <button
                     class="tab-button flex-auto px-4 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
                     onclick="switchTab('analyticsTab', this); updateAnalyticsUI();">📊 Analytics & Order Planning</button>
+                <button
+                    class="tab-button flex-auto px-4 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
+                    onclick="switchTab('customerInsightsTab', this); initCustomerInsights();">👥 Customer Insights</button>
                 <button
                     class="tab-button flex-auto px-4 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
                     onclick="switchTab('mapTab', this)">🗺️ Warehouse Map</button>
@@ -653,6 +670,44 @@
                         <tbody id="analyticsAlertTableBody" class="hidden"></tbody>
                      </div>
                  </div>
+            </div>
+
+                <!-- Customer Insights Tab -->
+                <div id="customerInsightsTab" class="tab-content px-6 pb-6 pt-4" style="display: none;">
+
+                    <!-- Placeholder -->
+                    <div id="ciPlaceholder" class="flex flex-col items-center justify-center py-20 bg-white rounded-xl border-2 border-dashed border-teal-300 mt-4">
+                        <div class="text-5xl mb-4">👥</div>
+                        <p class="text-xl font-black text-gray-700 mb-2">No data yet</p>
+                        <p class="text-sm text-gray-500">Go to <strong class="text-teal-700">⚙️ Data Setup</strong> and upload a <em>Sales By Item (Customer)</em> Excel file.</p>
+                    </div>
+
+                    <!-- Content -->
+                    <div id="ciContent" style="display: none;">
+                        <!-- Client Search -->
+                        <div class="flex items-center gap-4 mb-6">
+                            <label class="font-black text-gray-700 text-sm whitespace-nowrap">Select Client:</label>
+                            <div class="relative flex-grow max-w-sm" id="ciSearchWrapper">
+                                <input type="text" id="ciClientSearch"
+                                    placeholder="Search client name..."
+                                    autocomplete="off"
+                                    oninput="ciFilterClients(this.value)"
+                                    onfocus="ciFilterClients(this.value)"
+                                    class="w-full p-2.5 pr-9 border border-gray-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-teal-400 outline-none bg-white shadow-sm">
+                                <button onclick="ciClearSearch()"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+                                    title="Clear">✕</button>
+                                <div id="ciClientDropdown"
+                                    class="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Per-client detail panel -->
+                        <div id="ciClientPanel"></div>
+                    </div>
+
+                </div>
 
                 <div id="mapTab" class="tab-content px-6 pb-6 pt-6" style="display: none;">
                     <div class="mb-4">
@@ -1005,7 +1060,40 @@
         </div>
     </div>
 
-  <script src="js/supabase-client.js?v=12"></script>
+    <!-- Reservation Modal -->
+    <div id="reservationModal" class="fixed inset-0 z-50 items-center justify-center bg-black/40" style="display:none" onclick="if(event.target===this)closeReservationModal()">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <div class="flex items-center justify-between mb-1">
+                <h3 class="font-black text-gray-800 text-base" id="resMod_title">Reservations</h3>
+                <button onclick="closeReservationModal()" class="text-gray-400 hover:text-gray-600 text-2xl leading-none">&times;</button>
+            </div>
+            <p class="text-xs text-gray-400 mb-4">Shipment: <span id="resMod_date" class="font-bold text-gray-600"></span></p>
+            <div id="resMod_list" class="space-y-2 mb-3 max-h-56 overflow-y-auto"></div>
+            <div id="resMod_addForm" class="hidden flex items-center gap-2 bg-purple-50 border border-purple-200 rounded-lg px-3 py-2 mb-3">
+                <input type="text" id="resMod_newCust" placeholder="Customer name" class="flex-grow border border-gray-300 rounded px-2 py-1 text-sm focus:ring-1 focus:ring-purple-400 outline-none bg-white" onkeydown="if(event.key==='Enter')document.getElementById('resMod_newQty').focus()">
+                <input type="number" id="resMod_newQty" placeholder="Qty" min="0" class="w-20 border border-gray-300 rounded px-2 py-1 text-sm text-right focus:ring-1 focus:ring-purple-400 outline-none bg-white" onkeydown="if(event.key==='Enter')saveNewReservation()">
+                <button onclick="saveNewReservation()" class="text-white bg-purple-600 hover:bg-purple-700 rounded px-2 py-1 text-xs font-bold transition-colors whitespace-nowrap">Save</button>
+                <button onclick="hideAddReservationForm()" class="text-gray-400 hover:text-gray-600 text-sm">&#10005;</button>
+            </div>
+            <button onclick="showAddReservationForm()" class="text-sm text-purple-600 hover:text-purple-800 font-bold flex items-center gap-1 mb-4 transition-colors">+ Add Customer</button>
+            <div class="border-t border-gray-200 pt-4 -mx-6 -mb-6 px-6 pb-5 bg-gray-50 rounded-b-2xl flex gap-6">
+                <div>
+                    <div class="text-gray-400 text-xs mb-0.5">Ordered</div>
+                    <div class="font-black text-blue-700" id="resMod_ordered">-</div>
+                </div>
+                <div>
+                    <div class="text-gray-400 text-xs mb-0.5">Reserved</div>
+                    <div class="font-black text-orange-600" id="resMod_reserved">-</div>
+                </div>
+                <div>
+                    <div class="text-gray-400 text-xs mb-0.5">Available</div>
+                    <div class="font-black text-green-700" id="resMod_avail">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+  <script src="js/supabase-client.js?v=14"></script>
     <script src="js/supabase-upload.js?v=4"></script>
     <script src="js/state.js?v=23"></script>
     <script src="js/utils.js?v=22"></script>
@@ -1013,8 +1101,9 @@
     <script src="js/chart.js?v=29"></script>
     <script src="js/ui_master.js?v=26"></script>
     <script src="js/ui_categories.js?v=6"></script>
-    <script src="js/ui_analytics.js?v=39"></script>
+    <script src="js/ui_analytics.js?v=40"></script>
     <script src="js/ui_map.js?v=22"></script>
+    <script src="js/ui_customer_insights.js?v=6"></script>
     <script src="js/ui.js?v=31"></script>
     <script src="js/main.js?v=34"></script>
 </body>

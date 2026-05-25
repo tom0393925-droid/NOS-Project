@@ -4,34 +4,57 @@
 
 let isSetupView = true;
 
+// Spinner style injection (runs once)
+(function() {
+    const s = document.createElement('style');
+    s.textContent = '@keyframes _btnSpin{to{transform:rotate(360deg)}}';
+    document.head.appendChild(s);
+})();
+
+const _SPINNER_HTML = '<span style="display:inline-block;width:13px;height:13px;border:2px solid rgba(255,255,255,0.35);border-top-color:#fff;border-radius:50%;animation:_btnSpin 0.7s linear infinite;vertical-align:middle;margin-right:6px;"></span>Loading...';
+
 function toggleSetupView() {
-    isSetupView = !isSetupView;
-    const dashView = document.getElementById('dashboardView');
-    const setupView = document.getElementById('setupView');
     const btn = document.getElementById('btnToggleSetup');
 
-    if (isSetupView) {
-        dashView.style.display = 'none';
-        dashView.classList.add('hidden'); 
-        setupView.style.display = 'block';
-        setupView.classList.remove('hidden'); 
-        btn.innerHTML = '⬅️ Back to Dashboard';
-        btn.classList.replace('bg-slate-700', 'bg-blue-600');
-        btn.classList.replace('hover:bg-slate-800', 'hover:bg-blue-700');
-        btn.classList.replace('border-slate-600', 'border-blue-500');
-    } else {
-        dashView.style.display = 'flex';
-        dashView.classList.remove('hidden'); 
-        setupView.style.display = 'none';
-        setupView.classList.add('hidden'); 
-        btn.innerHTML = '⚙️ Data Setup';
-        btn.classList.replace('bg-blue-600', 'bg-slate-700');
-        btn.classList.replace('hover:bg-blue-700', 'hover:bg-slate-800');
-        btn.classList.replace('border-blue-500', 'border-slate-600');
-        checkDashboardVisibility();
-        const analyticsBtn = document.querySelector('[onclick*="analyticsTab"]');
-        if (analyticsBtn) switchTab('analyticsTab', analyticsBtn);
-    }
+    // Disable immediately and show spinner
+    btn.disabled = true;
+    btn.innerHTML = _SPINNER_HTML;
+
+    // Small delay so the browser paints the spinner before heavy work
+    setTimeout(() => {
+        isSetupView = !isSetupView;
+        const dashView = document.getElementById('dashboardView');
+        const setupView = document.getElementById('setupView');
+
+        if (isSetupView) {
+            // Setup view is lightweight — restore button right away
+            dashView.style.display = 'none';
+            dashView.classList.add('hidden');
+            setupView.style.display = 'block';
+            setupView.classList.remove('hidden');
+            btn.disabled = false;
+            btn.innerHTML = '⬅️ Back to Dashboard';
+            btn.classList.replace('bg-slate-700', 'bg-blue-600');
+            btn.classList.replace('hover:bg-slate-800', 'hover:bg-blue-700');
+            btn.classList.replace('border-slate-600', 'border-blue-500');
+        } else {
+            // Dashboard re-render is heavier — restore button after render completes
+            dashView.style.display = 'flex';
+            dashView.classList.remove('hidden');
+            setupView.style.display = 'none';
+            setupView.classList.add('hidden');
+            checkDashboardVisibility();
+            const analyticsBtn = document.querySelector('[onclick*="analyticsTab"]');
+            if (analyticsBtn) switchTab('analyticsTab', analyticsBtn);
+            setTimeout(() => {
+                btn.disabled = false;
+                btn.innerHTML = '⚙️ Data Setup';
+                btn.classList.replace('bg-blue-600', 'bg-slate-700');
+                btn.classList.replace('hover:bg-blue-700', 'hover:bg-slate-800');
+                btn.classList.replace('border-blue-500', 'border-slate-600');
+            }, 100);
+        }
+    }, 16); // 1 frame — enough for the browser to paint the spinner
 }
 
 function checkDashboardVisibility() {
