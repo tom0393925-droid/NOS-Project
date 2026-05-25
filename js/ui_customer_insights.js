@@ -489,9 +489,13 @@ function renderCiContent(customerCode) {
                 labels: chartWeeks.map(w => w.slice(5)),
                 datasets: [{
                     data: chartWeeks.map(w => weeklyTotals[w] || 0),
-                    backgroundColor: chartWeeks.map(w =>
-                        last4Weeks.includes(w) ? 'rgba(20,184,166,0.85)' : 'rgba(20,184,166,0.3)'
-                    ),
+                    backgroundColor: (() => {
+                        const amts = chartWeeks.map(w => weeklyTotals[w] || 0);
+                        const uniq = [...new Set(amts.filter(a => a > 0))].sort((a, b) => b - a);
+                        const rank = {}; uniq.slice(0, 3).forEach((a, i) => { rank[a] = i + 1; });
+                        const c = { 1: 'rgba(20,184,166,0.90)', 2: 'rgba(20,184,166,0.60)', 3: 'rgba(20,184,166,0.35)' };
+                        return amts.map(a => c[rank[a]] || 'rgba(156,163,175,0.30)');
+                    })(),
                     borderRadius: 4,
                     borderSkipped: false,
                 }]
@@ -1017,7 +1021,6 @@ function ciToggleSkuChart(code) {
 
     const allWeeks   = window._ciAllWeeks || [];
     const chartWeeks = allWeeks.slice(-26);
-    const last4      = allWeeks.slice(-4);
     const qtys       = chartWeeks.map(w => sku.weekMap[w]?.qty || 0);
     const nonZero    = qtys.filter(q => q > 0);
     const avgQty     = nonZero.length ? nonZero.reduce((s, q) => s + q, 0) / nonZero.length : 0;
@@ -1032,9 +1035,13 @@ function ciToggleSkuChart(code) {
             labels: chartWeeks.map(w => w.slice(5)),
             datasets: [{
                 data: qtys,
-                backgroundColor: chartWeeks.map(w =>
-                    last4.includes(w) ? 'rgba(20,184,166,0.85)' : 'rgba(20,184,166,0.30)'
-                ),
+                backgroundColor: (() => {
+                    const amts = chartWeeks.map(w => sku.weekMap[w]?.amount || 0);
+                    const uniq = [...new Set(amts.filter(a => a > 0))].sort((a, b) => b - a);
+                    const rank = {}; uniq.slice(0, 3).forEach((a, i) => { rank[a] = i + 1; });
+                    const c = { 1: 'rgba(20,184,166,0.90)', 2: 'rgba(20,184,166,0.60)', 3: 'rgba(20,184,166,0.35)' };
+                    return amts.map(a => c[rank[a]] || 'rgba(156,163,175,0.30)');
+                })(),
                 borderRadius: 3,
                 borderSkipped: false,
             }]
