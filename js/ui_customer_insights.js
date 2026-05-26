@@ -11,8 +11,9 @@ window._ciSkuChart      = null;  // Chart.js instance (SKU detail accordion)
 window._ciOpenSkuCode   = null;  // currently open SKU detail code
 window._ciPeriod        = '12w'; // '12w' | '26w' | 'all'  (heatmap history range)
 window._ciDonutPeriod   = '4w';  // '4w' | '12w' | 'all'   (SKU Mix donut — independent)
-window._ciAllSkuEntries = [];    // all SKU entries for the current client
-window._ciAllWeeks      = [];    // all week_start dates for the current client
+window._ciAllSkuEntries  = [];    // all SKU entries for the current client
+window._ciAllWeeks       = [];    // all week_start dates for the current client
+window._ciGlobalMaxWeek  = null; // MAX(week_start) across all clients
 
 const _ciFormatAmt = v => '$' + v.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -66,7 +67,12 @@ async function initCustomerInsights() {
 
     let clients = [];
     try {
-        clients = await sbLoadClientList();
+        const [clientList, globalMaxWeek] = await Promise.all([
+            sbLoadClientList(),
+            sbGetGlobalMaxWeek()
+        ]);
+        clients = clientList;
+        window._ciGlobalMaxWeek = globalMaxWeek;
     } catch (e) {
         if (placeholder) placeholder.innerHTML = `
             <p class="text-red-500 text-sm font-bold bg-red-50 px-4 py-2 rounded-lg border border-red-200">
@@ -215,10 +221,13 @@ function renderCiContent(customerCode) {
     if (!rows.length) { panel.innerHTML = '<p class="text-gray-400 text-center py-10">No data for this client.</p>'; return; }
 
     // All weeks from first to last, filling gaps with zero (7-day steps)
+    // Use global MAX week (across all clients) as the end, so weeks with no orders still appear as 0
     const dataWeeks = [...new Set(rows.map(r => r.week_start))].sort();
     const allWeeks = [];
     if (dataWeeks.length) {
-        const end = new Date(dataWeeks[dataWeeks.length - 1]);
+        const clientEnd = new Date(dataWeeks[dataWeeks.length - 1]);
+        const globalEnd = window._ciGlobalMaxWeek ? new Date(window._ciGlobalMaxWeek) : clientEnd;
+        const end = globalEnd > clientEnd ? globalEnd : clientEnd;
         for (let d = new Date(dataWeeks[0]); d <= end; d.setDate(d.getDate() + 7)) {
             allWeeks.push(d.toISOString().slice(0, 10));
         }
