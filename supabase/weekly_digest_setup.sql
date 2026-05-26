@@ -23,19 +23,17 @@ CREATE POLICY "wd_cache_delete" ON weekly_digest_cache FOR DELETE USING (true);
 
 
 -- 2. Aggregate function: weekly revenue totals
+--    week_start is DATE type → compare directly with CURRENT_DATE - int
 -- ============================================================
 CREATE OR REPLACE FUNCTION wd_weekly_performance(weeks_back int DEFAULT 8)
 RETURNS TABLE(week_start text, total_amount numeric)
 LANGUAGE sql SECURITY DEFINER
 AS $$
     SELECT
-        week_start,
+        week_start::text,
         SUM(amount)::numeric AS total_amount
     FROM client_sku_orders
-    WHERE week_start >= to_char(
-        CURRENT_DATE - (weeks_back * 7 || ' days')::interval,
-        'YYYY-MM-DD'
-    )
+    WHERE week_start >= CURRENT_DATE - (weeks_back * 7)
     GROUP BY week_start
     ORDER BY week_start;
 $$;
@@ -45,25 +43,22 @@ $$;
 -- ============================================================
 CREATE OR REPLACE FUNCTION wd_client_patterns(lookback_weeks int DEFAULT 12)
 RETURNS TABLE(
-    customer_code  text,
-    customer_name  text,
-    ordered_weeks  bigint,
+    customer_code   text,
+    customer_name   text,
+    ordered_weeks   bigint,
     last_order_week text,
-    total_amount   numeric
+    total_amount    numeric
 )
 LANGUAGE sql SECURITY DEFINER
 AS $$
     SELECT
         customer_code,
-        MAX(customer_name)              AS customer_name,
-        COUNT(DISTINCT week_start)      AS ordered_weeks,
-        MAX(week_start)                 AS last_order_week,
-        SUM(amount)::numeric            AS total_amount
+        MAX(customer_name)                  AS customer_name,
+        COUNT(DISTINCT week_start)          AS ordered_weeks,
+        MAX(week_start)::text               AS last_order_week,
+        SUM(amount)::numeric                AS total_amount
     FROM client_sku_orders
-    WHERE week_start >= to_char(
-        CURRENT_DATE - (lookback_weeks * 7 || ' days')::interval,
-        'YYYY-MM-DD'
-    )
+    WHERE week_start >= CURRENT_DATE - (lookback_weeks * 7)
     GROUP BY customer_code;
 $$;
 
@@ -84,25 +79,13 @@ RETURNS TABLE(
 LANGUAGE sql SECURITY DEFINER
 AS $$
     WITH
-    cutoff_recent AS (
-        SELECT to_char(
-            CURRENT_DATE - (recent_weeks * 7 || ' days')::interval,
-            'YYYY-MM-DD'
-        ) AS dt
-    ),
-    cutoff_prior AS (
-        SELECT to_char(
-            CURRENT_DATE - ((recent_weeks + prior_weeks) * 7 || ' days')::interval,
-            'YYYY-MM-DD'
-        ) AS dt
-    ),
     recent AS (
         SELECT
             sku_code,
             COUNT(DISTINCT customer_code) AS clients,
             SUM(amount)::numeric          AS amount
-        FROM client_sku_orders, cutoff_recent
-        WHERE week_start >= cutoff_recent.dt
+        FROM client_sku_orders
+        WHERE week_start >= CURRENT_DATE - (recent_weeks * 7)
         GROUP BY sku_code
     ),
     prior AS (
@@ -110,9 +93,9 @@ AS $$
             sku_code,
             COUNT(DISTINCT customer_code) AS clients,
             SUM(amount)::numeric          AS amount
-        FROM client_sku_orders, cutoff_recent, cutoff_prior
-        WHERE week_start >= cutoff_prior.dt
-          AND week_start <  cutoff_recent.dt
+        FROM client_sku_orders
+        WHERE week_start >= CURRENT_DATE - ((recent_weeks + prior_weeks) * 7)
+          AND week_start <  CURRENT_DATE - (recent_weeks * 7)
         GROUP BY sku_code
     )
     SELECT
