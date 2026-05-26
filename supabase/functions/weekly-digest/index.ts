@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
-const CLAUDE_API_KEY      = Deno.env.get("CLAUDE_API_KEY") ?? "";
+const OPENAI_API_KEY      = Deno.env.get("OPENAI_API_KEY") ?? "";
 const SUPABASE_URL        = Deno.env.get("SUPABASE_URL") ?? "";
 const SUPABASE_SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
@@ -164,7 +164,7 @@ serve(async (req) => {
 
     // ── GENERATE ──────────────────────────
     if (action === "generate") {
-      if (!CLAUDE_API_KEY) throw new Error("CLAUDE_API_KEY is not set in Edge Function secrets.");
+      if (!OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not set in Edge Function secrets.");
 
       const [perfRes, patternRes, skuRes] = await Promise.all([
         sb.rpc("wd_weekly_performance",    { weeks_back:    8  }),
@@ -178,27 +178,26 @@ serve(async (req) => {
 
       const prompt = buildPrompt(perfRes.data, patternRes.data, skuRes.data, week_label);
 
-      const claudeResp = await fetch("https://api.anthropic.com/v1/messages", {
+      const openaiResp = await fetch("https://api.openai.com/v1/chat/completions", {
         method: "POST",
         headers: {
-          "Content-Type":      "application/json",
-          "x-api-key":         CLAUDE_API_KEY,
-          "anthropic-version": "2023-06-01",
+          "Content-Type":  "application/json",
+          "Authorization": "Bearer " + OPENAI_API_KEY,
         },
         body: JSON.stringify({
-          model:      "claude-3-5-haiku-20241022",
+          model:      "gpt-4o-mini",
           max_tokens: 4096,
           messages:   [{ role: "user", content: prompt }],
         }),
       });
 
-      if (!claudeResp.ok) {
-        const errText = await claudeResp.text();
-        throw new Error("Claude API error: " + errText);
+      if (!openaiResp.ok) {
+        const errText = await openaiResp.text();
+        throw new Error("OpenAI API error: " + errText);
       }
 
-      const claudeData = await claudeResp.json();
-      const digestText = claudeData.content[0].text;
+      const openaiData = await openaiResp.json();
+      const digestText = openaiData.choices[0].message.content;
       const generatedAt = new Date().toISOString();
 
       await sb.from("weekly_digest_cache").upsert(
