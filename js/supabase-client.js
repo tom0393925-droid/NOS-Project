@@ -144,6 +144,33 @@ function sbInitAuth(onSuccess, onSignOut) {
 }
 
 // ==========================================
+// Admin check  (cached 24h in localStorage)
+// ==========================================
+async function sbCheckIsAdmin(email) {
+    try {
+        const raw = localStorage.getItem('is_admin_' + email);
+        if (raw) {
+            const { isAdmin, expiry } = JSON.parse(raw);
+            if (Date.now() < expiry) { window._isAdmin = isAdmin; return isAdmin; }
+        }
+    } catch {}
+
+    try {
+        const { data } = await _sb.from('allowed_emails')
+            .select('is_admin').eq('email', email).single();
+        const isAdmin = data?.is_admin === true;
+        localStorage.setItem('is_admin_' + email, JSON.stringify({
+            isAdmin, expiry: Date.now() + 24 * 60 * 60 * 1000
+        }));
+        window._isAdmin = isAdmin;
+        return isAdmin;
+    } catch {
+        window._isAdmin = false;
+        return false;
+    }
+}
+
+// ==========================================
 // 接続テスト
 // ==========================================
 async function testSupabaseConnection() {

@@ -68,17 +68,28 @@ async function _wdLoadOrPrompt() {
 function _wdShowGeneratePrompt() {
     const panel = document.getElementById('wdPanel');
     if (!panel) return;
-    panel.innerHTML = `
-        <div class="flex flex-col items-center py-10 gap-3">
-            <p class="text-sm font-bold text-gray-600">No digest generated for this week yet.</p>
-            <p class="text-xs text-gray-400 text-center max-w-sm">
-                Analyzes all client data and generates a detailed briefing.<br>Takes about 15–30 seconds.
-            </p>
-            <button id="wdGenerateBtn" onclick="generateWeeklyDigest()"
-                class="mt-2 px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm">
-                Generate Now
-            </button>
-        </div>`;
+
+    if (window._isAdmin) {
+        panel.innerHTML = `
+            <div class="flex flex-col items-center py-10 gap-3">
+                <p class="text-sm font-bold text-gray-600">No digest generated for this week yet.</p>
+                <p class="text-xs text-gray-400 text-center max-w-sm">
+                    Analyzes all client data and generates a detailed briefing.<br>Takes about 15–30 seconds.
+                </p>
+                <button id="wdGenerateBtn" onclick="generateWeeklyDigest()"
+                    class="mt-2 px-6 py-2.5 bg-violet-600 hover:bg-violet-700 text-white text-sm font-bold rounded-lg transition-colors shadow-sm">
+                    Generate Now
+                </button>
+            </div>`;
+    } else {
+        panel.innerHTML = `
+            <div class="flex flex-col items-center py-10 gap-3">
+                <p class="text-sm font-bold text-gray-600">This week's digest hasn't been generated yet.</p>
+                <p class="text-xs text-gray-400 text-center max-w-sm">
+                    Available after the weekly data upload. Check back soon.
+                </p>
+            </div>`;
+    }
 }
 
 // ──────────────────────────────────────────
@@ -151,10 +162,11 @@ function _wdRender(digestText, generatedAt) {
     panel.innerHTML = `
         <div class="flex items-center justify-between mb-3">
             <p class="text-xs text-violet-500 font-bold">Generated: ${dateStr}</p>
+            ${window._isAdmin ? `
             <button onclick="regenerateDigest()"
                 class="text-xs text-violet-600 hover:text-violet-800 font-bold border border-violet-300 rounded-md px-2.5 py-1 hover:bg-violet-50 transition-colors">
                 ↻ Regenerate
-            </button>
+            </button>` : ''}
         </div>
         <div class="wd-digest-content bg-white rounded-xl border border-gray-200 shadow-sm p-6 md:p-8">
             ${_wdParseToHtml(digestText)}

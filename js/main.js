@@ -302,6 +302,8 @@ window.onload = function() {
     sbInitAuth(
         function(user) {
             clearTimeout(_authTimer);
+            window._isAdmin = false; // default until async check resolves
+            sbCheckIsAdmin(user.email); // sets window._isAdmin asynchronously
             document.getElementById('authOverlay')?.classList.add('hidden');
             document.getElementById('userEmail').textContent = user.email;
             document.getElementById('userInfoBar').classList.remove('hidden');
