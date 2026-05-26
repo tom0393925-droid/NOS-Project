@@ -37,7 +37,15 @@ async function initCustomerInsights() {
             const client = window._ciClients.find(c => c.code === window._ciSelectedCode);
             const input  = document.getElementById('ciClientSearch');
             if (input && client) input.value = client.name + ' (' + window._ciSelectedCode + ')';
-            renderCiContent(window._ciSelectedCode);
+            // Ensure global max week is loaded, then re-render
+            if (window._ciGlobalMaxWeek === null) {
+                sbGetGlobalMaxWeek().then(maxWeek => {
+                    window._ciGlobalMaxWeek = maxWeek;
+                    renderCiContent(window._ciSelectedCode);
+                }).catch(() => renderCiContent(window._ciSelectedCode));
+            } else {
+                renderCiContent(window._ciSelectedCode);
+            }
         }
         return;
     }
