@@ -786,6 +786,16 @@ async function sbLoadClientList() {
     return clients;
 }
 
+async function sbGetGlobalMaxWeek() {
+    const { data, error } = await _sb
+        .from('client_sku_orders')
+        .select('week_start')
+        .order('week_start', { ascending: false })
+        .limit(1);
+    if (error) throw error;
+    return data.length ? data[0].week_start : null;
+}
+
 async function sbLoadClientOrdersByCode(customerCode, since = null) {
     const allRows = [];
     const pageSize = 1000;
