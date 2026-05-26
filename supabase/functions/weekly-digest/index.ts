@@ -60,78 +60,65 @@ function buildPrompt(
     .filter((s: any) => Number(s.recent_clients) >= 3)
     .slice(0, 10);
 
-  // --- BUILD PROMPT ---
-  return `You are a senior sales analyst briefing a distribution team at the start of their week.
-Generate a detailed, actionable Weekly Sales Digest from the data below.
-
-Audience: sales reps who are not data-savvy. Write clearly and directly.
-For every at-risk client and every pitch item, tell them WHAT to do, WHO to contact, and exactly WHAT to say.
-Use real numbers from the data. Be thorough — this is a weekly briefing, brevity is NOT a goal.
+  // --- BUILD PROMPT (JSON mode) ---
+  return `You are a senior sales analyst. Return ONLY a valid JSON object — no markdown, no explanation, no extra text.
 
 Week of: ${weekLabel}
 
-=== PERFORMANCE — last 8 weeks of revenue ===
+=== INPUT DATA ===
+
+PERFORMANCE (last 8 weeks):
 ${weeks.map((w: any) => `  ${w.week_start}: ${fmtMoney(Number(w.total_amount))}`).join("\n")}
+Recent 4-week avg: ${fmtMoney(l4avg)}/week  |  Prior 4-week avg: ${fmtMoney(p4avg)}/week
+Change: ${chgPct !== null ? (chgPct >= 0 ? "+" : "") + chgPct.toFixed(1) + "%" : "N/A"}
 
-4-week average (recent): ${fmtMoney(l4avg)}/week
-4-week average (prior):  ${fmtMoney(p4avg)}/week
-Change: ${chgPct !== null ? (chgPct >= 0 ? "+" : "") + chgPct.toFixed(1) + "%" : "Insufficient history"}
-
-=== AT-RISK CLIENTS — ${atRisk.length} need attention ===
-(Alert fires when silence exceeds the client's own normal ordering pace × ${WD_MULTIPLIER})
+AT-RISK CLIENTS (silence > normal pace × ${WD_MULTIPLIER}):
 ${
   atRisk.length === 0
-    ? "No at-risk clients this week — all clients are within their normal ordering rhythm."
+    ? "None."
     : atRisk.map((c: any) =>
-`Client: ${c.customer_name} (${c.customer_code})
-  Normal pace: orders every ${c.avgInterval.toFixed(1)} weeks  |  Last order: ${c.last_order_week}
-  Silent for: ${c.weeksSince.toFixed(1)} weeks  (alert at ${c.alertThreshold.toFixed(1)} weeks)
-  Active weeks in last ${WD_LOOKBACK_PATTERN} wks: ${c.ordered_weeks}/${WD_LOOKBACK_PATTERN}
-  Total spend (last ${WD_LOOKBACK_PATTERN} wks): ${fmtMoney(Number(c.total_amount))}`
-      ).join("\n\n")
+`  ${c.customer_name} (${c.customer_code}): silent ${c.weeksSince.toFixed(1)}wks, normal pace ${c.avgInterval.toFixed(1)}wks, alert at ${c.alertThreshold.toFixed(1)}wks, spend last 12wks: ${fmtMoney(Number(c.total_amount))}`
+      ).join("\n")
 }
 
-=== TRENDING SKUs — pitch opportunities ===
-(SKUs where the number of ordering clients grew vs prior 4 weeks)
+TRENDING SKUs (more clients ordering vs prior 4 weeks):
 ${
   pitch.length === 0
-    ? "No strong SKU trends detected this week."
+    ? "None."
     : pitch.map((s: any) =>
-`SKU: ${s.sku_code}
-  Recent 4 wks: ${s.recent_clients} clients  |  Revenue: ${fmtMoney(Number(s.recent_amount))}
-  Prior 4 wks:  ${s.prior_clients} clients   |  New clients this period: +${Number(s.recent_clients) - Number(s.prior_clients)}`
-      ).join("\n\n")
+`  ${s.sku_code}: ${s.recent_clients} clients now (was ${s.prior_clients}), revenue ${fmtMoney(Number(s.recent_amount))}`
+      ).join("\n")
 }
 
-=== OUTPUT FORMAT ===
-Generate the digest using EXACTLY this structure (keep the divider lines):
+=== REQUIRED JSON STRUCTURE ===
+{
+  "performance": {
+    "summary": "<2-3 paragraphs about the trend, drivers, and what it means for this week. Separate paragraphs with \\n\\n. Use real numbers.>",
+    "change_pct": <number, positive=up negative=down>,
+    "direction": "<up|down|flat>",
+    "avg_recent": <number>,
+    "avg_prior": <number>,
+    "weekly_figures": [{"week": "YYYY-MM-DD", "amount": <number>}]
+  },
+  "at_risk": [
+    {
+      "name": "<full client name>",
+      "code": "<customer_code>",
+      "context": "<1-2 paragraphs: ordering rhythm, how long silent, financial impact. Use exact numbers from the data.>",
+      "action": "<Call|Email|Visit>",
+      "talking_point": "<exact opening sentence the sales rep says to this client>"
+    }
+  ],
+  "pitch": [
+    {
+      "sku_code": "<SKU code>",
+      "context": "<1 paragraph: how many new clients, revenue, what the trend suggests about demand>",
+      "talking_point": "<exact pitch sentence the rep can use with any client who hasn't ordered this>"
+    }
+  ]
+}
 
-LAST WEEK PERFORMANCE
-[2–3 paragraphs: overall trend, what's driving it, what it means for the week ahead.
- Then list the weekly revenue figures clearly. Note any sharp week-on-week moves.]
-
-────────────────────────────────────────
-AT RISK — Clients to contact this week
-────────────────────────────────────────
-[Repeat for EACH at-risk client:]
-
-[Client Name]
-[Paragraph explaining their ordering rhythm, how long they've been silent, and why this matters financially.
- Reference the specific numbers: normal pace, days silent, estimated value at stake.]
-→ Recommended action: [specific action — call / email / visit]
-   Talking point: "[Write the exact opening sentence the rep can use in the conversation]"
-
-────────────────────────────────────────
-THIS WEEK'S PITCH OPPORTUNITIES
-────────────────────────────────────────
-[Repeat for each trending SKU:]
-
-SKU [code]
-[Explain what the trend means — how many new clients, revenue growth, what it signals about demand.
- Suggest which type of client is likely a good fit.]
-→ Talking point: "[Write the exact pitch sentence the rep can drop into any client call]"
-
-Write in English only. Do not invent data not present above. Use real numbers throughout.`;
+Rules: English only. Real numbers only. talking_point must be a complete, natural sentence ready to say out loud.`;
 }
 
 // ──────────────────────────────────────────
@@ -185,9 +172,10 @@ serve(async (req) => {
           "Authorization": "Bearer " + OPENAI_API_KEY,
         },
         body: JSON.stringify({
-          model:      "gpt-4o-mini",
-          max_tokens: 4096,
-          messages:   [{ role: "user", content: prompt }],
+          model:           "gpt-4o-mini",
+          max_tokens:      4096,
+          response_format: { type: "json_object" },
+          messages:        [{ role: "user", content: prompt }],
         }),
       });
 

@@ -2,24 +2,22 @@
 // js/ui_weekly_digest.js  —  Weekly AI Digest
 // ==========================================
 
-// Returns the Monday of the current week as YYYY-MM-DD (used as cache key)
 function _wdWeekLabel() {
     const now = new Date();
-    const day = now.getDay(); // 0=Sun
+    const day = now.getDay();
     const monday = new Date(now);
     monday.setDate(now.getDate() - (day === 0 ? 6 : day - 1));
     return monday.toISOString().split('T')[0];
 }
 
 // ──────────────────────────────────────────
-// Toggle: open / close the digest panel
+// Toggle
 // ──────────────────────────────────────────
 async function toggleWeeklyDigest() {
     const panel = document.getElementById('wdPanel');
     const btn   = document.getElementById('wdToggleBtn');
     if (!panel) return;
 
-    // Close if already open
     if (!panel.classList.contains('hidden')) {
         panel.classList.add('hidden');
         if (btn) btn.textContent = 'Generate Weekly Digest';
@@ -29,21 +27,19 @@ async function toggleWeeklyDigest() {
     panel.classList.remove('hidden');
     if (btn) btn.textContent = 'Hide Digest';
 
-    // Already rendered — just show
     if (panel.querySelector('.wd-digest-content')) return;
 
-    // First open: check cache
     await _wdLoadOrPrompt();
 }
 
 // ──────────────────────────────────────────
-// Check cache via Edge Function
+// Check cache
 // ──────────────────────────────────────────
 async function _wdLoadOrPrompt() {
     const panel = document.getElementById('wdPanel');
     if (!panel) return;
 
-    panel.innerHTML = _wdSpinner('Checking for this week\'s digest...');
+    panel.innerHTML = _wdSpinner("Checking for this week's digest...");
 
     try {
         const weekLabel = _wdWeekLabel();
@@ -63,7 +59,7 @@ async function _wdLoadOrPrompt() {
 }
 
 // ──────────────────────────────────────────
-// Show "no digest yet" prompt
+// Generate prompt (admin only)
 // ──────────────────────────────────────────
 function _wdShowGeneratePrompt() {
     const panel = document.getElementById('wdPanel');
@@ -85,15 +81,13 @@ function _wdShowGeneratePrompt() {
         panel.innerHTML = `
             <div class="flex flex-col items-center py-10 gap-3">
                 <p class="text-sm font-bold text-gray-600">This week's digest hasn't been generated yet.</p>
-                <p class="text-xs text-gray-400 text-center max-w-sm">
-                    Available after the weekly data upload. Check back soon.
-                </p>
+                <p class="text-xs text-gray-400 text-center max-w-sm">Available after the weekly data upload. Check back soon.</p>
             </div>`;
     }
 }
 
 // ──────────────────────────────────────────
-// Generate: call Edge Function
+// Generate
 // ──────────────────────────────────────────
 async function generateWeeklyDigest() {
     const panel  = document.getElementById('wdPanel');
@@ -101,7 +95,7 @@ async function generateWeeklyDigest() {
     if (!panel) return;
 
     if (genBtn) { genBtn.disabled = true; genBtn.textContent = 'Generating...'; }
-    panel.innerHTML = _wdSpinner('Analyzing all client data across every account… (15–30 sec)');
+    panel.innerHTML = _wdSpinner('Analyzing all client data… (15–30 sec)');
 
     try {
         const weekLabel = _wdWeekLabel();
@@ -111,34 +105,29 @@ async function generateWeeklyDigest() {
         if (error) throw new Error(error.message || String(error));
 
         _wdRender(data.digest_text, data.generated_at);
-
         const btn = document.getElementById('wdToggleBtn');
         if (btn) btn.textContent = 'Hide Digest';
-
     } catch (e) {
         panel.innerHTML = _wdError('Generation failed: ' + (e.message || String(e))) +
             `<button onclick="_wdShowGeneratePrompt()"
-                class="mt-3 text-sm text-violet-600 font-bold underline block text-center">
+                class="mt-3 text-sm text-violet-600 font-bold underline block text-center w-full">
                 Try again
             </button>`;
     }
 }
 
 // ──────────────────────────────────────────
-// Regenerate: delete cache then re-generate
+// Regenerate (admin only)
 // ──────────────────────────────────────────
 async function regenerateDigest() {
     const panel = document.getElementById('wdPanel');
     if (!panel) return;
-
     panel.innerHTML = _wdSpinner('Clearing cache...');
-
     try {
         const weekLabel = _wdWeekLabel();
         await _sb.functions.invoke('weekly-digest', {
             body: { action: 'delete_cache', week_label: weekLabel },
         });
-        // Clear rendered content so generateWeeklyDigest doesn't short-circuit
         panel.innerHTML = '';
         await generateWeeklyDigest();
     } catch (e) {
@@ -147,7 +136,7 @@ async function regenerateDigest() {
 }
 
 // ──────────────────────────────────────────
-// Render digest text as styled HTML
+// Render wrapper: parse JSON → card UI
 // ──────────────────────────────────────────
 function _wdRender(digestText, generatedAt) {
     const panel = document.getElementById('wdPanel');
@@ -159,8 +148,17 @@ function _wdRender(digestText, generatedAt) {
         hour: '2-digit', minute: '2-digit',
     });
 
+    let bodyHtml;
+    try {
+        const parsed = JSON.parse(digestText);
+        bodyHtml = _wdRenderJson(parsed);
+    } catch {
+        // Fallback: plain text (old cache entries)
+        bodyHtml = `<pre class="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">${_esc(digestText)}</pre>`;
+    }
+
     panel.innerHTML = `
-        <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center justify-between mb-4">
             <p class="text-xs text-violet-500 font-bold">Generated: ${dateStr}</p>
             ${window._isAdmin ? `
             <button onclick="regenerateDigest()"
@@ -168,100 +166,150 @@ function _wdRender(digestText, generatedAt) {
                 ↻ Regenerate
             </button>` : ''}
         </div>
-        <div class="wd-digest-content bg-white rounded-xl border border-gray-200 shadow-sm p-6 md:p-8">
-            ${_wdParseToHtml(digestText)}
+        <div class="wd-digest-content space-y-6">
+            ${bodyHtml}
         </div>`;
 }
 
 // ──────────────────────────────────────────
-// Convert plain-text digest → styled HTML
+// JSON → card-based HTML
 // ──────────────────────────────────────────
-function _wdParseToHtml(text) {
-    const lines = text.split('\n');
+function _wdRenderJson(d) {
+    const perf   = d.performance || {};
+    const atRisk = d.at_risk     || [];
+    const pitch  = d.pitch       || [];
+
+    const isUp      = perf.direction !== 'down';
+    const chgAbs    = Math.abs(Number(perf.change_pct || 0)).toFixed(1);
+    const arrow     = isUp ? '▲' : '▼';
+    const chgColor  = isUp ? 'text-green-600' : 'text-red-500';
+    const chgBadge  = isUp ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-600';
+
     let html = '';
-    let lastWasEmpty = false;
 
-    for (const raw of lines) {
-        const line = raw.trimEnd();
-        const trimmed = line.trim();
+    // ── PERFORMANCE ──────────────────────
+    html += `
+    <div>
+        <div class="flex items-center gap-2 mb-3">
+            <div class="w-1 h-5 bg-gray-300 rounded-full"></div>
+            <span class="text-xs font-black text-gray-400 uppercase tracking-widest">Last Week Performance</span>
+        </div>
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <!-- Metric bar -->
+            <div class="flex items-center gap-5 px-6 py-5 border-b border-gray-100">
+                <div class="text-4xl font-black ${chgColor}">${arrow} ${chgAbs}%</div>
+                <div>
+                    <p class="text-sm font-bold text-gray-700">vs prior 4-week average</p>
+                    <p class="text-xs text-gray-400 mt-0.5">
+                        $${_wdFmt(perf.avg_prior)}/wk &nbsp;→&nbsp; $${_wdFmt(perf.avg_recent)}/wk
+                    </p>
+                </div>
+            </div>
+            <!-- Summary -->
+            <div class="px-6 py-5 border-b border-gray-100">
+                ${_wdParagraphs(perf.summary || '')}
+            </div>
+            <!-- Weekly bars -->
+            <div class="px-6 py-5 bg-gray-50">
+                <p class="text-xs font-black text-gray-400 uppercase tracking-wider mb-3">8-Week Revenue</p>
+                <div class="space-y-2">
+                    ${(perf.weekly_figures || []).map((w) => {
+                        const max = Math.max(...(perf.weekly_figures || []).map((x) => x.amount), 1);
+                        const pct = Math.max(Math.round(w.amount / max * 100), 3);
+                        return `
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs text-gray-400 w-24 shrink-0 font-mono">${_esc(w.week)}</span>
+                            <div class="flex-1 bg-gray-200 rounded-full h-1.5">
+                                <div class="h-1.5 rounded-full bg-violet-400 transition-all" style="width:${pct}%"></div>
+                            </div>
+                            <span class="text-xs font-bold text-gray-600 w-20 text-right">$${_wdFmt(w.amount)}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>
+        </div>
+    </div>`;
 
-        // Section divider ────────────────
-        if (/^─{8,}/.test(trimmed)) {
-            html += '<hr class="border-gray-200 my-6">';
-            lastWasEmpty = false;
-            continue;
-        }
+    // ── AT RISK ───────────────────────────
+    html += `
+    <div>
+        <div class="flex items-center gap-2 mb-3">
+            <div class="w-1 h-5 bg-red-400 rounded-full"></div>
+            <span class="text-xs font-black text-gray-400 uppercase tracking-widest">AT RISK — Clients to contact this week</span>
+            <span class="ml-auto text-xs font-bold bg-red-100 text-red-600 px-2 py-0.5 rounded-full">${atRisk.length} clients</span>
+        </div>
+        ${atRisk.length === 0
+            ? '<p class="text-sm text-gray-400 bg-white rounded-xl border border-gray-100 p-5 text-center">No at-risk clients this week.</p>'
+            : atRisk.map((c) => `
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-red-400 overflow-hidden mb-4">
+            <div class="flex items-start justify-between px-5 pt-5 pb-3">
+                <div>
+                    <h4 class="font-black text-gray-900 text-base leading-tight">${_esc(c.name)}</h4>
+                    <span class="text-xs text-gray-400 font-mono">${_esc(c.code)}</span>
+                </div>
+                <span class="text-xs font-bold bg-red-100 text-red-600 px-2.5 py-1 rounded-full shrink-0 ml-4">
+                    📞 ${_esc(c.action || 'Call')}
+                </span>
+            </div>
+            <div class="px-5 pb-4">
+                ${_wdParagraphs(c.context || '')}
+            </div>
+            <div class="mx-5 mb-5 bg-red-50 rounded-lg p-4 border border-red-100">
+                <p class="text-xs font-black text-red-500 uppercase tracking-wider mb-2">Talking Point</p>
+                <p class="text-sm text-gray-700 italic leading-relaxed">"${_esc(c.talking_point || '')}"</p>
+            </div>
+        </div>`).join('')}
+    </div>`;
 
-        // Empty line
-        if (!trimmed) {
-            if (!lastWasEmpty) html += '<div class="mb-3"></div>';
-            lastWasEmpty = true;
-            continue;
-        }
-        lastWasEmpty = false;
-
-        // Section headers: ALL CAPS lines (e.g. "LAST WEEK PERFORMANCE", "AT RISK — …")
-        if (/^[A-Z][A-Z\s\-—–]+$/.test(trimmed) && trimmed.length >= 4 && trimmed.length <= 80) {
-            html += `<h3 class="text-xs font-black text-gray-400 uppercase tracking-widest mb-4 mt-1">${_esc(trimmed)}</h3>`;
-            continue;
-        }
-
-        // → Recommended action / → Action
-        if (/^→\s*(Recommended action|Action):/.test(trimmed)) {
-            html += `<p class="text-teal-700 font-bold text-sm mt-3 mb-1">${_esc(trimmed)}</p>`;
-            continue;
-        }
-
-        // Talking point (may be indented)
-        if (/^\s*Talking point:/.test(line)) {
-            html += `<p class="text-violet-700 text-sm italic border-l-2 border-violet-300 pl-3 mb-3">${_esc(trimmed)}</p>`;
-            continue;
-        }
-
-        // → Other → lines
-        if (trimmed.startsWith('→')) {
-            html += `<p class="text-teal-700 font-bold text-sm mt-2 mb-1">${_esc(trimmed)}</p>`;
-            continue;
-        }
-
-        // SKU header line: "SKU XXXXX" (short, starts with SKU)
-        if (/^SKU\s+\S+(\s+[-—].*)?$/.test(trimmed)) {
-            html += `<p class="font-black text-gray-900 text-sm mt-5 mb-1 tracking-wide">${_esc(trimmed)}</p>`;
-            continue;
-        }
-
-        // Bullet or numbered list item
-        if (/^[•\-\*]\s/.test(trimmed) || /^\d+\.\s/.test(trimmed)) {
-            html += `<p class="text-sm text-gray-700 pl-4 mb-1.5">${_esc(trimmed)}</p>`;
-            continue;
-        }
-
-        // Client name line: a short line that looks like a proper noun (title case, no colon, short)
-        // Heuristic: <= 60 chars, starts capital, no : or = or numbers at start
-        if (
-            trimmed.length <= 60 &&
-            /^[A-Z]/.test(trimmed) &&
-            !trimmed.includes(':') &&
-            !trimmed.includes('=') &&
-            !/^\d/.test(trimmed) &&
-            !/^(The|This|These|In|For|Note|As|If|When|With|Each|All|No )/.test(trimmed)
-        ) {
-            html += `<p class="font-bold text-gray-900 text-sm mt-5 mb-1">${_esc(trimmed)}</p>`;
-            continue;
-        }
-
-        // Default: regular paragraph
-        html += `<p class="text-sm text-gray-700 mb-2 leading-relaxed">${_esc(trimmed)}</p>`;
-    }
+    // ── PITCH ─────────────────────────────
+    html += `
+    <div>
+        <div class="flex items-center gap-2 mb-3">
+            <div class="w-1 h-5 bg-teal-400 rounded-full"></div>
+            <span class="text-xs font-black text-gray-400 uppercase tracking-widest">This Week's Pitch Opportunities</span>
+            <span class="ml-auto text-xs font-bold bg-teal-100 text-teal-600 px-2 py-0.5 rounded-full">${pitch.length} SKUs</span>
+        </div>
+        ${pitch.length === 0
+            ? '<p class="text-sm text-gray-400 bg-white rounded-xl border border-gray-100 p-5 text-center">No strong trends this week.</p>'
+            : pitch.map((s) => `
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm border-l-4 border-l-teal-400 overflow-hidden mb-4">
+            <div class="flex items-start justify-between px-5 pt-5 pb-3">
+                <h4 class="font-black text-gray-900 text-base">SKU ${_esc(s.sku_code)}</h4>
+                <span class="text-xs font-bold bg-teal-100 text-teal-600 px-2.5 py-1 rounded-full shrink-0 ml-4">
+                    📈 Trending
+                </span>
+            </div>
+            <div class="px-5 pb-4">
+                ${_wdParagraphs(s.context || '')}
+            </div>
+            <div class="mx-5 mb-5 bg-teal-50 rounded-lg p-4 border border-teal-100">
+                <p class="text-xs font-black text-teal-600 uppercase tracking-wider mb-2">Talking Point</p>
+                <p class="text-sm text-gray-700 italic leading-relaxed">"${_esc(s.talking_point || '')}"</p>
+            </div>
+        </div>`).join('')}
+    </div>`;
 
     return html;
 }
 
 // ──────────────────────────────────────────
-// Utility helpers
+// Helpers
 // ──────────────────────────────────────────
+function _wdParagraphs(text) {
+    return text
+        .split(/\n\n+/)
+        .map(p => p.trim())
+        .filter(Boolean)
+        .map(p => `<p class="text-sm text-gray-700 leading-relaxed mb-2">${_esc(p).replace(/\n/g, '<br>')}</p>`)
+        .join('');
+}
+
+function _wdFmt(n) {
+    return Number(n || 0).toFixed(0).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+}
+
 function _esc(str) {
-    return String(str)
+    return String(str || '')
         .replace(/&/g, '&amp;')
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
