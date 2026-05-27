@@ -113,7 +113,13 @@ async function uploadWeeklyInventoryFiles(files) {
     }
 
     if (progressEl) progressEl.style.display = 'none';
-    if (successCount > 0) await _touchCacheMetadata('weekly_sales');
+    if (successCount > 0) {
+        await _touchCacheMetadata('weekly_sales');
+        const weeks = parseInt(document.getElementById('sbWeeksSelect')?.value) || 52;
+        const activeOnly = document.getElementById('sbActiveOnly')?.checked || false;
+        statusEl.innerHTML = `<span class="text-blue-600">⏳ Reloading data...</span>`;
+        await sbLoadAllData(null, weeks, activeOnly);
+    }
 
     const summary = `Done: ${successCount} succeeded / ${errorCount} failed`;
     statusEl.innerHTML = `
