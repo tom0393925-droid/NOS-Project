@@ -502,8 +502,9 @@ function _siRenderChart(blocks, isAmt) {
 const SI_WARN_WEEKS    = 4;
 const SI_DORMANT_WEEKS = 8;
 
-function _siCustomerStats(code) {
-    const rows       = window._siAllRows.filter(r => r.sku_code === code);
+function _siCustomerStats(codes) {
+    const codeSet    = new Set(Array.isArray(codes) ? codes : [codes]);
+    const rows       = window._siAllRows.filter(r => codeSet.has(r.sku_code));
     const maxWeekIdx = _siWeekIndex(window._siGlobalMaxWeek);
 
     const byCust = {};
@@ -537,8 +538,10 @@ function _siCustomerStats(code) {
     return list;
 }
 
-function _siRenderCustomerTable(code) {
-    const list = _siCustomerStats(code);
+function _siRenderCustomerTable(codes) {
+    const list = _siCustomerStats(codes);
+    const isGroup = Array.isArray(codes) && codes.length > 1;
+    const heading = isGroup ? 'Who orders these SKUs' : 'Who orders this SKU';
     if (!list.length) return '';
 
     const activeCount = list.filter(c => c.gap !== null && c.gap < SI_WARN_WEEKS).length;
@@ -576,8 +579,8 @@ function _siRenderCustomerTable(code) {
         <div class="mt-8">
             <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
                 <h3 class="font-black text-gray-800 text-base flex items-center gap-2">
-                    👥 Who orders this SKU
-                    <span class="text-xs font-normal text-gray-400">all-time · ${list.length} customers · ${activeCount} active (last ${SI_WARN_WEEKS} wks)</span>
+                    👥 ${heading}
+                    <span class="text-xs font-normal text-gray-400">${isGroup ? 'combined · ' : ''}all-time · ${list.length} customers · ${activeCount} active (last ${SI_WARN_WEEKS} wks)</span>
                 </h3>
                 <input type="text" placeholder="Filter customers..."
                     oninput="window._siFilterCustomers(this.value)"
@@ -719,6 +722,8 @@ function _siRenderStackPanel() {
             </div>
             <p class="text-xs text-gray-400 mt-2">Each bar stacks the selected SKUs for one fixed 4-week period. Hover a segment for its value. The most recent period is projected to a full 4 weeks.</p>
         </div>
+
+        ${_siRenderCustomerTable(window._siStackSkus)}
     `;
 
     _siRenderStackChart(stack);
