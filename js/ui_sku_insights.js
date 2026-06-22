@@ -320,6 +320,8 @@ function _siRenderPanel(code) {
             </div>
             <p class="text-xs text-gray-400 mt-2">Each bar = one fixed 4-week period (label = start–end). The most recent period is projected to a full 4 weeks using the elapsed-week run rate.</p>
         </div>
+
+        ${_siRenderCustomerTable(code)}
     `;
 
     _siRenderChart(blocks, isAmt);
@@ -412,3 +414,120 @@ function _siRenderChart(blocks, isAmt) {
         }
     });
 }
+
+// ==========================================
+// Per-customer ordering-pace table (all-time, for the selected SKU)
+// ==========================================
+const SI_WARN_WEEKS    = 4;
+const SI_DORMANT_WEEKS = 8;
+
+function _siCustomerStats(code) {
+    const rows       = window._siAllRows.filter(r => r.sku_code === code);
+    const maxWeekIdx = _siWeekIndex(window._siGlobalMaxWeek);
+
+    const byCust = {};
+    for (const r of rows) {
+        const c = byCust[r.customer_code] || (byCust[r.customer_code] = {
+            code: r.customer_code,
+            name: r.customer_name || r.customer_code,
+            totalAmount: 0, totalQty: 0, uom: null, weeks: new Set()
+        });
+        c.totalAmount += r.amount || 0;
+        c.totalQty    += r.qty || 0;
+        if ((r.qty || 0) > 0 || (r.amount || 0) > 0) c.weeks.add(r.week_start);
+        if (r.uom && !c.uom) c.uom = r.uom;
+        if ((!c.name || c.name === c.code) && r.customer_name) c.name = r.customer_name;
+    }
+
+    const list = Object.values(byCust).map(c => {
+        const weeksArr = [...c.weeks].sort();
+        const orders   = weeksArr.length;
+        const firstW   = weeksArr[0] || null;
+        const lastW    = weeksArr[orders - 1] || null;
+        const gap      = lastW ? (maxWeekIdx - _siWeekIndex(lastW)) : null;
+        const cadence  = orders > 1
+            ? (_siWeekIndex(lastW) - _siWeekIndex(firstW)) / (orders - 1)
+            : null;
+        return { code: c.code, name: c.name, totalAmount: c.totalAmount, totalQty: c.totalQty,
+                 uom: c.uom || 'ea', orders, firstW, lastW, gap, cadence };
+    });
+
+    list.sort((a, b) => b.totalAmount - a.totalAmount);
+    return list;
+}
+
+function _siRenderCustomerTable(code) {
+    const list = _siCustomerStats(code);
+    if (!list.length) return '';
+
+    const activeCount = list.filter(c => c.gap !== null && c.gap < SI_WARN_WEEKS).length;
+
+    const rowsHtml = list.map(c => {
+        let badge;
+        if (c.gap === null) {
+            badge = `<span class="text-gray-300 text-xs">—</span>`;
+        } else if (c.gap < SI_WARN_WEEKS) {
+            badge = `<span class="bg-green-100 text-green-700 font-black px-2 py-0.5 rounded text-xs">${c.gap}w 🟢</span>`;
+        } else if (c.gap < SI_DORMANT_WEEKS) {
+            badge = `<span class="bg-yellow-100 text-yellow-700 font-black px-2 py-0.5 rounded text-xs">${c.gap}w 🟡</span>`;
+        } else {
+            badge = `<span class="bg-red-100 text-red-700 font-black px-2 py-0.5 rounded text-xs">${c.gap}w 🔴</span>`;
+        }
+
+        const cadenceLabel = c.cadence === null
+            ? `<span class="text-gray-300">single order</span>`
+            : `every ~${c.cadence.toFixed(1)} wks`;
+
+        return `<tr class="border-b border-gray-100 hover:bg-teal-50/30">
+            <td class="p-3 text-sm text-gray-800 font-bold whitespace-nowrap max-w-[240px] truncate" title="${c.name}">
+                ${c.name}<span class="text-xs font-normal text-gray-400 ml-1">(${c.code})</span>
+            </td>
+            <td class="p-3 text-right font-mono font-black text-green-700 text-sm whitespace-nowrap">${_siFmtAmt(c.totalAmount)}</td>
+            <td class="p-3 text-right font-mono text-sm text-gray-600 whitespace-nowrap">${c.totalQty.toLocaleString()} ${c.uom}</td>
+            <td class="p-3 text-center text-sm text-gray-600">${c.orders}</td>
+            <td class="p-3 text-center text-sm text-gray-600 whitespace-nowrap">${cadenceLabel}</td>
+            <td class="p-3 text-center text-xs text-gray-400 whitespace-nowrap">${c.lastW || '—'}</td>
+            <td class="p-3 text-center whitespace-nowrap">${badge}</td>
+        </tr>`;
+    }).join('');
+
+    return `
+        <div class="mt-8">
+            <div class="flex items-center justify-between mb-3 flex-wrap gap-2">
+                <h3 class="font-black text-gray-800 text-base flex items-center gap-2">
+                    👥 Who orders this SKU
+                    <span class="text-xs font-normal text-gray-400">all-time · ${list.length} customers · ${activeCount} active (last ${SI_WARN_WEEKS} wks)</span>
+                </h3>
+                <input type="text" placeholder="Filter customers..."
+                    oninput="window._siFilterCustomers(this.value)"
+                    class="px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-400 max-w-xs">
+            </div>
+            <div class="overflow-x-auto rounded-xl border border-gray-200 shadow-sm" style="max-height:480px;overflow-y:auto;">
+                <table class="w-full text-left text-sm" id="siCustomerTable">
+                    <thead class="bg-gray-50 border-b border-gray-200" style="position:sticky;top:0;z-index:2;">
+                        <tr>
+                            <th class="p-3 font-bold text-gray-600 text-xs">Customer</th>
+                            <th class="p-3 text-right font-bold text-gray-600 text-xs">Total Amount</th>
+                            <th class="p-3 text-right font-bold text-gray-600 text-xs">Total Qty</th>
+                            <th class="p-3 text-center font-bold text-gray-600 text-xs">Orders</th>
+                            <th class="p-3 text-center font-bold text-gray-600 text-xs">Avg Cadence</th>
+                            <th class="p-3 text-center font-bold text-gray-600 text-xs">Last Order</th>
+                            <th class="p-3 text-center font-bold text-gray-600 text-xs">Gap</th>
+                        </tr>
+                    </thead>
+                    <tbody id="siCustomerTbody">${rowsHtml}</tbody>
+                </table>
+            </div>
+            <p class="text-xs text-gray-400 mt-2">Cadence = average weeks between orders. Gap = weeks since last order (relative to ${window._siGlobalMaxWeek}).</p>
+        </div>`;
+}
+
+window._siFilterCustomers = function(query) {
+    const tbody = document.getElementById('siCustomerTbody');
+    if (!tbody) return;
+    const q = query.trim().toLowerCase();
+    for (const tr of tbody.rows) {
+        const txt = tr.cells[0]?.textContent.toLowerCase() || '';
+        tr.style.display = (!q || txt.includes(q)) ? '' : 'none';
+    }
+};
