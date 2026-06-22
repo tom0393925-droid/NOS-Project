@@ -44,7 +44,9 @@ function _siBlockStartDate(blockIdx) {
 }
 function _siBlockLabel(blockIdx) {
     const s = _siBlockStartDate(blockIdx);
-    const e = new Date(s.getTime() + (SI_BLOCK_WEEKS - 1) * SI_WEEK_MS);
+    // End = last day of the 4-week span (start + 28 days − 1 = the Sunday of the 4th week),
+    // so consecutive period labels are contiguous (no apparent missing week).
+    const e = new Date(s.getTime() + SI_BLOCK_WEEKS * SI_WEEK_MS - 24 * 3600 * 1000);
     const fmt = dt => (dt.getUTCMonth() + 1) + '/' + dt.getUTCDate();
     return fmt(s) + '–' + fmt(e);
 }
