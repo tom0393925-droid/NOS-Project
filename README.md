@@ -18,6 +18,7 @@ NOS-Project/
 │   ├── ui_analytics.js   # Order Planningテーブル・ABCランク分析
 │   ├── ui_categories.js  # カテゴリ・コンテナ設定画面
 │   ├── ui_customer_insights.js # Customer Insightsタブ（顧客別購買分析）
+│   ├── ui_sku_insights.js # SKU Insightsタブ（SKU別売上推移・4週次＋着地見込み）
 │   ├── ui_map.js         # 棚マップ（倉庫ロケーション管理）
 │   ├── ui_master.js      # SKUマスタ管理画面
 │   ├── chart.js          # 将来在庫のグラフ描画・シミュレーション
@@ -57,6 +58,7 @@ NOS-Project/
 | `ui_analytics.js` | 「Order Planning」タブのテーブル表示・ABCランク分析・クロス分析を担当。全SKUをまとめて一覧で見る画面 |
 | `ui_categories.js` | カテゴリ（CFJP/RFJPなど）の設定・コンテナ到着日の入力画面 |
 | `ui_customer_insights.js` | Customer Insightsタブ。顧客別の購買履歴・アクティブ／休眠SKU分析・4週トレンドのKPIカードを表示する |
+| `ui_sku_insights.js` | SKU Insightsタブ。SKUを選ぶと、そのSKUの売上（金額／数量）を固定4週ごとの棒グラフで表示。一番右の進行中の期間は「着地見込み（est.）」として満額に引き伸ばして表示する |
 | `ui_map.js` | 棚番号とSKUの対応を管理する倉庫ロケーション画面 |
 | `ui_master.js` | SKUの基本情報（品名・UOM・安全在庫など）を管理するマスタ画面 |
 | `chart.js` | 将来の在庫推移をグラフで描画するエンジン。欠品SKUの需要推定ロジック（`_calcStockoutAvg`）もここに定義 |

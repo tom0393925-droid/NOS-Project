@@ -298,6 +298,9 @@
                     onclick="switchTab('customerInsightsTab', this); initCustomerInsights();">👥 Customer Insights</button>
                 <button
                     class="tab-button flex-auto px-4 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
+                    onclick="switchTab('skuInsightsTab', this); initSkuInsights();">📈 SKU Insights</button>
+                <button
+                    class="tab-button flex-auto px-4 py-4 text-center font-bold text-slate-300 hover:text-white hover:bg-slate-700 transition-colors border-l border-slate-600"
                     onclick="switchTab('mapTab', this)">🗺️ Warehouse Map</button>
             </div>
 
@@ -725,6 +728,43 @@
 
                 </div>
 
+                <div id="skuInsightsTab" class="tab-content px-6 pb-6 pt-4" style="display: none;">
+
+                    <!-- Placeholder -->
+                    <div id="siPlaceholder" class="flex flex-col items-center justify-center py-20 bg-white rounded-xl border-2 border-dashed border-teal-300 mt-4">
+                        <div class="text-5xl mb-4">📈</div>
+                        <p class="text-xl font-black text-gray-700 mb-2">No data yet</p>
+                        <p class="text-sm text-gray-500">Go to <strong class="text-teal-700">⚙️ Data Setup</strong> and upload a <em>Sales By Item (Customer)</em> Excel file.</p>
+                    </div>
+
+                    <!-- Content -->
+                    <div id="siContent" style="display: none;">
+
+                        <!-- SKU Search -->
+                        <div class="flex items-center gap-4 mb-6">
+                            <label class="font-black text-gray-700 text-sm whitespace-nowrap">Select SKU:</label>
+                            <div class="relative flex-grow max-w-md" id="siSearchWrapper">
+                                <input type="text" id="siSkuSearch"
+                                    placeholder="Search SKU code or item name..."
+                                    autocomplete="off"
+                                    oninput="siFilterSkus(this.value)"
+                                    onfocus="siFilterSkus(this.value)"
+                                    class="w-full p-2.5 pr-9 border border-gray-300 rounded-lg text-sm font-bold focus:ring-2 focus:ring-teal-400 outline-none bg-white shadow-sm">
+                                <button onclick="siClearSearch()"
+                                    class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg leading-none"
+                                    title="Clear">✕</button>
+                                <div id="siSkuDropdown"
+                                    class="absolute z-50 w-full bg-white border border-gray-200 rounded-lg shadow-lg mt-1 max-h-60 overflow-y-auto hidden">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Per-SKU detail panel -->
+                        <div id="siSkuPanel"></div>
+                    </div>
+
+                </div>
+
                 <div id="mapTab" class="tab-content px-6 pb-6 pt-6" style="display: none;">
                     <div class="mb-4">
                         <div>
@@ -1120,6 +1160,7 @@
     <script src="js/ui_analytics.js?v=40"></script>
     <script src="js/ui_map.js?v=22"></script>
     <script src="js/ui_customer_insights.js?v=6"></script>
+    <script src="js/ui_sku_insights.js?v=1"></script>
     <script src="js/ui_weekly_digest.js?v=1"></script>
     <script src="js/ui.js?v=31"></script>
     <script src="js/main.js?v=34"></script>
