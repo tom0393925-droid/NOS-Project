@@ -12,6 +12,15 @@ window._siMetric       = 'amount'; // 'amount' | 'qty'
 window._siNumBlocks    = 6;      // number of 4-week periods to show: 6 | 13 | 'all'
 window._siChart        = null;   // Chart.js instance
 window._siGlobalMaxWeek = null;  // MAX(week_start) across all rows (ISO date string)
+window._siMode         = 'single'; // 'single' | 'stack'
+window._siStackSkus    = [];     // sku_codes selected for stacked comparison
+
+// Categorical palette for stacked comparison mode (distinct, app-consistent hues)
+const SI_PALETTE = [
+    '#0d9488', '#6366f1', '#db2777', '#d97706', '#0891b2',
+    '#65a30d', '#9333ea', '#dc2626', '#0ea5e9', '#ca8a04',
+    '#16a34a', '#e11d48'
+];
 
 // Fixed weekly grid so 4-week period boundaries are stable regardless of the data range.
 // 2020-01-06 is a Monday (week_start values are always Mondays).
@@ -58,6 +67,27 @@ function _siStripePattern() {
     x.stroke();
     _siStripePatternCache = x.createPattern(c, 'repeat');
     return _siStripePatternCache;
+}
+
+// Diagonal-stripe pattern in an arbitrary base color (for estimate segments in stack mode)
+const _siColorStripeCache = {};
+function _siStripePatternFor(hex) {
+    if (_siColorStripeCache[hex]) return _siColorStripeCache[hex];
+    const c = document.createElement('canvas');
+    c.width = 8; c.height = 8;
+    const x = c.getContext('2d');
+    // faint base tint so the segment still reads as its SKU color
+    x.fillStyle = hex + '26'; // ~15% alpha
+    x.fillRect(0, 0, 8, 8);
+    x.strokeStyle = hex;
+    x.lineWidth = 1.5;
+    x.beginPath();
+    x.moveTo(0, 8); x.lineTo(8, 0);
+    x.moveTo(-4, 4); x.lineTo(4, -4);
+    x.moveTo(4, 12); x.lineTo(12, 4);
+    x.stroke();
+    _siColorStripeCache[hex] = x.createPattern(c, 'repeat');
+    return _siColorStripeCache[hex];
 }
 
 // ==========================================
@@ -185,21 +215,93 @@ function siClearSearch() {
 function siSelectSku(code) {
     const input = document.getElementById('siSkuSearch');
     const dd    = document.getElementById('siSkuDropdown');
-    const sku   = window._siSkuList.find(s => s.code === code);
+    if (dd) dd.classList.add('hidden');
+
+    // Stack mode: add to comparison list, clear box for the next pick
+    if (window._siMode === 'stack') {
+        if (!window._siStackSkus.includes(code)) window._siStackSkus.push(code);
+        if (input) input.value = '';
+        _siRenderStackPanel();
+        return;
+    }
+
+    const sku = window._siSkuList.find(s => s.code === code);
     if (input) input.value = sku ? (sku.code + (sku.name === sku.code ? '' : ' — ' + sku.name)) : code;
-    if (dd)    dd.classList.add('hidden');
     window._siSelectedSku = code;
     _siRenderPanel(code);
 }
 
+function siSetMode(mode) {
+    window._siMode = mode;
+    const input = document.getElementById('siSkuSearch');
+    if (input) input.value = '';
+    const dd = document.getElementById('siSkuDropdown');
+    if (dd) dd.classList.add('hidden');
+    if (mode === 'stack') _siRenderStackPanel();
+    else _siRenderPanel(window._siSelectedSku);
+}
+
+function _siRerender() {
+    if (window._siMode === 'stack') _siRenderStackPanel();
+    else if (window._siSelectedSku) _siRenderPanel(window._siSelectedSku);
+}
+
 function siSetMetric(metric) {
     window._siMetric = metric;
-    if (window._siSelectedSku) _siRenderPanel(window._siSelectedSku);
+    _siRerender();
 }
 
 function siSetPeriod(n) {
     window._siNumBlocks = n;
-    if (window._siSelectedSku) _siRenderPanel(window._siSelectedSku);
+    _siRerender();
+}
+
+function siRemoveStackSku(code) {
+    window._siStackSkus = window._siStackSkus.filter(c => c !== code);
+    _siRenderStackPanel();
+}
+
+function siClearStack() {
+    window._siStackSkus = [];
+    _siRenderStackPanel();
+}
+
+// Shared UI fragments
+function _siModeToggleHtml() {
+    const btn = (m, label) => {
+        const active = m === window._siMode;
+        const cls = active ? 'px-3 py-1.5 text-xs font-bold rounded bg-indigo-600 text-white'
+                           : 'px-3 py-1.5 text-xs font-bold rounded text-gray-500 hover:bg-gray-100 transition-colors';
+        return `<button onclick="siSetMode('${m}')" class="${cls}">${label}</button>`;
+    };
+    return `<div class="flex items-center gap-1 mb-5 bg-gray-50 border border-gray-200 rounded-lg p-1 w-max">
+        ${btn('single', '📈 Single SKU')}${btn('stack', '📊 Compare (stacked)')}
+    </div>`;
+}
+
+function _siControlsHtml() {
+    const metricBtn = (m, label) => {
+        const active = m === window._siMetric;
+        const cls = active ? 'px-3 py-1.5 text-xs font-bold rounded bg-teal-500 text-white'
+                           : 'px-3 py-1.5 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors';
+        return `<button onclick="siSetMetric('${m}')" class="${cls}">${label}</button>`;
+    };
+    const periodBtn = (n, label) => {
+        const active = n === window._siNumBlocks;
+        const cls = active ? 'px-2.5 py-1 text-xs font-bold rounded bg-teal-500 text-white'
+                           : 'px-2.5 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors';
+        return `<button onclick="siSetPeriod(${typeof n === 'string' ? `'${n}'` : n})" class="${cls}">${label}</button>`;
+    };
+    return `<div class="flex items-center gap-4 flex-wrap">
+        <div class="flex items-center gap-1.5">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mr-1">Show:</span>
+            ${metricBtn('amount', 'Sales $')}${metricBtn('qty', 'Quantity')}
+        </div>
+        <div class="flex items-center gap-1.5">
+            <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mr-1">Periods:</span>
+            ${periodBtn(6, '6')}${periodBtn(13, '13')}${periodBtn('all', 'All')}
+        </div>
+    </div>`;
 }
 
 // ==========================================
@@ -262,6 +364,7 @@ function _siRenderPanel(code) {
 
     if (!code) {
         panel.innerHTML = `
+            ${_siModeToggleHtml()}
             <div class="flex flex-col items-center justify-center py-24 text-center">
                 <div class="text-5xl mb-4">🔍</div>
                 <p class="text-lg font-black text-gray-600 mb-1">Select a SKU</p>
@@ -273,38 +376,14 @@ function _siRenderPanel(code) {
     const sku = window._siSkuList.find(s => s.code === code);
     const { blocks, isAmt } = _siBuildBlocks(code);
 
-    const metricBtn = (m, label) => {
-        const active = m === window._siMetric;
-        const cls = active ? 'px-3 py-1.5 text-xs font-bold rounded bg-teal-500 text-white'
-                           : 'px-3 py-1.5 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors';
-        return `<button onclick="siSetMetric('${m}')" class="${cls}">${label}</button>`;
-    };
-    const periodBtn = (n, label) => {
-        const active = n === window._siNumBlocks;
-        const cls = active ? 'px-2.5 py-1 text-xs font-bold rounded bg-teal-500 text-white'
-                           : 'px-2.5 py-1 text-xs font-bold rounded text-gray-400 hover:bg-gray-100 transition-colors';
-        return `<button onclick="siSetPeriod(${typeof n === 'string' ? `'${n}'` : n})" class="${cls}">${label}</button>`;
-    };
-
     panel.innerHTML = `
+        ${_siModeToggleHtml()}
         <div class="mb-5 flex items-start justify-between flex-wrap gap-3">
             <div>
                 <h2 class="text-xl font-black text-gray-800">${sku ? sku.code : code}</h2>
                 <p class="text-xs text-gray-400 mt-0.5">${sku && sku.name !== sku.code ? sku.name + ' &nbsp;|&nbsp; ' : ''}Data up to: ${window._siGlobalMaxWeek}</p>
             </div>
-            <div class="flex items-center gap-4">
-                <div class="flex items-center gap-1.5">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mr-1">Show:</span>
-                    ${metricBtn('amount', 'Sales $')}
-                    ${metricBtn('qty', 'Quantity')}
-                </div>
-                <div class="flex items-center gap-1.5">
-                    <span class="text-xs font-bold text-gray-400 uppercase tracking-wider mr-1">Periods:</span>
-                    ${periodBtn(6, '6')}
-                    ${periodBtn(13, '13')}
-                    ${periodBtn('all', 'All')}
-                </div>
-            </div>
+            ${_siControlsHtml()}
         </div>
 
         <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
@@ -531,3 +610,200 @@ window._siFilterCustomers = function(query) {
         tr.style.display = (!q || txt.includes(q)) ? '' : 'none';
     }
 };
+
+// ==========================================
+// Stack mode: compare multiple SKUs as a stacked 4-week chart
+// ==========================================
+function _siBuildStackData() {
+    const isAmt = window._siMetric === 'amount';
+    const valOf = r => isAmt ? (r.amount || 0) : (r.qty || 0);
+
+    const maxWeekIdx   = _siWeekIndex(window._siGlobalMaxWeek);
+    const latestBlock  = Math.floor(maxWeekIdx / SI_BLOCK_WEEKS);
+    const weeksElapsed = (maxWeekIdx - latestBlock * SI_BLOCK_WEEKS) + 1;
+    const latestIsEst  = weeksElapsed < SI_BLOCK_WEEKS && weeksElapsed > 0;
+
+    const codeSet  = new Set(window._siStackSkus);
+    const skuBlock = {};
+    window._siStackSkus.forEach(c => { skuBlock[c] = {}; });
+    let earliestBlock = latestBlock;
+    for (const r of window._siAllRows) {
+        if (!codeSet.has(r.sku_code)) continue;
+        const b = _siBlockOf(r.week_start);
+        skuBlock[r.sku_code][b] = (skuBlock[r.sku_code][b] || 0) + valOf(r);
+        if (b < earliestBlock) earliestBlock = b;
+    }
+
+    const startBlock = window._siNumBlocks === 'all'
+        ? earliestBlock
+        : Math.max(earliestBlock, latestBlock - window._siNumBlocks + 1);
+
+    const blockIdxs = [];
+    for (let b = startBlock; b <= latestBlock; b++) blockIdxs.push(b);
+    const labels = blockIdxs.map(b => _siBlockLabel(b));
+
+    const perSku = window._siStackSkus.map(code => {
+        const sku = window._siSkuList.find(s => s.code === code);
+        const data = blockIdxs.map(b => {
+            const actual = skuBlock[code][b] || 0;
+            if (b === latestBlock && latestIsEst) return (actual / weeksElapsed) * SI_BLOCK_WEEKS;
+            return actual;
+        });
+        return { code, name: sku ? sku.name : code, data };
+    });
+
+    return { labels, perSku, isAmt, latestIsEst, weeksElapsed, latestIdx: blockIdxs.length - 1 };
+}
+
+function _siRenderStackPanel() {
+    const panel = document.getElementById('siSkuPanel');
+    if (!panel) return;
+    if (window._siChart) { window._siChart.destroy(); window._siChart = null; }
+
+    if (!window._siStackSkus.length) {
+        panel.innerHTML = `
+            ${_siModeToggleHtml()}
+            <div class="flex flex-col items-center justify-center py-24 text-center">
+                <div class="text-5xl mb-4">📊</div>
+                <p class="text-lg font-black text-gray-600 mb-1">Compare SKUs</p>
+                <p class="text-sm text-gray-400">Use the search box above to add SKUs.<br>They stack into one 4-week trend so you can see the combined total.</p>
+            </div>`;
+        return;
+    }
+
+    const stack = _siBuildStackData();
+
+    const chips = window._siStackSkus.map((code, i) => {
+        const color = SI_PALETTE[i % SI_PALETTE.length];
+        const sku   = window._siSkuList.find(s => s.code === code);
+        const label = sku && sku.name !== sku.code ? sku.name : code;
+        return `<span class="inline-flex items-center gap-1.5 pl-2 pr-1 py-1 rounded-full text-xs font-bold border" style="border-color:${color}40;background:${color}14;color:${color};">
+            <span style="width:9px;height:9px;border-radius:50%;background:${color};display:inline-block;"></span>
+            ${code}<span class="font-normal opacity-70 max-w-[120px] truncate">${label === code ? '' : '· ' + label}</span>
+            <button onclick="siRemoveStackSku('${String(code).replace(/'/g, "\\'")}')" class="ml-0.5 w-4 h-4 rounded-full hover:bg-black/10 leading-none flex items-center justify-center" title="Remove">✕</button>
+        </span>`;
+    }).join('');
+
+    panel.innerHTML = `
+        ${_siModeToggleHtml()}
+        <div class="mb-4 flex items-start justify-between flex-wrap gap-3">
+            <div>
+                <h2 class="text-xl font-black text-gray-800">Compare SKUs <span class="text-sm font-bold text-gray-400">(${window._siStackSkus.length})</span></h2>
+                <p class="text-xs text-gray-400 mt-0.5">Stacked 4-week trend · Data up to: ${window._siGlobalMaxWeek}</p>
+            </div>
+            ${_siControlsHtml()}
+        </div>
+
+        <div class="flex items-center gap-2 flex-wrap mb-4">
+            ${chips}
+            <button onclick="siClearStack()" class="text-xs font-bold text-gray-400 hover:text-red-500 underline ml-1">Clear all</button>
+        </div>
+
+        <div class="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Stacked 4-Week Sales ${stack.isAmt ? '(Amount)' : '(Quantity)'}</p>
+                <span class="text-xs text-gray-400">${stack.latestIsEst ? 'Hatched = estimate (latest period projected to 4 wks)' : ''}</span>
+            </div>
+            <div style="position:relative;height:460px;">
+                <canvas id="siStackChart"></canvas>
+            </div>
+            <p class="text-xs text-gray-400 mt-2">Each bar stacks the selected SKUs for one fixed 4-week period. Hover a segment for its value. The most recent period is projected to a full 4 weeks.</p>
+        </div>
+    `;
+
+    _siRenderStackChart(stack);
+}
+
+function _siRenderStackChart(stack) {
+    const ctx = document.getElementById('siStackChart');
+    if (!ctx) return;
+
+    const { labels, perSku, isAmt, latestIdx, latestIsEst, weeksElapsed } = stack;
+
+    const datasets = perSku.map((sku, i) => {
+        const color = SI_PALETTE[i % SI_PALETTE.length];
+        const bg = sku.data.map((v, idx) =>
+            (idx === latestIdx && latestIsEst) ? _siStripePatternFor(color) : color
+        );
+        return {
+            label: sku.code,
+            data: sku.data,
+            backgroundColor: bg,
+            stack: 's',
+            borderColor: (latestIsEst ? sku.data.map((v, idx) => idx === latestIdx ? color : 'transparent') : 'transparent'),
+            borderWidth: 1,
+            borderRadius: 2,
+            borderSkipped: false
+        };
+    });
+
+    // Per-period totals for the top label
+    const totals = labels.map((_, idx) => perSku.reduce((s, sku) => s + sku.data[idx], 0));
+
+    window._siChart = new Chart(ctx, {
+        type: 'bar',
+        data: { labels, datasets },
+        plugins: [{
+            id: 'siStackTotals',
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                labels.forEach((_, idx) => {
+                    if (!totals[idx]) return;
+                    let topY = Infinity;
+                    chart.data.datasets.forEach((_, d) => {
+                        const bar = chart.getDatasetMeta(d).data[idx];
+                        if (bar && bar.y < topY) topY = bar.y;
+                    });
+                    const x = chart.getDatasetMeta(0).data[idx].x;
+                    ctx.save();
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillStyle = '#374151';
+                    ctx.font = 'bold 12px sans-serif';
+                    ctx.fillText(_siFmtShort(totals[idx], isAmt), x, topY - 6);
+                    if (latestIsEst && idx === latestIdx) {
+                        ctx.fillStyle = '#0d9488';
+                        ctx.font = '10px sans-serif';
+                        ctx.fillText('est. (' + weeksElapsed + '/4 wk)', x, topY - 21);
+                    }
+                    ctx.restore();
+                });
+            }
+        }],
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            layout: { padding: { top: 34 } },
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: item => {
+                            const v = item.parsed.y;
+                            const val = isAmt ? _siFmtAmt(v) : (v.toLocaleString() + ' units');
+                            const est = (latestIsEst && item.dataIndex === latestIdx) ? ' (est.)' : '';
+                            return `${item.dataset.label}: ${val}${est}`;
+                        },
+                        footer: items => {
+                            const sum = items.reduce((s, it) => s + it.parsed.y, 0);
+                            return 'Total: ' + (isAmt ? _siFmtAmt(sum) : sum.toLocaleString() + ' units');
+                        }
+                    }
+                }
+            },
+            scales: {
+                y: {
+                    stacked: true,
+                    beginAtZero: true,
+                    ticks: { font: { size: 12 }, callback: v => isAmt ? _siFmtShort(v, true) : v.toLocaleString() },
+                    grid: { color: 'rgba(0,0,0,0.05)' }
+                },
+                x: {
+                    stacked: true,
+                    ticks: { font: { size: 11 } },
+                    grid: { display: false }
+                }
+            }
+        }
+    });
+}
