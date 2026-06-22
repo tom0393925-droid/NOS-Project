@@ -646,12 +646,20 @@ function _siBuildStackData() {
 
     const perSku = window._siStackSkus.map(code => {
         const sku = window._siSkuList.find(s => s.code === code);
-        const data = blockIdxs.map(b => {
-            const actual = skuBlock[code][b] || 0;
-            if (b === latestBlock && latestIsEst) return (actual / weeksElapsed) * SI_BLOCK_WEEKS;
-            return actual;
+        const actual = [];
+        const uplift = [];
+        blockIdxs.forEach(b => {
+            const a = skuBlock[code][b] || 0;
+            actual.push(a);
+            // Projected uplift only on the in-progress latest block
+            if (b === latestBlock && latestIsEst) {
+                const projected = (a / weeksElapsed) * SI_BLOCK_WEEKS;
+                uplift.push(Math.max(0, projected - a));
+            } else {
+                uplift.push(0);
+            }
         });
-        return { code, name: sku ? sku.name : code, data };
+        return { code, name: sku ? sku.name : code, actual, uplift };
     });
 
     return { labels, perSku, isAmt, latestIsEst, weeksElapsed, latestIdx: blockIdxs.length - 1 };
@@ -722,25 +730,29 @@ function _siRenderStackChart(stack) {
 
     const { labels, perSku, isAmt, latestIdx, latestIsEst, weeksElapsed } = stack;
 
-    const datasets = perSku.map((sku, i) => {
+    // Solid "actual" segments (one dataset per SKU), then hatched "uplift" segments
+    // on top (one per SKU). Stacking order = all actuals first, then all uplifts,
+    // so each bar reads as a solid actual base + a hatched projected cap.
+    const actualDs = perSku.map((sku, i) => {
         const color = SI_PALETTE[i % SI_PALETTE.length];
-        const bg = sku.data.map((v, idx) =>
-            (idx === latestIdx && latestIsEst) ? _siStripePatternFor(color) : color
-        );
         return {
-            label: sku.code,
-            data: sku.data,
-            backgroundColor: bg,
-            stack: 's',
-            borderColor: (latestIsEst ? sku.data.map((v, idx) => idx === latestIdx ? color : 'transparent') : 'transparent'),
-            borderWidth: 1,
-            borderRadius: 2,
-            borderSkipped: false
+            label: sku.code, data: sku.actual, backgroundColor: color,
+            stack: 's', borderSkipped: false, _siCode: sku.code, _siKind: 'actual'
         };
     });
+    const upliftDs = perSku.map((sku, i) => {
+        const color = SI_PALETTE[i % SI_PALETTE.length];
+        return {
+            label: sku.code, data: sku.uplift, backgroundColor: _siStripePatternFor(color),
+            borderColor: color, borderWidth: { top: 1, left: 0, right: 0, bottom: 0 },
+            stack: 's', borderSkipped: false, _siCode: sku.code, _siKind: 'uplift'
+        };
+    });
+    const datasets = [...actualDs, ...upliftDs];
 
-    // Per-period totals for the top label
-    const totals = labels.map((_, idx) => perSku.reduce((s, sku) => s + sku.data[idx], 0));
+    // Per-period totals for the top label (actual + projected uplift)
+    const totals = labels.map((_, idx) =>
+        perSku.reduce((s, sku) => s + sku.actual[idx] + sku.uplift[idx], 0));
 
     window._siChart = new Chart(ctx, {
         type: 'bar',
@@ -776,6 +788,7 @@ function _siRenderStackChart(stack) {
             responsive: true,
             maintainAspectRatio: false,
             layout: { padding: { top: 34 } },
+            interaction: { mode: 'nearest', intersect: true },
             plugins: {
                 legend: { display: false },
                 tooltip: {
@@ -783,12 +796,10 @@ function _siRenderStackChart(stack) {
                         label: item => {
                             const v = item.parsed.y;
                             const val = isAmt ? _siFmtAmt(v) : (v.toLocaleString() + ' units');
-                            const est = (latestIsEst && item.dataIndex === latestIdx) ? ' (est.)' : '';
-                            return `${item.dataset.label}: ${val}${est}`;
-                        },
-                        footer: items => {
-                            const sum = items.reduce((s, it) => s + it.parsed.y, 0);
-                            return 'Total: ' + (isAmt ? _siFmtAmt(sum) : sum.toLocaleString() + ' units');
+                            const code = item.dataset._siCode || item.dataset.label;
+                            return item.dataset._siKind === 'uplift'
+                                ? `${code} (est.): +${val}`
+                                : `${code}: ${val}`;
                         }
                     }
                 }
